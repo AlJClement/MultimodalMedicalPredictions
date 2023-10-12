@@ -1,0 +1,8 @@
+*.pth
+*.png
+*.txt
+*.out
+
+output/
+.vscode/
+cache/

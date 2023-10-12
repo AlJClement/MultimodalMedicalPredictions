@@ -1,0 +1,70 @@
+INPUT_PATHS:
+  DATASET_NAME: ddh
+  PARTITION: /home/allent/Desktop/data/ddh/multimodal/orig/output/partition_0.7_0.15_0.15.json
+  IMAGES: /home/allent/Desktop/data/ddh/multimodal/orig/output/imgs
+  LABELS: /home/allent/Desktop/data/ddh/multimodal/orig/output/txt
+
+  METADATA: /home/allent/Desktop/data/ddh/multimodal/orig/output/metadata.csv
+    COLS: 
+      - SEX: M,F
+      - BREACH: True, False 
+      - Age(Days): continous, 10 #if continous comma the bins (will split in intervals)
+
+MODEL: 
+  NAME: unet_meta_bottleneck
+  META_FEATURES: 1000 #how large to make the linear layer, if its ZERO no features added
+  DEVICE: cpu 
+
+DATASET:
+  IMAGE_EXT: ".png"
+  LABELS: "POINTS" #SEGMENTATIONS
+  KEY_POINTS: 5
+  PIXEL_SIZE:
+    - 1.0
+    - 1.0
+  CACHED_IMAGE_SIZE:
+    - 256 #128 
+    - 1024 #512
+  SIGMA: 2
+  FLIP_AXIS: FALSE
+  NO_OF_ANNOTATIONS: 1
+
+  AUGMENTATION:
+    ROTATION_FACTOR: 5
+    INTENSITY_FACTOR: 0.5
+    SF: 0.2
+    TRANSLATION_X: 0.05
+    TRANSLATION_Y: 0.1
+    ELASTIC_STRENGTH: 0
+    ELASTIC_SMOOTHNESS: 0
+
+TRAIN:
+  BATCH_SIZE: 6
+  LR: 0.001
+  EPOCHS: 10
+  REPEATS: 1
+  LABELED_SUBSET: 150
+  FINE_TUNE_EPOCHS: 0
+  ENSEMBLE_MODELS: 1
+
+VALIDATION:
+  AGGREGATION_METHODS:
+    - "mean average"
+    - "confidence weighted"
+  SDR_AGGREGATION_METHOD: "confidence weighted"
+  SDR_THRESHOLDS:
+    - 2.0 #pixels = 2 mm
+    - 4.0 #pixels = 4 mm
+  SAVE_IMAGE_PATH: ""
+  MEASUREMENTS_SUFFIX: "protractor_hka"
+  MEASUREMENTS:
+    - l_angle
+    - r_angle
+  DIAGNOSES:
+    - oai
+  CORRECT_THRESHOLDS: 
+    - 1 
+    - 2 #1 # pixels = 2.0 mm
+    - 4 #2 # pixels = 4.0 mm
+    - 8 # pixels = 8.0 mm
+    - 16 # pixels = 16.0 mm
