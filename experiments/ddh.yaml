@@ -1,0 +1,39 @@
+INPUT_PATHS:
+  DATASET_NAME: ddh
+  PARTITION: /home/allent/Desktop/data/ddh/multimodal/orig/output/partition_0.7_0.15_0.15.json
+  IMAGES: /home/allent/Desktop/data/ddh/multimodal/orig/output/imgs
+  LABELS: /home/allent/Desktop/data/ddh/multimodal/orig/output/txt
+  META_PATH: /home/allent/Desktop/data/ddh/multimodal/orig/output/metadata.csv
+  #make the first col always the patient ID col
+  META_COLS: [Accession Number, Sex, Breach, Age(Days), TextField]
+
+MODEL: 
+  NAME: unet_meta_bottleneck
+  META_FEATURES: 1000 #how large to make the linear layer, if its ZERO no features added
+  DEVICE: cpu 
+
+DATASET:
+  IMAGE_EXT: ".png"
+  ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
+  NUM_LANDMARKS: 5
+  SIGMA: 2 #if sigma is NONE no guassian applied
+  FLIP_AXIS: TRUE
+
+  PIXEL_SIZE: [1,1]
+  CACHED_IMAGE_SIZE: [256,256]
+
+  AUGMENTATION:
+    ROTATION_FACTOR: 5
+    INTENSITY_FACTOR: 0.5
+    SF: 0.2
+    TRANSLATION_X: 0.05
+    TRANSLATION_Y: 0.1
+    ELASTIC_STRENGTH: 0
+    ELASTIC_SMOOTHNESS: 0
+
+OUTPUT_PATH: ./output
+
+TRAIN:
+  BATCH_SIZE: 6
+  LR: 0.001
+  EPOCHS: 10
