@@ -51,3 +51,17 @@ class helper():
             logger.info("Saving Model {}'s State Dict to {}".format(model_idx, save_model_path))
             torch.save(our_model.state_dict(), save_model_path)
 
+    @staticmethod
+    def _get_network_parameters(net):
+        print('net dev:',next(net.parameters()).device)
+        # Calculate the number of traininable params
+        params = [p.numel() for p in net.parameters()]
+        params_total = sum(params)
+        print('Trainable params: ', params_total)
+
+    @staticmethod
+    def _dataset_shape(dataset_arr):
+        #dataloader function contains 
+        print('Input shape of data:', len(dataset_arr.data))        
+        print('Input shape of annotations:', len(dataset_arr.target))
+        print('Input shape of meta:', len(dataset_arr.meta))

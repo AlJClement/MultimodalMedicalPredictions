@@ -5,12 +5,18 @@ INPUT_PATHS:
   LABELS: /home/allent/Desktop/data/ddh/multimodal/orig/output/txt
   META_PATH: /home/allent/Desktop/data/ddh/multimodal/orig/output/metadata.csv
   #make the first col always the patient ID col
-  META_COLS: [Accession Number, Sex, Breach, Age(Days), TextField]
+  ID_COL: Accession Number
+  META_COLS: [Sex: hot, Breach: hot, Age(Days): continous]
 
 MODEL: 
-  NAME: unet_meta_bottleneck
-  META_FEATURES: 1000 #how large to make the linear layer, if its ZERO no features added
+  NAME: unet_meta_lastlayer
+  IN_CHANNELS: 1
+  OUT_CHANNELS: 5 #for 5 landmarks
+  INIT_FEATURES: 1
+  META_FEATURES: [100, 100, 100] 
+  #how large to make the linear layer, if its ZERO no features added
   DEVICE: cpu 
+
 
 DATASET:
   IMAGE_EXT: ".png"
@@ -34,6 +40,7 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 2
   LR: 0.001
   EPOCHS: 10
+  LOSS: 'nll_across_batch' #BCE

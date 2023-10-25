@@ -13,16 +13,17 @@ from .metadata_import import MetadataImport
 from skimage.filters import gaussian
 import matplotlib.pyplot as plt
 import pandas as pd
-
-class dataloader():
-    def __init__(self, cfg) -> None:
+import torch
+from main import model_init
+from torch.utils.data import Dataset
+class dataloader(Dataset):
+    def __init__(self, cfg, set) -> None:
         #paths
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         self.partition_file_path = cfg.INPUT_PATHS.PARTITION
         self.img_dir = cfg.INPUT_PATHS.IMAGES
         self.label_dir = cfg.INPUT_PATHS.LABELS
         self.metadata = cfg.INPUT_PATHS.META_PATH
-        self.cols = cfg.INPUT_PATHS.META_COLS
         self.output_path = cfg.OUTPUT_PATH
         self.cache_dir = self.output_path+'/cache'
         if not os.path.exists(self.cache_dir):
@@ -42,8 +43,16 @@ class dataloader():
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
         self.sigma=cfg.DATASET.SIGMA
         
+        self.pat_id_col = cfg.INPUT_PATHS.ID_COL
         self.metaimport = MetadataImport(cfg)
         self.metadata_csv = self.metaimport.load_csv()
+        self.model_init = model_init(cfg)
+        #get specific models/feature loaders
+        self.meta_feat_structure = self.model_init.get_modelspecific_feature_structure()
+
+        self.set = set
+        self.data, self.target, self.meta = self.get_numpy_dataset() 
+
         return
     
     def downsample_and_padd(self,):
@@ -122,6 +131,11 @@ class dataloader():
             plt.show()
                 
         return channels
+    
+    def combine_reviewers(self, array):
+        '''takes a few annotations and combines them'''
+        combined_arr = sum(array)
+        return combined_arr
 
     def get_ann(self, ann_paths:str, seq, img_shape, orig_img_shape):
         '''loads annotations, loads array for each folder if there are subfolders in the label folder'''
@@ -131,6 +145,7 @@ class dataloader():
             folder_name = ann_path.split("/")[-2]
             if self.annotation_type=="LANDMARKS":
                 _ann_points = self.get_landmarks(ann_path, seq, orig_img_shape)
+
                 _np_ann_points=_ann_points.to_xy_array().reshape(-1, self.num_landmarks, 2)[0]
                 #get array of the points with guassian if applied
                 _ann_array = self.add_sigma_channels(_np_ann_points, img_shape)
@@ -142,32 +157,38 @@ class dataloader():
             ann_points.append(_np_ann_points)
             ann_array.append(_ann_array)
             folder_ls.append(folder_name)
+        
+        ann_arr_multireviewer = self.combine_reviewers(ann_array)
 
-        return ann_array,ann_points,folder_ls
+        return ann_arr_multireviewer,ann_points,folder_ls
     
-    def get_numpy_dataset(self, set, save_cache=True):
+    def get_numpy_dataset(self, save_cache=True):
         '''this function inputs the cfg and gets out a numpy array of the desired input structure'''
-
-        np_dataset, meta_arr = np.array([]), pd.DataFrame([])
+        # output is : 
+        # [im_arr (numscans, size h, size w),
+        # annotation_arr (numscans, numannotations, num_label_channels, size h, size w),
+        # meta_arr (numscans,num_metafeatures)]
 
         #initalize downsample/padd
         seq = self.downsample_and_padd()
         
         img_files, annotation_files = self.get_partition()
-        
-        print('loading:', set)
+        meta_arr = pd.DataFrame([])
 
-        for i in range(len(img_files[set])):
-            pat_id = img_files[set][i].split('/')[-1].split('.')[0]
+        print('loading:', self.set)
+        for i in range(len(img_files[self.set])):
+            pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
 
             ##LOAD IMAGES##
-            _im_arr, orig_shape = self.get_img(seq,img_files[set][i])
+            _im_arr, orig_shape = self.get_img(seq,img_files[self.set][i])
             
             ##LOAD ANNOTATIONS##
-            _annotation_arr, annotation_points, folder_ls = self.get_ann(annotation_files[set][i], seq, _im_arr.shape, orig_shape)
+            _annotation_arr, annotation_points, folder_ls = self.get_ann(annotation_files[self.set][i], seq, _im_arr.shape, orig_shape)
 
             ##LOAD META##
             _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id)
+            if _meta_arr.empty:
+                raise ValueError('no meta data found for: ', pat_id)
 
             if save_cache==True:
                 #save input data files for debugging
@@ -183,19 +204,46 @@ class dataloader():
                     ann_folder = folder_ls[i]
                     annotation = annotation_points[i] 
                     np.savetxt(os.path.join(cache_data_dir,pat_id+ann_folder+'.txt'), annotation, fmt="%.14g", delimiter=" ")
-            
+                
+
             if meta_arr.empty:
+                id_arr = np.array([pat_id])
                 meta_arr = _meta_arr
                 im_arr = np.expand_dims(_im_arr,axis=0)
                 annotation_arr =np.expand_dims(_annotation_arr,axis=0)
             else:
+                id_arr = np.concatenate((id_arr,np.array([pat_id])),0)
                 im_arr = np.concatenate((im_arr, np.expand_dims(_im_arr,axis=0)),0)
                 annotation_arr = np.concatenate((annotation_arr,np.expand_dims(_annotation_arr,axis=0)),0)
                 meta_arr=pd.concat([meta_arr,_meta_arr])
 
         if save_cache==True:                      
-            #save meta dictionary
+            #save meta dictionary, with ids
             meta_path = os.path.join(cache_data_dir,'all_meta.csv')
             meta_arr.to_csv(meta_path)
+        
+        #drop first col of ids
+        meta_arr=meta_arr.drop(self.pat_id_col ,axis=1)
 
-        return im_arr, annotation_arr, np.array(meta_arr)
+        #expand numpy arr and make values as torch
+        im_arr = np.expand_dims(im_arr,axis=1)
+        im_torch = torch.from_numpy(im_arr).float()
+
+        annotation_torch = torch.from_numpy(annotation_arr).float()
+
+        #encoed meta/id data for network in cfg
+        meta_data_restructured = self.meta_feat_structure(np.array(meta_arr))
+        meta_data_restructured = np.expand_dims(meta_data_restructured,axis=1)
+        meta_torch = torch.from_numpy(meta_data_restructured).float()
+
+        return im_torch, annotation_torch, meta_torch
+
+    def __getitem__(self, index):
+        x = self.data[index]
+        y = self.target[index]
+        meta = self.meta[index]
+
+        return x, y, meta
+
+    def __len__(self):
+        return len(self.data)

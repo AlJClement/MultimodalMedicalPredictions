@@ -2,6 +2,8 @@ import argparse
 from support import helper
 from torch.utils.data import Dataset, DataLoader
 from preprocessing import dataloader
+from main import training
+import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a network to detect landmarks')
@@ -32,13 +34,35 @@ def main():
     logger.info("")
 
     #preprocess data (put into a numpy array)
-    #output is : [im_arr, annotation_arr, meta_arr]
-    train_dataset=dataloader(cfg).get_numpy_dataset('training')
-    val_dataset=dataloader(cfg).get_numpy_dataset('validation')
+    train_dataset=dataloader(cfg,'training')
+    help._dataset_shape(train_dataset)
 
-    #load data into data loader
-    train_dataloader = DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=True, drop_last=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last=True)
+    val_dataset=dataloader(cfg,'validation')    
+    help._dataset_shape(val_dataset)
+
+    #load data into data loader (imports all data into a dataloader)
+    train_dataloader = DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = False)
+    val_dataloader = DataLoader(val_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = False)
+
+    losses = []
+    max_epochs = cfg.TRAIN.EPOCHS
+
+    for epoch in range(1, max_epochs+1):  
+        train = training(cfg)
+        train_loss = train.train_meta(train_dataloader, epoch)
+        val_loss = train.val_meta(val_dataloader, epoch)
+        losses.append([train_loss, val_loss])
+
+    losses = np.array(losses).T
+
+    # its = np.linspace(1, max_epochs, max_epochs)
+    # plt.figure()
+    # plt.plot(its, losses[0,:])
+    # plt.plot(its, losses[1,:])
+    # plt.xlabel('Epoch')
+    # plt.ylabel('Loss')
+    # plt.legend(['Train', 'Validation'])
+
 
 
 if __name__ == '__main__':
