@@ -19,9 +19,11 @@ class training():
         self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
 
-        
         pass
 
+    def _get_network(self):
+        return self.net
+    
     def _get_optimizer(self,net):
         optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
         return optim
@@ -32,11 +34,10 @@ class training():
         batches = 0
 
         for batch_idx, (data, target, meta) in enumerate(dataloader):
-            print(batch_idx)
+            #print(batch_idx)
             self.optimizer.zero_grad()
             data, target = Variable(data).to(self.device), Variable(target).to(self.device)
             meta_data = Variable(meta).to(self.device)
-            print([data.shape, meta_data.shape])
 
             batches += 1
             t_s= datetime.datetime.now()
@@ -52,6 +53,7 @@ class training():
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                         epoch, (batch_idx+1) * len(data), len(dataloader.dataset),
                             100. * (batch_idx+1) / len(dataloader), loss.item()), flush=True)
+                    
             del loss, target, data, pred
 
         av_loss = total_loss / batches
@@ -63,4 +65,29 @@ class training():
         print('Time taken for epoch = ', total_time)
         
         return av_loss
-  
+    
+    def val_meta(self, dataloader, epoch):
+        self.net.eval()
+        total_loss = 0
+        batches = 0
+
+        with torch.no_grad():  # So no gradients accumulate
+            for batch_idx, (data, target, meta_data) in enumerate(dataloader):
+                batches += 1
+                data, target = Variable(data).to(self.device), Variable(target).to(self.device)
+                meta_data = Variable(meta_data).to(self.device)
+                # get prediction
+
+
+                pred = self.net(data.to(self.device), meta_data.to(self.device))
+
+                loss = self.loss_func(pred.to(self.device), target.to(self.device))
+
+                total_loss += loss
+
+            av_loss = total_loss / batches
+
+        av_loss = av_loss.cpu().detach().numpy()
+        print('Validation set: Average loss: {:.4f}'.format(av_loss,  flush=True))
+
+        return av_loss
