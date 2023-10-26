@@ -6,10 +6,11 @@ from .model_init import model_init
 from .loss import *
 
 class training():
-    def __init__(self, cfg):
+    def __init__(self, cfg, logger):
         self.model_init = model_init(cfg)
+        self.logger = logger
         #get specific models/feature loaders
-        self.net = self.model_init.get_net_from_conf()
+        self.net, self.net_param = self.model_init.get_net_from_conf()
 
         self.loss_func = eval(cfg.TRAIN.LOSS)
         self.bs = cfg.TRAIN.BATCH_SIZE
@@ -17,27 +18,16 @@ class training():
         self.momentum = 0.9
         self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
+
         
         pass
 
-    # def _get_lossfunc(self,loss_str):
-    #     if loss_str == 'MSE':
-    #         #nn.MSELoss()
-    #         return mse_across_batch()
-    #     elif loss_str == 'BSE':
-    #         return bce_across_batch()
-    #     elif loss_str == 'NLL':
-    #         returnnll_across_batch()
-    #     else:
-    #         raise ValueError('loss fn not defined')
-        
     def _get_optimizer(self,net):
         optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
         return optim
     
     def train_meta(self, dataloader, epoch):
         self.net.train()  #Put the network in train mode
-
         total_loss = 0
         batches = 0
 
@@ -46,6 +36,7 @@ class training():
             self.optimizer.zero_grad()
             data, target = Variable(data).to(self.device), Variable(target).to(self.device)
             meta_data = Variable(meta).to(self.device)
+            print([data.shape, meta_data.shape])
 
             batches += 1
             t_s= datetime.datetime.now()
@@ -72,3 +63,4 @@ class training():
         print('Time taken for epoch = ', total_time)
         
         return av_loss
+  

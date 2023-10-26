@@ -44,7 +44,7 @@ class unet_meta_lastlayer(nn.Module):
     def forward(self, x, meta, zeros=False):
         #save skip connection temp for saving
         _skip_connections = []
-    
+        
         #encoder
         #print('input size',x.size())
         enc1 = self.encoder1(x.to(torch.float32))
@@ -98,7 +98,7 @@ class unet_meta_lastlayer(nn.Module):
 
         feats = bs*self.im_size_h*self.im_size_w*self.out_channels
         xx=xx.view(-1,feat[1])
-        print(xx.size())
+        #print(xx.size())
         
         #print(meta.shape)
         meta_shape = meta.shape[1]
@@ -110,26 +110,26 @@ class unet_meta_lastlayer(nn.Module):
             meta_flat = torch.zeros(meta_flat.shape)
         
         xx=torch.cat((xx,meta_flat),dim=0)
-        print(xx.shape)
+        #print(xx.shape)
         #flatten to linear layer
         xx=torch.flatten(xx.view(xx.size(1), -1))
         
         in_features_lin = feats + bs*self.num_meta_feats*self.out_channels
         _out_features_lin = bs*self.num_meta_feats
         out_features_lin = feats 
-        print('out_feats:', out_features_lin)
+        #print('out_feats:', out_features_lin)
         name = "meta"
         lin = nn.Sequential(OrderedDict(
                 [(name+'_1_linear', nn.Linear(in_features=in_features_lin, out_features=_out_features_lin)),
                  (name+'_2_linear', nn.Linear(in_features=_out_features_lin, out_features=out_features_lin)),
                 ]))
         x_lin=lin(xx)
-        print('out:',x_lin.shape)
+        #print('out:',x_lin.shape)
     
         un_flat=nn.Sequential(nn.Unflatten(0, (bs,self.out_channels,self.im_size_h,self.im_size_w)))
 
         x_lin=un_flat(x_lin)
-        print('un_flat',x_lin.shape)
+        #print('un_flat',x_lin.shape)
 
         #x_lin = x_lin.transpose(0,1)
         #

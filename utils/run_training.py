@@ -48,7 +48,7 @@ def main():
     max_epochs = cfg.TRAIN.EPOCHS
 
     for epoch in range(1, max_epochs+1):  
-        train = training(cfg)
+        train = training(cfg, logger)
         train_loss = train.train_meta(train_dataloader, epoch)
         val_loss = train.val_meta(val_dataloader, epoch)
         losses.append([train_loss, val_loss])

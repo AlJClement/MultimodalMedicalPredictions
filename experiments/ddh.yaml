@@ -21,7 +21,7 @@ MODEL:
 DATASET:
   IMAGE_EXT: ".png"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
-  NUM_LANDMARKS: 5
+  NUM_LANDMARKS: 5 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: TRUE
 
@@ -43,4 +43,4 @@ TRAIN:
   BATCH_SIZE: 2
   LR: 0.001
   EPOCHS: 10
-  LOSS: 'nll_across_batch' #BCE
+  LOSS: nll_across_batch
