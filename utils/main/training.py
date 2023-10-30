@@ -33,7 +33,7 @@ class training():
         total_loss = 0
         batches = 0
 
-        for batch_idx, (data, target, meta) in enumerate(dataloader):
+        for batch_idx, (data, target, meta, id) in enumerate(dataloader):
             #print(batch_idx)
             self.optimizer.zero_grad()
             data, target = Variable(data).to(self.device), Variable(target).to(self.device)
@@ -64,30 +64,4 @@ class training():
         total_time =t_e-t_s
         print('Time taken for epoch = ', total_time)
         
-        return av_loss
-    
-    def val_meta(self, dataloader, epoch):
-        self.net.eval()
-        total_loss = 0
-        batches = 0
-
-        with torch.no_grad():  # So no gradients accumulate
-            for batch_idx, (data, target, meta_data) in enumerate(dataloader):
-                batches += 1
-                data, target = Variable(data).to(self.device), Variable(target).to(self.device)
-                meta_data = Variable(meta_data).to(self.device)
-                # get prediction
-
-
-                pred = self.net(data.to(self.device), meta_data.to(self.device))
-
-                loss = self.loss_func(pred.to(self.device), target.to(self.device))
-
-                total_loss += loss
-
-            av_loss = total_loss / batches
-
-        av_loss = av_loss.cpu().detach().numpy()
-        print('Validation set: Average loss: {:.4f}'.format(av_loss,  flush=True))
-
         return av_loss
