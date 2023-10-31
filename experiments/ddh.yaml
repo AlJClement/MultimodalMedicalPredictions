@@ -1,9 +1,9 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /home/allent/Desktop/data/ddh/multimodal/orig/output/partition_0.7_0.15_0.15.json
-  IMAGES: /home/allent/Desktop/data/ddh/multimodal/orig/output/imgs
-  LABELS: /home/allent/Desktop/data/ddh/multimodal/orig/output/txt
-  META_PATH: /home/allent/Desktop/data/ddh/multimodal/orig/output/metadata.csv
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json
+  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/metadata.csv
   #make the first col always the patient ID col
   ID_COL: Accession Number
   META_COLS: [Sex: hot, Breach: hot, Age(Days): continous]
