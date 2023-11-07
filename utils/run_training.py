@@ -3,6 +3,7 @@ from support import helper
 from torch.utils.data import Dataset, DataLoader
 from preprocessing import dataloader
 from main import training
+from main import validation
 import numpy as np
 import os
 import torch
@@ -51,9 +52,11 @@ def main():
 
     for epoch in range(1, max_epochs+1):  
         train = training(cfg, logger)
+        validate= validation(cfg,logger)
         train_loss = train.train_meta(train_dataloader, epoch)
-        val_loss = train.val_meta(val_dataloader, epoch)
+        val_loss = validate.val_meta(val_dataloader, epoch)
         losses.append([train_loss, val_loss])
+
     losses = np.array(losses).T
     plot_all_loss(losses, max_epochs, cfg.OUTPUT_PATH)
 

@@ -51,7 +51,7 @@ class dataloader(Dataset):
         self.meta_feat_structure = self.model_init.get_modelspecific_feature_structure()
 
         self.set = set
-        self.data, self.target, self.meta = self.get_numpy_dataset() 
+        self.data, self.target, self.meta, self.ids = self.get_numpy_dataset() 
 
         return
     
@@ -223,7 +223,8 @@ class dataloader(Dataset):
             meta_arr.to_csv(meta_path)
         
         #drop first col of ids
-        meta_arr=meta_arr.drop(self.pat_id_col ,axis=1)
+        id_arr = meta_arr[self.pat_id_col]
+        meta_arr=meta_arr.drop(self.pat_id_col,axis=1)
 
         #expand numpy arr and make values as torch
         im_arr = np.expand_dims(im_arr,axis=1)
@@ -236,14 +237,17 @@ class dataloader(Dataset):
         meta_data_restructured = np.expand_dims(meta_data_restructured,axis=1)
         meta_torch = torch.from_numpy(meta_data_restructured).float()
 
-        return im_torch, annotation_torch, meta_torch
+        id_arr = np.array(id_arr)
+        id_arr = np.expand_dims(id_arr,axis=1)
+
+        return im_torch, annotation_torch, meta_torch, id_arr
 
     def __getitem__(self, index):
         x = self.data[index]
         y = self.target[index]
         meta = self.meta[index]
-
-        return x, y, meta
+        id = self.ids[index][0]
+        return x, y, meta, id
 
     def __len__(self):
         return len(self.data)
