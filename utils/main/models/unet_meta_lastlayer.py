@@ -95,10 +95,10 @@ class unet_meta_lastlayer(nn.Module):
         bs = self.bs
         #print("pred; ",xx.shape)
         feat = (bs, self.out_channels, self.im_size_h,self.im_size_w)
-
-        feats = bs*self.im_size_h*self.im_size_w*self.out_channels
+        #print(feat)
+        feats = bs*self.im_size_h*self.im_size_w
         xx=xx.view(-1,feat[1])
-        #print(xx.size())
+        #print('xx before meta: ',xx.size())
         
         #print(meta.shape)
         meta_shape = meta.shape[1]
@@ -113,11 +113,16 @@ class unet_meta_lastlayer(nn.Module):
         #print(xx.shape)
         #flatten to linear layer
         xx=torch.flatten(xx.view(xx.size(1), -1))
+        #print('xx:', xx.shape)
         
-        in_features_lin = feats + bs*self.num_meta_feats*self.out_channels
-        _out_features_lin = bs*self.num_meta_feats
-        out_features_lin = feats 
+        in_features_lin = list(xx.shape)[0] #feats + self.num_meta_feats*self.bs
+        _out_features_lin = self.num_meta_feats*self.bs #list(xx.shape)[0] #
+        out_features_lin = feats * self.out_channels
+
+        #print('in_features_lin:', in_features_lin)
+        #print('_out_feats:', _out_features_lin)
         #print('out_feats:', out_features_lin)
+        
         name = "meta"
         lin = nn.Sequential(OrderedDict(
                 [(name+'_1_linear', nn.Linear(in_features=in_features_lin, out_features=_out_features_lin)),

@@ -43,4 +43,4 @@ TRAIN:
   BATCH_SIZE: 2
   LR: 0.001
   EPOCHS: 10
-  LOSS: nll_across_batch
+  LOSS: bce_across_batch
