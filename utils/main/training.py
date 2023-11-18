@@ -4,9 +4,11 @@ from torch.autograd import Variable
 import datetime
 from .model_init import model_init
 from .loss import *
+torch.cuda.empty_cache() 
 
 class training():
     def __init__(self, cfg, logger):
+        self.plot_target = False
         self.model_init = model_init(cfg)
         self.logger = logger
         #get specific models/feature loaders
@@ -18,7 +20,8 @@ class training():
         self.momentum = 0.9
         self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
-
+        if cfg.MODEL.DEVICE == 'cuda':
+            torch.cuda.empty_cache()
         pass
 
     def _get_network(self):
@@ -34,20 +37,37 @@ class training():
         batches = 0
 
         for batch_idx, (data, target, meta, id) in enumerate(dataloader):
-            #print(batch_idx)
+            print(batch_idx)
             self.optimizer.zero_grad()
+
+            #data shape: (B, 1, W, H)
+            #target shape: (B, C, W, H) - where C is #landmarks
+            #meta_data shape: (B, 1, NUM_metafeatures)
             data, target = Variable(data).to(self.device), Variable(target).to(self.device)
             meta_data = Variable(meta).to(self.device)
+            
+            if self.plot_target == True:
+                tar=target.detach().cpu().numpy()
+                d=data.detach().cpu().numpy()[0][0]
+                for c in range(tar[0].shape[0]):
+                    try:
+                        tar_im = tar_im+tar[0][c]
+                    except:
+                        tar_im = tar[0][c]
+    
+                plt.imshow(tar_im)
+                plt.imshow(d)
 
             batches += 1
             t_s= datetime.datetime.now()
 
+            #target shape: (B, C, W, H) - where C is #landmarks
             pred = self.net(data, meta_data)
             loss = self.loss_func(pred.to(self.device), target.to(self.device))
                 
             loss.backward()
             self.optimizer.step()
-            total_loss += loss
+            total_loss += loss.item()
             
             if batch_idx % 100 == 0: #Report stats every x batches
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -57,8 +77,8 @@ class training():
             del loss, target, data, pred
 
         av_loss = total_loss / batches
-        av_loss = av_loss.detach().cpu().numpy()
-        print('\nTraining set: Average loss: {:.4f}'.format(av_loss,  flush=True))
+      #av_loss = av_loss.detach().cpu().numpy()
+        print('\nTraining Set Average loss: {:.4f}'.format(av_loss,  flush=True))
         
         t_e= datetime.datetime.now()
         total_time =t_e-t_s

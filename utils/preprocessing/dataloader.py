@@ -245,7 +245,11 @@ class dataloader(Dataset):
     def __getitem__(self, index):
         x = self.data[index]
         y = self.target[index]
-        meta = self.meta[index]
+        try:
+            meta = self.meta[index]
+        except:
+            #means meta is empty
+            meta = self.meta
         id = self.ids[index][0]
         return x, y, meta, id
 

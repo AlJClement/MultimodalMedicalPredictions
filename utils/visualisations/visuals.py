@@ -1,33 +1,35 @@
 import matplotlib.pyplot as plt
 
 class visuals():
-    def __init__(self) -> None:
+    def __init__(self, save_path) -> None:
+        self.save_path = save_path
         pass
+    
+    def channels_thresholded(self, output):
+        #theshold then add all channels together
+        for c in range(output.shape[0]):
+            try:
+                compressed_channels = compressed_channels+output[c]
+            except:
+                compressed_channels = output[c]
+        return compressed_channels
 
-    def figure(self, image, graphics_function, args, save=True, save_path=""):
+    def heatmaps(self, image, output, target_points, predicted_points):
         fig, ax = plt.subplots(1, 1)
+        image = image.detach().cpu().numpy()
+        output = output.cpu().detach().numpy()
+        predicted_points = predicted_points.detach().cpu().numpy()
+        target_points = target_points.cpu().detach().numpy()
 
-        #image = image.cpu().detach().numpy()
-        ax.imshow(image[0], cmap='gray')
+        ax.imshow(image, cmap='gray')
 
-        graphics_function(ax, *args)
-
+        _output = self.channels_thresholded(output)
+        ax.imshow(_output, cmap='inferno', alpha = 0.4)
         ax.axis('off')
-        plt.tight_layout()
 
-        try:
-            h, w = image[0].size()
-        except:
-            h, w = image[0].shape
-        fig.set_size_inches(w / 100.0, h / 100.0)
-        fig.set_dpi(100)
+        #add landmarks
+        ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=30)
+        ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=30)
 
-        if save:
-            plt.savefig(save_path)
-            plt.close()
-        else:
-            plt.show()
-
-    def val_figure(self,image, output, predicted_points, target_points, save=True, save_path=""):
-        self.figure(image, heatmaps_and_preds, (output, predicted_points, target_points), save=save, save_path=save_path)
-
+        plt.savefig(self.save_path)
+        plt.close()

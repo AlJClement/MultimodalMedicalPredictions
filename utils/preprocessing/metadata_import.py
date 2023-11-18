@@ -49,30 +49,34 @@ class MetadataImport():
         new_cols = meta_data_col
         return new_cols
 
-    def unet_meta_lastlayer(self, meta_data_arr):
+    def unet_plus_plus(self, meta_data_arr):
         '''takes input features from data loader and restructures for how the network requires'''
         #for this we take the number of meta features and distribute across all values
         new_encoded_arr = np.array([])
         
-        for i in range(len(self.cols_dict)): #assume first col is accession number/patient id so pass
-            col_name, col_encodetype = list(self.cols_dict[i].items())[0]
-            num = self.model_features[i] #amount of these features to add
-            meta_data_col = meta_data_arr.transpose()[i]
+        if self.model_features == []:
+            return new_encoded_arr
+        else:
+            for i in range(len(self.cols_dict)): #assume first col is accession number/patient id so pass
+                col_name, col_encodetype = list(self.cols_dict[i].items())[0]
+                num = self.model_features[i] #amount of these features to add
+                meta_data_col = meta_data_arr.transpose()[i]
 
-            if col_encodetype == 'hot':
-                new_cols = self._hot_encode(meta_data_col, num, col_name)
-            elif col_encodetype == 'continous':
-                new_cols = self._duplicate_col(meta_data_col, num)
-            elif col_encodetype == 'tokenize':
-                new_cols = self._tokenize(meta_data_col, num)
-            else:
-                raise ValueError('check colum encoding types')
-            
-            if new_encoded_arr.shape[0]==0:
-                new_encoded_arr=new_cols
-            else:
-                new_encoded_arr=np.concatenate((new_encoded_arr, new_cols))
+                if col_encodetype == 'hot':
+                    new_cols = self._hot_encode(meta_data_col, num, col_name)
+                elif col_encodetype == 'continous':
+                    new_cols = self._duplicate_col(meta_data_col, num)
+                elif col_encodetype == 'tokenize':
+                    new_cols = self._tokenize(meta_data_col, num)
+                else:
+                    raise ValueError('check colum encoding types')
+                
+                if new_encoded_arr.shape[0]==0:
+                    new_encoded_arr=new_cols
+                else:
+                    new_encoded_arr=np.concatenate((new_encoded_arr, new_cols))
 
-        return new_encoded_arr.transpose()
+            return new_encoded_arr.transpose()
+
 
     

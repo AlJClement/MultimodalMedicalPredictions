@@ -5,8 +5,9 @@ from torchsummary import summary
 import numpy as np
 class model_init():
     def __init__(self,cfg) -> None:
+        self.cfg=cfg
         self.net = eval(cfg.MODEL.NAME)
-        self.device = torch.device(cfg.MODEL.DEVICE)
+        #self.device = torch.device(cfg.MODEL.DEVICE)
 
         self.in_channels=cfg.MODEL.IN_CHANNELS
         self.out_channels=cfg.MODEL.OUT_CHANNELS
@@ -17,8 +18,9 @@ class model_init():
         self.meta_features=cfg.MODEL.META_FEATURES
         self.num_meta_features= sum(cfg.MODEL.META_FEATURES)
 
-        #get from met        self.num_meta_features = ls
+        #
         self.meta_func = eval("MetadataImport(cfg)." + cfg.MODEL.NAME)
+        self.device = cfg.MODEL.DEVICE
 
         return
     def get_net_info(self,net):
@@ -29,7 +31,7 @@ class model_init():
         return  net_summary
             
     def get_net_from_conf(self, get_net_info=True):
-        net = self.net(self.bs, self.im_size, self.num_meta_features, out_channels = self.out_channels)
+        net = self.net(self.cfg)
         net = net.to(self.device)
         if get_net_info == True:
             return net, self.get_net_info(net)

@@ -26,4 +26,4 @@ def plot_all_loss(losses, max_epochs, save_path):
     plt.ylabel('Loss')
     plt.legend(['Train', 'Validation'])
 
-    plt.savefig(save_path,'loss_fig.png')
+    plt.savefig(save_path+'/loss_fig.png')

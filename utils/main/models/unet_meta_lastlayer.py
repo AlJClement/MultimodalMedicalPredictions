@@ -4,19 +4,29 @@ from collections import OrderedDict
 
 
 class unet_meta_lastlayer(nn.Module):
-    def __init__(self, bs,img_size,num_meta_feats,in_channels=1, init_features=1, out_channels=1):
+    def __init__(self, cfg):
+
+        self.in_channels=cfg.MODEL.IN_CHANNELS
+        self.out_channels=cfg.MODEL.OUT_CHANNELS
+        self.init_feats=cfg.MODEL.INIT_FEATURES
+        self.bs = cfg.TRAIN.BATCH_SIZE
+        self.im_size = cfg.DATASET.CACHED_IMAGE_SIZE
+
+        self.meta_features=cfg.MODEL.META_FEATURES
+        self.num_meta_features= sum(cfg.MODEL.META_FEATURES)
+
+        self.meta_func = eval("MetadataImport(cfg)." + cfg.MODEL.NAME)
+        self.device = cfg.MODEL.DEVICE
+
         super(unet_meta_lastlayer, self).__init__()
         stride = 2
         pool = 2
-        features = int(init_features)
-        self.features=init_features
-        self.in_channels = in_channels
-        self.bs = bs
-        self.im_size_h = img_size[0]
-        self.im_size_w = img_size[1]
-        self.num_meta_feats = num_meta_feats
+        features = int(self.init_features)
+        self.features=self.init_features
+        self.im_size_h = self.img_size[0]
+        self.im_size_w = self.img_size[1]
 
-        self.encoder1 = unet_meta_lastlayer._block(in_channels, features, 'enc1')
+        self.encoder1 = unet_meta_lastlayer._block(self.in_channels, features, 'enc1')
         self.pool1 = nn.MaxPool2d(pool, stride=stride)
         self.encoder2 = unet_meta_lastlayer._block(features, features*2, 'enc2')
         self.pool2 = nn.MaxPool2d(pool, stride=stride)
@@ -31,19 +41,22 @@ class unet_meta_lastlayer(nn.Module):
         self.trans2 = unet_meta_lastlayer._trans(features*2, 'trans2')
         self.dec2 = unet_meta_lastlayer._block(features*2+features, features, 'dec2')
 
-        self.dec1 = unet_meta_lastlayer._block(features,out_channels, 'dec1')
+        self.dec1 = unet_meta_lastlayer._block(features,self.out_channels, 'dec1')
 
-        self.conv_final = nn.Conv2d(out_channels,out_channels,kernel_size=3, stride=1, padding=1)
+        self.conv_final = nn.Conv2d(self.out_channels,self.ut_channels,kernel_size=3, stride=1, padding=1)
         self.final_softmax = nn.Sigmoid()
-        self.out_channels = out_channels
 
     def two_d_softmax(self,x):
         exp_y = torch.exp(x)
         return exp_y / torch.sum(exp_y, dim=(2, 3), keepdim=True)
+    
+    def threshold_pred(self, pred):
+        thresh = nn.Threshold(0.05, 0)
+        return thresh(pred)
 
     def forward(self, x, meta, zeros=False):
         #save skip connection temp for saving
-        _skip_connections = []
+        #_skip_connections = []
         
         #encoder
         #print('input size',x.size())
@@ -128,7 +141,9 @@ class unet_meta_lastlayer(nn.Module):
                 [(name+'_1_linear', nn.Linear(in_features=in_features_lin, out_features=_out_features_lin)),
                  (name+'_2_linear', nn.Linear(in_features=_out_features_lin, out_features=out_features_lin)),
                 ]))
-        x_lin=lin(xx)
+        
+        _lin=lin.to(self.device)
+        x_lin=_lin(xx)
         #print('out:',x_lin.shape)
     
         un_flat=nn.Sequential(nn.Unflatten(0, (bs,self.out_channels,self.im_size_h,self.im_size_w)))
@@ -143,6 +158,9 @@ class unet_meta_lastlayer(nn.Module):
         #pred=self.final_softmax(x_lin)
         pred=self.two_d_softmax(x_lin)
         #print('final size',pred.size())
+
+        #threshold pred
+        #pred = self.threshold_pred(pred)
 
         return pred
 
