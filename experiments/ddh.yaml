@@ -56,3 +56,8 @@ TRAIN:
   LR: 0.001
   EPOCHS: 10
   LOSS: nll_across_batch
+
+TEST:
+  NETWORK: ./output/model:1/_model_run:1_idx.pth
+  COMPARISON_METRICS: 
+    - graf_angle_clac.graf_class_comparison

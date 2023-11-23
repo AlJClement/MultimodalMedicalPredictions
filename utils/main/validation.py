@@ -4,7 +4,7 @@ from torch.autograd import Variable
 import datetime
 from .model_init import model_init
 from .loss import *
-from .evaluation import *
+from .evaluation_helper import *
 import sys
 import os
 import pathlib

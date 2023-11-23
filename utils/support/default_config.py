@@ -57,6 +57,10 @@ C.TRAIN.LR = 0.001
 C.TRAIN.EPOCHS = 10
 C.TRAIN.LOSS = ''
 
+C.TEST = CN()
+C.TEST.NETWORK = ''
+C.TEST.COMPARISON_METRICS = []
+
 def get_cfg_defaults():
     """Get a yacs CfgNode object with default values above."""
     return C.clone()

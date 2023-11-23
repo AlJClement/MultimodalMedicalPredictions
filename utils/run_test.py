@@ -39,15 +39,11 @@ def main():
     logger.info("")
 
     #preprocess data (put into a numpy array)
-    train_dataset=dataloader(cfg,'training')
-    help._dataset_shape(train_dataset)
-
-    val_dataset=dataloader(cfg,'validation')    
-    help._dataset_shape(val_dataset)
+    test_dataset=dataloader(cfg,'test')
+    help._dataset_shape(test_dataset)
 
     #load data into data loader (imports all data into a dataloader)
-    train_dataloader = DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = True)
-    val_dataloader = DataLoader(val_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = True)
+    test_dataloader = DataLoader(test, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = True)
 
     losses = []
     max_epochs = cfg.TRAIN.EPOCHS

@@ -23,6 +23,7 @@ class model_init():
         self.device = cfg.MODEL.DEVICE
 
         return
+    
     def get_net_info(self,net):
         '''add the info to logger'''
         input_im_size = torch.tensor([self.in_channels,self.im_size[0],self.im_size[1]])
