@@ -11,7 +11,7 @@ import pathlib
 target_path = pathlib.Path(os.path.abspath(__file__)).parents[1]
 sys.path.append(target_path)
 from visualisations import visuals
-
+from .evaluation_helper import evaluation_helper
 class validation():
     def __init__(self, cfg, logger, net, save_img=True):
         self.net = net
@@ -24,7 +24,7 @@ class validation():
         self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
 
-        self.evaluation = evaluation()
+        self.evaluation = evaluation_helper()
         self.save_img = save_img
         self.pixelsize = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
 
@@ -61,17 +61,16 @@ class validation():
                     _pred = torch.unsqueeze(pred[i],0)
                     _target = torch.unsqueeze(target[i],0)
 
-                    scaled_points, pred_points, eres = self.evaluation.get_landmarks(_pred, _target, self.pixelsize)
+                    scaled_points, pred_points = self.evaluation.get_landmarks(_pred, _target, self.pixelsize)
                     scaled_predicted_points.append(scaled_points)
                     predicted_points.append(pred_points)
-                    image_eres.append(eres)
 
                     # save figures
                     if self.save_img == True:
                         if not os.path.isdir(self.outputpath):
                             os.mkdir(self.outputpath)
                         img_path=self.outputpath+'/'+id[i]
-                        visuals(img_path).heatmaps(data[i][0], _pred[0], scaled_points, pred_points)
+                        visuals(img_path).heatmaps(data[i][0], _pred[0], scaled_points[0], pred_points[0])
                         
             av_loss = total_loss / batches
 

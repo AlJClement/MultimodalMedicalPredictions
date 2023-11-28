@@ -1,12 +1,12 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/medimaging/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json
-  IMAGES: /data/medimaging/multimodal_datasets/ddh/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /data/medimaging/multimodal_datasets/ddh/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /data/medimaging/multimodal_datasets/ddh/metadata.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/metadata.csv
+  PARTITION: /data/medimaging/multimodal_datasets/ddh_190/partition_0.7_0.15_0.15.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json
+  IMAGES: /data/medimaging/multimodal_datasets/ddh_190/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/medimaging/multimodal_datasets/ddh_190/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/medimaging/multimodal_datasets/ddh_190/multimodal.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/metadata.csv
   #make the first col always the patient ID col
   ID_COL: Accession Number
-  META_COLS: [Sex: hot, Breach: hot, Age(Days): continous]
+  META_COLS: [gender: hot, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
 
 MODEL: 
   #NAME: unet_meta_lastlayer
@@ -33,7 +33,7 @@ MODEL:
 
 
 DATASET:
-  IMAGE_EXT: ".png"
+  IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 5 
   SIGMA: 10 #if sigma is NONE no guassian applied
@@ -52,9 +52,9 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 2
   LR: 0.001
-  EPOCHS: 10
+  EPOCHS: 5
   LOSS: nll_across_batch
 
 TEST:

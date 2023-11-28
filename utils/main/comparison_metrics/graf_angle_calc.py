@@ -3,7 +3,7 @@ import math as math
 from matplotlib import pyplot as plt
 import os
 import math
-class graf_angle_calculations():
+class graf_angle_calc():
     def __init__(self) -> None:
         '''
         landmarks list should contain 5 points x,y. 
@@ -17,16 +17,17 @@ class graf_angle_calculations():
 
         pass
 
-    def get_landmarks(self, landmarks):
+    def get_landmarks(self, landmarks: list, flip_axis = True):
+        #landmarks should be list
         #ilium
-        i1 = [float(i) for i in landmarks[0].strip('\n').split(',')]
-        i2 = [float(i) for i in landmarks[1].strip('\n').split(',')]
+        i1 = [float(i) for i in landmarks[0]]
+        i2 = [float(i) for i in landmarks[1]]
         #bonyrim
-        br = [float(i) for i in landmarks[2].strip('\n').split(',')]
+        br = [float(i) for i in landmarks[2]]
         #lower limb point
-        ll = [float(i) for i in landmarks[3].strip('\n').split(',')]
+        ll = [float(i) for i in landmarks[3]]
         #labrum
-        l = [float(i) for i in landmarks[4].strip('\n').split(',')]
+        l = [float(i) for i in landmarks[4]]
         return i1,i2,br,ll,l
 
     def get_alpha_category(self, alpha:float):
@@ -88,16 +89,16 @@ class graf_angle_calculations():
         return intersection
     
     def plot_landmarks(self, landmarks):
-        i1, i2, br, ll, l = self.get_landmarks_from_ls(landmarks)
+        i1, i2, br, ll, l = landmarks
         #plot landmarks
-        plt.scatter(i1[1], i1[0],c='r', s=20)
-        plt.scatter(i2[1], i2[0], c='r', s=20)
-        plt.scatter(l[1], l[0], c='b', s=20)
-        plt.scatter(ll[1], ll[0], c='g', s=20)
-        plt.scatter(br[1], br[0], c='y', s=20)
+        plt.scatter(i1[0], i1[1],c='r', s=20)
+        plt.scatter(i2[0], i2[1], c='r', s=20)
+        plt.scatter(l[0], l[1], c='b', s=20)
+        plt.scatter(ll[0], ll[1], c='g', s=20)
+        plt.scatter(br[0], br[1], c='y', s=20)
         return
     
-    def calculate_alpha(self, landmarks: list, plot = True):
+    def calculate_alpha(self, landmarks: list, plot = False):
         ''' This function takes a list of 5 landmarks and calculates the alpha angle based on the labrum vector and bony rim
         landmarks list should contain 5 points x,y. 
         with order: illium 1, illium 2, bony rim, lower limb point, labrum
@@ -106,7 +107,8 @@ class graf_angle_calculations():
         beta angle calculations commented out'''
         if len(landmarks) != 5:
             return ValueError('There are not only 5 landmarks')
-        i1, i2, br, ll, l = self.get_landmarks_from_ls(landmarks)
+        
+        i1, i2, br, ll, l = self.get_landmarks(landmarks, flip_axis = True)
 
         v_baseline = self.get_vector(i1,i2)
         #v_cartroof = self.get_vector(self.br,self.l)
@@ -119,9 +121,9 @@ class graf_angle_calculations():
         #b = math.degrees(b_rad)
 
         if plot==True:
-            self.plot_landmarks()
+            self.plot_landmarks(landmarks)
             ##PLOTTING ARC##
-            intersection = self.get_intersection(v_baseline,v_bonyroof)
+            intersection = self.get_intersection([i1,i2],[br,ll])
             x, y, xt, yt = self.plot_theta(intersection, alpha, v_baseline)
             plt.plot(x,y,color='w',linewidth=0.5)
             plt.text(xt,yt,'a='+str(round(alpha))+u"\u00b0",color='w')
@@ -130,11 +132,16 @@ class graf_angle_calculations():
         return alpha
     
     def graf_class_comparison(self, pred, true):
+        'pred and true are tensors, so convert to numpy'
+        pred=pred.detach().cpu().numpy()
+        true=true.detach().cpu().numpy()
 
         alpha_pred = self.calculate_alpha(pred)
         class_pred = self.get_alpha_class(alpha_pred)
 
         alpha_true = self.calculate_alpha(true)
         class_true = self.get_alpha_class(alpha_true)
+
+        ls = [['alpha pred', alpha_pred], ['class pred',class_pred[0]], ['alpha true',alpha_true], ['class true',class_true[0]]]
         
-        return [alpha_pred, class_pred, alpha_pred, class_true]
+        return ls

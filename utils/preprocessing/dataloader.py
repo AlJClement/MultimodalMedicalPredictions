@@ -16,6 +16,7 @@ import pandas as pd
 import torch
 from main import model_init
 from torch.utils.data import Dataset
+from visualisations import visuals
 class dataloader(Dataset):
     def __init__(self, cfg, set) -> None:
         #paths
@@ -106,7 +107,12 @@ class dataloader(Dataset):
     
     def get_landmarks(self, ann_path, seq, image_shape):
         # Get annotations
-        kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
+        try:
+            kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
+        except:
+            ext = ann_path.split('/')[-2]+'.txt'
+            kps_np_array = np.loadtxt(ann_path[:-4]+ext, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
+
         if self.flip_axis:
             kps_np_array = np.flip(kps_np_array, axis=1)
         # Augment landmark annotations
@@ -204,7 +210,13 @@ class dataloader(Dataset):
                     ann_folder = folder_ls[i]
                     annotation = annotation_points[i] 
                     np.savetxt(os.path.join(cache_data_dir,pat_id+ann_folder+'.txt'), annotation, fmt="%.14g", delimiter=" ")
+
                 
+                #plot annotation array
+                if len(annotation_points)>0:
+                    _a = visuals('').channels_thresholded(_annotation_arr)
+                    plt.imshow(_a)
+                    plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
 
             if meta_arr.empty:
                 id_arr = np.array([pat_id])

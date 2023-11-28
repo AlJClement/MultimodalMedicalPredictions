@@ -11,17 +11,20 @@ class evaluation_helper():
         # Get the predicted landmark point from the "hottest point" in each channel
         # img tensor of size (B, C, W, H), where C is the channel
         '''
+        # if img size is 4, vs if you just want to put one image in
         B, C, W, H = img.size()
+        dim=2
+
         #flatten w/h so tensor is (B,C,WxH)
-        flattened_heatmaps = torch.flatten(img, start_dim=2)
+        flattened_heatmaps = torch.flatten(img, start_dim=dim)
         #get index of hotest point in each channel (B, C)
-        hottest_idx = torch.argmax(flattened_heatmaps, dim=2)
+        hottest_idx = torch.argmax(flattened_heatmaps, dim=dim)
 
         #get x,y coords for these hotest points
         x = torch.div(hottest_idx, H, rounding_mode="floor")
         y = torch.remainder(hottest_idx, H)
-
-        return torch.stack((y, x), dim=2)
+        points=torch.stack((y, x), dim=dim)
+        return points
     
     def get_thresholded_heatmap(self, pred, predicted_points_scaled, significant_radius=0.05):
         '''This function takes the output channels and thresholds the heatmaps to the significant radius, then renormalizes those values'''
@@ -48,7 +51,6 @@ class evaluation_helper():
         return thresholded_output
     
     def get_landmarks(self, pred, target_points, pixels_sizes):
-        # Evaluate radial error
         # Predicted points has shape (B, N, 2)
         predicted_points = self.get_hottest_points(pred)
         scaled_predicted_points = torch.multiply(predicted_points, pixels_sizes)
@@ -57,4 +59,4 @@ class evaluation_helper():
         target_points = self.get_hottest_points(target_points) #should be center of gaussian
         scaled_target_points = torch.multiply(target_points, pixels_sizes)
 
-        return  scaled_target_points[0], scaled_predicted_points
+        return  scaled_target_points, scaled_predicted_points

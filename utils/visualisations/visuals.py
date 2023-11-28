@@ -17,14 +17,13 @@ class visuals():
     def heatmaps(self, image, output, target_points, predicted_points):
         fig, ax = plt.subplots(1, 1)
         image = image.detach().cpu().numpy()
-        output = output.cpu().detach().numpy()
+        output = output.detach().cpu().numpy()
         predicted_points = predicted_points.detach().cpu().numpy()
         target_points = target_points.cpu().detach().numpy()
 
-        ax.imshow(image, cmap='gray')
-
         _output = self.channels_thresholded(output)
         ax.imshow(_output, cmap='inferno', alpha = 0.4)
+        ax.imshow(image, cmap='Greys_r')
         ax.axis('off')
 
         #add landmarks

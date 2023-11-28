@@ -3,6 +3,8 @@ import torch
 import numpy as np
 import torch.nn as nn
 import segmentation_models_pytorch as smp
+torch.cuda.empty_cache() 
+
 # @misc{Iakubovskii:2019,
 #   Author = {Pavel Iakubovskii},
 #   Title = {Segmentation Models Pytorch},
