@@ -32,3 +32,5 @@ class visuals():
 
         plt.savefig(self.save_path)
         plt.close()
+
+    

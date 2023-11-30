@@ -36,7 +36,7 @@ DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 5 
-  SIGMA: 10 #if sigma is NONE no guassian applied
+  SIGMA: 4 #if sigma is NONE no guassian applied
   FLIP_AXIS: TRUE
   CACHED_IMAGE_SIZE: [512,512]
 
@@ -54,10 +54,11 @@ OUTPUT_PATH: ./output
 TRAIN:
   BATCH_SIZE: 2
   LR: 0.001
-  EPOCHS: 5
+  EPOCHS: 10
   LOSS: nll_across_batch
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth
   COMPARISON_METRICS: 
     - graf_angle_calc().graf_class_comparison
+    - landmark_metrics().get_eres

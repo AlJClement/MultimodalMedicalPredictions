@@ -142,6 +142,13 @@ class graf_angle_calc():
         alpha_true = self.calculate_alpha(true)
         class_true = self.get_alpha_class(alpha_true)
 
-        ls = [['alpha pred', alpha_pred], ['class pred',class_pred[0]], ['alpha true',alpha_true], ['class true',class_true[0]]]
-        
-        return ls
+        alpha_diff = alpha_pred-alpha_true
+
+        ls_values = [['alpha pred', alpha_pred],
+                    ['class pred', class_pred[0]],
+                    ['alpha true', alpha_true],
+                    ['class true', class_true[0]],
+                    ['difference alpha', alpha_diff]
+                    ]
+     
+        return ls_values

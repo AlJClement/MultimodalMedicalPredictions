@@ -75,6 +75,7 @@ class training():
                             100. * (batch_idx+1) / len(dataloader), loss.item()), flush=True)
                     
             del loss, target, data, pred
+            torch.cuda.empty_cache()
 
         av_loss = total_loss / batches
       #av_loss = av_loss.detach().cpu().numpy()

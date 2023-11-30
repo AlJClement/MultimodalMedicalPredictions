@@ -49,7 +49,7 @@ class MetadataImport():
         new_cols = meta_data_col
         return new_cols
 
-    def unet_plus_plus(self, meta_data_arr):
+    def unet_meta_lastlayer(self, meta_data_arr):
         '''takes input features from data loader and restructures for how the network requires'''
         #for this we take the number of meta features and distribute across all values
         new_encoded_arr = np.array([])
@@ -78,5 +78,8 @@ class MetadataImport():
 
             return new_encoded_arr.transpose()
 
+    def unet_plus_plus(self, meta_data_arr):
+        return self.unet_meta_lastlayer(meta_data_arr)
 
-    
+    def unet_plus_plus_meta(self, meta_data_arr):
+        return self.unet_meta_lastlayer(meta_data_arr)

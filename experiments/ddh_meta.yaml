@@ -9,27 +9,27 @@ INPUT_PATHS:
   META_COLS: [gender: hot, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
 
 MODEL: 
-  NAME: unet_meta_lastlayer
-  IN_CHANNELS: 1
+  NAME: unet_plus_plus_meta
+  # IN_CHANNELS: 1
   OUT_CHANNELS: 5 #for 5 landmarks
-  INIT_FEATURES: 4
-  META_FEATURES: [100, 100, 100] 
-  # #how large to make the linear layer, if its ZERO no features added
+  # INIT_FEATURES: 4
+  # META_FEATURES: [100, 100, 100] 
+  # # #how large to make the linear layer, if its ZERO no features added
   DEVICE: cuda
 
   #
-  # META_FEATURES: [100,100,100] 
-  # NAME: 'unet_plus_plus'
-  # ENCODER_NAME: 'resnet34'
-  # ENCODER_WEIGHTS: 'imagenet'
-  # BATCH_NORM_DECODER: True
-  # DECODER_CHANNELS:
-  #   - 256
-  #   - 256
-  #   - 256
-  #   - 128
-  #   - 64
-  # IN_CHANNELS: 1
+  META_FEATURES: [100,100,100] 
+ # NAME: 'unet_plus_plus'
+  ENCODER_NAME: 'resnet34'
+  ENCODER_WEIGHTS: 'imagenet'
+  BATCH_NORM_DECODER: True
+  DECODER_CHANNELS:
+    - 256
+    - 256
+    - 256
+    - 128
+    - 64
+  IN_CHANNELS: 1
 
 
 DATASET:
@@ -52,7 +52,7 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 1
   LR: 0.001
   EPOCHS: 5
   LOSS: nll_across_batch

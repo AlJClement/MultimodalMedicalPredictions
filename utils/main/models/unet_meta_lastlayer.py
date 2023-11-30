@@ -1,21 +1,20 @@
 import torch 
 import torch.nn as nn
 from collections import OrderedDict
-
+torch.cuda.empty_cache() 
 
 class unet_meta_lastlayer(nn.Module):
     def __init__(self, cfg):
 
         self.in_channels=cfg.MODEL.IN_CHANNELS
         self.out_channels=cfg.MODEL.OUT_CHANNELS
-        self.init_feats=cfg.MODEL.INIT_FEATURES
+        self.init_features=cfg.MODEL.INIT_FEATURES
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.im_size = cfg.DATASET.CACHED_IMAGE_SIZE
 
         self.meta_features=cfg.MODEL.META_FEATURES
         self.num_meta_features= sum(cfg.MODEL.META_FEATURES)
 
-        self.meta_func = eval("MetadataImport(cfg)." + cfg.MODEL.NAME)
         self.device = cfg.MODEL.DEVICE
 
         super(unet_meta_lastlayer, self).__init__()
@@ -23,8 +22,8 @@ class unet_meta_lastlayer(nn.Module):
         pool = 2
         features = int(self.init_features)
         self.features=self.init_features
-        self.im_size_h = self.img_size[0]
-        self.im_size_w = self.img_size[1]
+        self.im_size_h = self.im_size[0]
+        self.im_size_w = self.im_size[1]
 
         self.encoder1 = unet_meta_lastlayer._block(self.in_channels, features, 'enc1')
         self.pool1 = nn.MaxPool2d(pool, stride=stride)
@@ -43,7 +42,7 @@ class unet_meta_lastlayer(nn.Module):
 
         self.dec1 = unet_meta_lastlayer._block(features,self.out_channels, 'dec1')
 
-        self.conv_final = nn.Conv2d(self.out_channels,self.ut_channels,kernel_size=3, stride=1, padding=1)
+        self.conv_final = nn.Conv2d(self.out_channels,self.out_channels,kernel_size=3, stride=1, padding=1)
         self.final_softmax = nn.Sigmoid()
 
     def two_d_softmax(self,x):
@@ -129,7 +128,7 @@ class unet_meta_lastlayer(nn.Module):
         #print('xx:', xx.shape)
         
         in_features_lin = list(xx.shape)[0] #feats + self.num_meta_feats*self.bs
-        _out_features_lin = self.num_meta_feats*self.bs #list(xx.shape)[0] #
+        _out_features_lin = self.num_meta_features*self.bs #list(xx.shape)[0] #
         out_features_lin = feats * self.out_channels
 
         #print('in_features_lin:', in_features_lin)

@@ -1,6 +1,6 @@
 import torch
 
-#eres = self.get_eres(pred, scaled_target_points, pixels_sizes)
+
 
 class landmark_metrics():
     def __init__(self) -> None:

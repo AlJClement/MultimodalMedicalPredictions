@@ -42,6 +42,7 @@ class test():
             os.mkdir(self.save_img_path)
 
         self.comparison_metrics=cfg.TEST.COMPARISON_METRICS
+        self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
 
     def load_network(self, model_path):
         model = model_init(self.cfg).get_net_from_conf(get_net_info=False)
@@ -84,12 +85,20 @@ class test():
                 else:
                     comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
                 
-            t_s= datetime.datetime.now()
+            t_s=datetime.datetime.now()
 
-        t_e= datetime.datetime.now()
-        total_time =t_e-t_s
+        t_e=datetime.datetime.now()
+        total_time=t_e-t_s
         print('Time taken for epoch = ', total_time)
         comparison_df.to_csv('./output/test/comparison_metrics.csv')
-        print('Saving Results = ', )
+        print('Saving Results to comparison_metrics.csv')
+        
+        #from df get class agreement metrics TP, TN, FN, FP
+        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true')._get_metrics()
+        self.logger.info("Class Agreement: {}".format(class_agreement))
+
+        #plot tsne
+
+        #plot angles pred vs angles 
 
         return 
