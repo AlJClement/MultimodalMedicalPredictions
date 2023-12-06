@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import multilabel_confusion_matrix
+import visualisations
 from visualisations import *
 
 class class_agreement_metrics():
@@ -40,7 +41,7 @@ class class_agreement_metrics():
             confusion_matrix_multiclasses = multilabel_confusion_matrix(self.gt_class_arr, self.pred_class_arr)#, labels=classes)
 
             ##plot confusion matrix
-            visualisations.comparsion._confusion_matrix_multiclass(classes, confusion_matrix_multiclasses)
+            visualisations.comparison(self.diagnosis_name).confusion_matrix_multiclass(classes, confusion_matrix_multiclasses)
 
             #find values for all
             accuracy = np.array([])
@@ -86,4 +87,6 @@ class class_agreement_metrics():
         for i in ls:
             metric_str = metric_str+i[0]+' '+np.array2string(i[1])+', '
 
-        return str[:-1]
+        metric_str=metric_str[:-2]
+
+        return metric_str

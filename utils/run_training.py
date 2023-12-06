@@ -51,9 +51,11 @@ def main():
 
     losses = []
     max_epochs = cfg.TRAIN.EPOCHS
-    train = training(cfg, logger)
+    L2_REG = cfg.TRAIN.L2_REG
+
+    train = training(cfg, logger,L2_REG)
     net = train._get_network()
-    validate= validation(cfg,logger, net)
+    validate= validation(cfg,logger,net, L2_REG)
     
     for epoch in range(1, max_epochs+1):  
         train_loss = train.train_meta(train_dataloader, epoch)

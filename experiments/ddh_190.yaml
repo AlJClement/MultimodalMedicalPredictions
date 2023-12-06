@@ -41,7 +41,7 @@ DATASET:
   CACHED_IMAGE_SIZE: [512,512]
 
   AUGMENTATION:
-    ROTATION_FACTOR: 5
+    ROTATION_FACTOR: 2
     INTENSITY_FACTOR: 0.5
     SF: 0.2
     TRANSLATION_X: 0.05
@@ -52,13 +52,15 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 4
   LR: 0.001
   EPOCHS: 10
   LOSS: nll_across_batch
+  L2_REG: False
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth
   COMPARISON_METRICS: 
     - graf_angle_calc().graf_class_comparison
     - landmark_metrics().get_eres
+    - landmark_metrics().get_radial_errors

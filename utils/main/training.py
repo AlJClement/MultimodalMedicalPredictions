@@ -7,17 +7,21 @@ from .loss import *
 torch.cuda.empty_cache() 
 
 class training():
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, logger, l2_reg=True):
         self.plot_target = False
         self.model_init = model_init(cfg)
         self.logger = logger
         #get specific models/feature loaders
         self.net, self.net_param = self.model_init.get_net_from_conf()
+        self.l2_reg=l2_reg
+        if l2_reg == True:
+            self.loss_func = eval('L2RegLoss(cfg.TRAIN.LOSS)')
+        else:
+            self.loss_func = eval(cfg.TRAIN.LOSS)
 
-        self.loss_func = eval(cfg.TRAIN.LOSS)
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
-        self.momentum = 0.9
+        self.momentum = 0.99
         self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
         if cfg.MODEL.DEVICE == 'cuda':
@@ -63,7 +67,12 @@ class training():
 
             #target shape: (B, C, W, H) - where C is #landmarks
             pred = self.net(data, meta_data)
-            loss = self.loss_func(pred.to(self.device), target.to(self.device))
+
+            if self.l2_reg==True:
+                loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
+            else:
+                loss = self.loss_func(pred.to(self.device), target.to(self.device))
+
                 
             loss.backward()
             self.optimizer.step()

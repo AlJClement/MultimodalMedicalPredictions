@@ -4,7 +4,6 @@ from torch.autograd import Variable
 import datetime
 from .model_init import model_init
 from .loss import *
-torch.cuda.empty_cache() 
 import sys
 import pathlib
 import os
@@ -50,15 +49,26 @@ class test():
         model.eval()
         return model
     
-    def compare_metrics(self, id, pred, true):
+    def compare_metrics(self, id, pred, pred_map, true, true_map, pixelsize):
         df = pd.DataFrame({"ID": [id]})
         for metric in self.comparison_metrics:
             func = eval(metric)
-            output = func(pred,true)
+            output = func(pred, pred_map, true, true_map, pixelsize)
             for i in output:
                 df[i[0]]=[i[1]]
-        return df
 
+        return df
+    
+    def comparison_summary(self, df):
+        summary_ls = []
+        for key in df.keys():
+            try:
+                mean_val=df[key].mean().round(2)
+                summary_ls.append([key, mean_val])
+            except:
+                pass
+        return summary_ls
+    
     def run(self, dataloader):
         comparison_df = pd.DataFrame([])
         for batch_idx, (data, target, meta, id) in enumerate(dataloader):
@@ -78,7 +88,7 @@ class test():
                     visuals(self.save_img_path+'/'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
 
                 #add to comparison df
-                id_metric_df = self.compare_metrics(id[i], predicted_points[i], target_points[i])
+                id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
 
                 if comparison_df.empty == True:
                     comparison_df = id_metric_df
@@ -93,12 +103,14 @@ class test():
         comparison_df.to_csv('./output/test/comparison_metrics.csv')
         print('Saving Results to comparison_metrics.csv')
         
+        comparsion_summary_ls = self.comparison_summary(comparison_df)
+        self.logger.info("SUMMARY: {}".format(comparsion_summary_ls))
+
         #from df get class agreement metrics TP, TN, FN, FP
         class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true')._get_metrics()
         self.logger.info("Class Agreement: {}".format(class_agreement))
 
-        #plot tsne
-
         #plot angles pred vs angles 
+        visualisations.comparison(self.dataset_name).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy())
 
         return 

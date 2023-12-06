@@ -62,3 +62,4 @@ TEST:
   COMPARISON_METRICS: 
     - graf_angle_calc().graf_class_comparison
     - landmark_metrics().get_eres()
+    - landmark_metrics().get_radial_error()

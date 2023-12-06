@@ -1,6 +1,7 @@
 import torch 
 import numpy as np
 import matplotlib.pyplot as plt
+import torch.nn as nn
 # dimensions are [B, C, W, H]
 # the log is done within this loss function whereas normally it would be a log softmax
 # why? - i think because think about log graph would be really steep
@@ -27,3 +28,20 @@ def plot_all_loss(losses, max_epochs, save_path):
     plt.legend(['Train', 'Validation'])
 
     plt.savefig(save_path+'/loss_fig.png')
+
+class L2RegLoss(nn.Module):
+    def __init__(self, main_loss_str, lam=0.01, mu=1):
+        super(L2RegLoss, self).__init__()
+        self.eps = 1e-7
+        self.mu = mu
+        self.lam = lam
+        self.main_loss=eval(main_loss_str)
+
+    def forward(self, x, target, model):
+        #abs(p) for l1
+        l2 = [p.pow(2).sum() for p in model.parameters()]
+        l2 = sum(l2)
+        loss = self.main_loss(x, target) + self.lam*l2
+        
+        return loss
+    

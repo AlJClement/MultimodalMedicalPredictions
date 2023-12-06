@@ -103,6 +103,7 @@ class dataloader(Dataset):
         image_resized = seq(image=image)
         image_rescaled = (image_resized - np.min(image_resized)) / np.ptp(image_resized)
         image_as_255 = img_as_ubyte(image_rescaled)
+        
         return image_as_255, image.shape
     
     def get_landmarks(self, ann_path, seq, image_shape):
