@@ -15,7 +15,7 @@ class comparison():
             return ValueError('must set the threshold_dic dicitonary')
         pass        
 
-    def confusion_matrix_multiclass(self, classes, confusion_matrix_multiclasses):
+    def confusion_matrix_multiclass(self, classes, confusion_matrix_multiclasses, loc='test'):
         fig, ax= plt.subplots(1, confusion_matrix_multiclasses.shape[0])
         fig.set_figheight(2)
         fig.set_figwidth(20)
@@ -28,7 +28,7 @@ class comparison():
             ax[c].set_ylabel('True labels')
             ax[c].set_title('Confusion Matrix: '+ class_name)
         
-        plt.savefig('./output/Confusion_Matrix_allclasses.png')
+        plt.savefig('./output/'+loc+'/Confusion_Matrix_allclasses.png')
 
     def to_one_hot(self, y, num_classes):
         y = y.squeeze().astype(int)
@@ -38,6 +38,7 @@ class comparison():
     def true_vs_pred_scatter(self, pred, true, loc='test'):
         #plot predicted vs true value outputs.
         #order by true
+        plt.clf()
         dataset = pd.DataFrame({'pred': pred, 'true': true}, columns=['pred', 'true'])
         dataset = dataset.sort_values('true')
         dataset.reset_index(drop=True)

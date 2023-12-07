@@ -77,7 +77,9 @@ class validation():
         total_loss = 0
         batches = 0
 
-        with torch.no_grad():  # So no gradients accumulate
+        with torch.no_grad():  # So no gradients accumulate#
+            comparison_df = pd.DataFrame([])
+
             for batch_idx, (data, target, meta_data, id) in enumerate(dataloader):
                 predicted_points = []
                 scaled_predicted_points = []
@@ -94,27 +96,23 @@ class validation():
                     loss = self.loss_func(pred.to(self.device), target.to(self.device))
                 total_loss += loss
 
-                # evaluation
-                comparison_df = pd.DataFrame([])
+                predicted_points, target_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
-                for i in range(len(pred)):
+                # save figures
+                if self.save_img == True:
+                    for i in range(self.bs):
+                        if self.save_img  == True:
+                            #
+                            print('saving validation img:', id[i])
+                            visuals(self.outputpath+'/'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
 
-                    predicted_points, target_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
+                        #add to comparison df
+                        id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
 
-                    # save figures
-                    if self.save_img == True:
-                        for i in range(self.bs):
-                            if self.save_img  == True:
-                                #print('saving validation img:', id[i])
-                                visuals(self.outputpath+'/'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
-
-                            #add to comparison df
-                            id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
-
-                            if comparison_df.empty == True:
-                                comparison_df = id_metric_df
-                            else:
-                                comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
+                        if comparison_df.empty == True:
+                            comparison_df = id_metric_df
+                        else:
+                            comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
 
             
         comparison_df.to_csv(self.outputpath+'/comparison_metrics.csv')
@@ -128,7 +126,7 @@ class validation():
         self.logger.info("SUMMARY: {}".format(comparsion_summary_ls))
 
         #from df get class agreement metrics TP, TN, FN, FP
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true')._get_metrics()
+        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', loc='validation')._get_metrics()
         self.logger.info("Class Agreement: {}".format(class_agreement))
 
         #plot angles pred vs angles 

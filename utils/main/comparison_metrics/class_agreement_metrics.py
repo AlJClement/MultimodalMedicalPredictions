@@ -5,16 +5,17 @@ import visualisations
 from visualisations import *
 
 class class_agreement_metrics():
-    def __init__(self, dataset_name, df_col, pred_col, true_col):
+    def __init__(self, dataset_name, df_col, pred_col, true_col, loc='test'):
         #df col: column with ones and zeros defining equal or different classes
         self.gt_class_arr = df_col[true_col].to_numpy()
         self.pred_class_arr = df_col[pred_col].to_numpy()
         self.diagnosis_name = dataset_name
+        self.loc = loc
         pass
 
     def _get_metrics(self):
         #check if multi class
-        if np.unique(self.gt_class_arr).size < 2:
+        if np.unique(self.pred_class_arr).size < 2:
             #only one class for classification problem
             tn, fp, fn, tp = confusion_matrix(self.gt_class_arr, self.pred_class_arr).ravel()
             total = tn + fp + fn + tp
@@ -41,7 +42,7 @@ class class_agreement_metrics():
             confusion_matrix_multiclasses = multilabel_confusion_matrix(self.gt_class_arr, self.pred_class_arr)#, labels=classes)
 
             ##plot confusion matrix
-            visualisations.comparison(self.diagnosis_name).confusion_matrix_multiclass(classes, confusion_matrix_multiclasses)
+            visualisations.comparison(self.diagnosis_name).confusion_matrix_multiclass(classes, confusion_matrix_multiclasses, self.loc)
 
             #find values for all
             accuracy = np.array([])
