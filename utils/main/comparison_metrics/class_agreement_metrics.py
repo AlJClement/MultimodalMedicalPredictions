@@ -85,7 +85,11 @@ class class_agreement_metrics():
         
         metric_str = ''
         for i in ls:
-            metric_str = metric_str+i[0]+' '+np.array2string(i[1])+', '
+            try:
+                metric_str = metric_str+i[0]+' '+np.array2string(i[1])+', '
+            except:
+                #if theres only one output
+                metric_str = metric_str+i[0]+' '+str(i[1])+', '
 
         metric_str=metric_str[:-2]
 

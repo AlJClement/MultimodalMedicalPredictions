@@ -9,6 +9,7 @@ torch.cuda.empty_cache()
 class training():
     def __init__(self, cfg, logger, l2_reg=True):
         self.plot_target = False
+    
         self.model_init = model_init(cfg)
         self.logger = logger
         #get specific models/feature loaders

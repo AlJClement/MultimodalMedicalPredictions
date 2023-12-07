@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/medimaging/multimodal_datasets/ddh_190/partition_0.7_0.15_0.15.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json
+  PARTITION: /data/medimaging/multimodal_datasets/ddh_190/partition_0.7_0.15_0.15_0.04272.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json
   IMAGES: /data/medimaging/multimodal_datasets/ddh_190/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/medimaging/multimodal_datasets/ddh_190/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   META_PATH: /data/medimaging/multimodal_datasets/ddh_190/multimodal.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/metadata.csv
@@ -36,6 +36,7 @@ DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 5 
+  COMBINE_REVIEWERS: False #true as default if there are multiple folders of reviewers
   SIGMA: 4 #if sigma is NONE no guassian applied
   FLIP_AXIS: TRUE
   CACHED_IMAGE_SIZE: [512,512]
@@ -56,7 +57,7 @@ TRAIN:
   LR: 0.001
   EPOCHS: 10
   LOSS: nll_across_batch
-  L2_REG: False
+  L2_REG: True
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth

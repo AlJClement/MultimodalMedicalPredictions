@@ -22,7 +22,7 @@ class comparison():
         for c in range(confusion_matrix_multiclasses.shape[0]):
             class_name = classes[c]
             cm = confusion_matrix_multiclasses[c]
-            sns.heatmap(cm, annot=True, fmt='g', ax=ax[c], vmax= len(classes)) 
+            sns.heatmap(cm, annot=True, fmt='g', ax=ax[c]) 
             # labels, title and ticks
             ax[c].set_xlabel('Predicted labels')
             ax[c].set_ylabel('True labels')
@@ -35,7 +35,7 @@ class comparison():
         hot = np.eye(num_classes)[y]
         return hot
 
-    def true_vs_pred_scatter(self, pred, true):
+    def true_vs_pred_scatter(self, pred, true, loc='test'):
         #plot predicted vs true value outputs.
         #order by true
         dataset = pd.DataFrame({'pred': pred, 'true': true}, columns=['pred', 'true'])
@@ -51,7 +51,7 @@ class comparison():
         for thresh in self.threshold_list:
             plt.axhline(y=thresh, color='b', linestyle='--')
 
-        plt.savefig('./output/test/true_vs_pred.png')
+        plt.savefig('./output/'+loc+'/true_vs_pred.png')
         return
     
 

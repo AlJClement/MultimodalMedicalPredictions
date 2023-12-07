@@ -10,12 +10,15 @@ import os
 import pathlib
 target_path = pathlib.Path(os.path.abspath(__file__)).parents[1]
 sys.path.append(target_path)
+import visualisations
 from visualisations import visuals
 from .evaluation_helper import evaluation_helper
 import pandas as pd
 from .comparison_metrics import *
 class validation():
     def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
+        self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
+
         self.net = net
         self.logger = logger
         self.l2_reg=l2_reg
@@ -34,7 +37,9 @@ class validation():
         self.save_img = save_img
         self.pixelsize = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
 
-        self.outputpath=cfg.OUTPUT_PATH +'/validation_imgs'
+        self.outputpath=cfg.OUTPUT_PATH +'/validation'
+        if os.path.exists(self.outputpath)==False:
+            os.mkdir(self.outputpath)
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
 
         self.comparison_metrics=cfg.TEST.COMPARISON_METRICS
@@ -112,10 +117,22 @@ class validation():
                                 comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
 
             
-                comparison_df.to_csv(self.outputpath+'/comparison_metrics.csv')
-                print('Saving Results to comparison_metrics.csv')
-                av_loss = total_loss / batches
-                av_loss = av_loss.cpu().detach().numpy()
-                print('Validation Set Average Loss: {:.4f}'.format(av_loss,  flush=True))
+        comparison_df.to_csv(self.outputpath+'/comparison_metrics.csv')
+        print('Saving Results to comparison_metrics.csv')
+        av_loss = total_loss / batches
+        av_loss = av_loss.cpu().detach().numpy()
+        print('Validation Set Average Loss: {:.4f}'.format(av_loss,  flush=True))
+
+
+        comparsion_summary_ls = self.comparison_summary(comparison_df)
+        self.logger.info("SUMMARY: {}".format(comparsion_summary_ls))
+
+        #from df get class agreement metrics TP, TN, FN, FP
+        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true')._get_metrics()
+        self.logger.info("Class Agreement: {}".format(class_agreement))
+
+        #plot angles pred vs angles 
+        visualisations.comparison(self.dataset_name).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
+
 
         return av_loss

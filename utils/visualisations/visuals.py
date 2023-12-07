@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
-
+import os
 class visuals():
     def __init__(self, save_path) -> None:
         self.save_path = save_path
+
         pass
     
     def channels_thresholded(self, output):
