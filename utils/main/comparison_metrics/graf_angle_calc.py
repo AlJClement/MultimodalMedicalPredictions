@@ -116,6 +116,7 @@ class graf_angle_calc():
         #angles using arccosbeta
         a_rad = np.arccos(np.dot(v_baseline,v_bonyroof)/(np.linalg.norm(v_baseline)*np.linalg.norm(v_bonyroof)))
         alpha = math.degrees(a_rad)
+        alpha = a_rad*180/np.pi
 
         #b_rad = np.arccos(np.dot(v_baseline,v_cartroof)/(np.linalg.norm(v_baseline)*np.linalg.norm(v_cartroof)))
         #b = math.degrees(b_rad)
@@ -138,10 +139,12 @@ class graf_angle_calc():
 
         alpha_pred = self.calculate_alpha(pred)
         class_pred = self.get_alpha_class(alpha_pred)
+        print('pred:', alpha_pred)
 
         alpha_true = self.calculate_alpha(true)
         class_true = self.get_alpha_class(alpha_true)
-
+        print('true:',alpha_true)
+        
         alpha_diff = alpha_pred-alpha_true
 
         ls_values = [['alpha pred', alpha_pred],

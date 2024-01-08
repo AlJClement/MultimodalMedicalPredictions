@@ -3,7 +3,6 @@ import os
 class visuals():
     def __init__(self, save_path) -> None:
         self.save_path = save_path
-
         pass
     
     def channels_thresholded(self, output):
@@ -28,8 +27,8 @@ class visuals():
         ax.axis('off')
 
         #add landmarks
-        ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=30)
-        ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=30)
+        ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=10)
+        ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=10)
 
         plt.savefig(self.save_path)
         plt.close()

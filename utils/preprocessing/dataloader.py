@@ -17,6 +17,8 @@ import torch
 from main import model_init
 from torch.utils.data import Dataset
 from visualisations import visuals
+from tqdm import tqdm
+
 class dataloader(Dataset):
     def __init__(self, cfg, set) -> None:
         #paths
@@ -43,6 +45,7 @@ class dataloader(Dataset):
             self.ann_extension = '.txt'
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
         self.sigma=cfg.DATASET.SIGMA
+        self.cfg_combine_reviewers=cfg.DATASET.COMBINE_REVIEWERS
         
         self.pat_id_col = cfg.INPUT_PATHS.ID_COL
         self.metaimport = MetadataImport(cfg)
@@ -82,14 +85,29 @@ class dataloader(Dataset):
 
             for i in partition_dict:
                 for id in partition_dict[i]:
-                    #get image file
-                    img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))
-                    #add annotation folders
-                    ann_list = []
-                    for label_folder in os.listdir(self.label_dir):
-                        ann_list.append(os.path.join(self.label_dir, label_folder,id + self.ann_extension))
+
+                    if self.cfg_combine_reviewers==False:
+                        #if you want to not combine the reviwers you need to get all possible paths
+                        #get image file
+                        #add annotation folders
+                        ann_list = []
                     
-                    annotation_dic[i].append(ann_list)
+                        for label_folder in os.listdir(self.label_dir):
+                            img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))                        
+                            annotation_dic[i].append([os.path.join(self.label_dir, label_folder,id + label_folder + self.ann_extension)])
+
+                    else: 
+                        #keeps each patient seperate
+                        
+                        #get image file
+                        img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))
+                        #add annotation folders
+                        ann_list = []
+                    
+                        for label_folder in os.listdir(self.label_dir):
+                            ann_list.append(os.path.join(self.label_dir, label_folder,id + self.ann_extension))
+                        
+                        annotation_dic[i].append(ann_list)
             
         else:
             raise ValueError('Check partition dir')
@@ -148,6 +166,7 @@ class dataloader(Dataset):
         '''loads annotations, loads array for each folder if there are subfolders in the label folder'''
         #Get sub-directories for annotations 
         ann_points, ann_array, folder_ls = [], [], []
+        print(ann_paths)
         for ann_path in ann_paths:
             folder_name = ann_path.split("/")[-2]
             if self.annotation_type=="LANDMARKS":
@@ -156,6 +175,7 @@ class dataloader(Dataset):
                 _np_ann_points=_ann_points.to_xy_array().reshape(-1, self.num_landmarks, 2)[0]
                 #get array of the points with guassian if applied
                 _ann_array = self.add_sigma_channels(_np_ann_points, img_shape)
+                print(_np_ann_points)
             else:
                 ann_points = 'None'
                 raise ValueError('only capable for landmarks right now')
@@ -165,7 +185,10 @@ class dataloader(Dataset):
             ann_array.append(_ann_array)
             folder_ls.append(folder_name)
         
-        ann_arr_multireviewer = self.combine_reviewers(ann_array)
+        if self.cfg_combine_reviewers==True:
+            ann_arr_multireviewer = self.combine_reviewers(ann_array)
+        else:
+            ann_arr_multireviewer = ann_array
 
         return ann_arr_multireviewer,ann_points,folder_ls
     
@@ -183,7 +206,7 @@ class dataloader(Dataset):
         meta_arr = pd.DataFrame([])
 
         print('loading:', self.set)
-        for i in range(len(img_files[self.set])):
+        for i in tqdm(range(len(img_files[self.set]))):
             pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
 
             ##LOAD IMAGES##
@@ -197,27 +220,42 @@ class dataloader(Dataset):
             if _meta_arr.empty:
                 raise ValueError('no meta data found for: ', pat_id)
 
+            cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
+
             if save_cache==True:
-                #save input data files for debugging
-                cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
-                if not os.path.exists(cache_data_dir):
-                    os.makedirs(cache_data_dir)
+                if os.path.exists(cache_data_dir):
+                    pass
+                else:
+                    #save input data files for debugging
+                    cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
+                    if not os.path.exists(cache_data_dir):
+                        os.makedirs(cache_data_dir)
 
-                #save img
-                _im = Image.fromarray(_im_arr)
-                _im.save(os.path.join(cache_data_dir,pat_id+self.img_extension))
-                #save annonation points
-                for i in range(len(folder_ls)):
-                    ann_folder = folder_ls[i]
-                    annotation = annotation_points[i] 
-                    np.savetxt(os.path.join(cache_data_dir,pat_id+ann_folder+'.txt'), annotation, fmt="%.14g", delimiter=" ")
+                    #save img
+                    _im = Image.fromarray(_im_arr)
+                    _im.save(os.path.join(cache_data_dir,pat_id+self.img_extension))
+                    #save annonation points
+                    for i in range(len(folder_ls)):
+                        ann_folder = folder_ls[i]
+                        annotation = annotation_points[i] 
+                        np.savetxt(os.path.join(cache_data_dir,pat_id+ann_folder+'.txt'), annotation, fmt="%.14g", delimiter=" ")
 
-                
-                #plot annotation array
-                if len(annotation_points)>0:
-                    _a = visuals('').channels_thresholded(_annotation_arr)
-                    plt.imshow(_a)
-                    plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
+                    
+                    #plot annotation array
+                    if len(annotation_points)>1:
+                        #if its a list loop (*multiple annotators, kept seperate)
+                        for aa in _annotation_arr:
+                            i=0
+                            _a = visuals('').channels_thresholded(_annotation_arr)
+                            plt.imshow(_a)
+                            plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+folder_ls[i]+self.img_extension),_a)
+                            plt.close()
+                            i=i+1
+                    else:
+                        _a = visuals('').channels_thresholded(_annotation_arr[0])
+                        plt.imshow(_a)
+                        plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
+                        plt.close()
 
             if meta_arr.empty:
                 id_arr = np.array([pat_id])
@@ -242,8 +280,10 @@ class dataloader(Dataset):
         #expand numpy arr and make values as torch
         im_arr = np.expand_dims(im_arr,axis=1)
         im_torch = torch.from_numpy(im_arr).float()
-
+            
         annotation_torch = torch.from_numpy(annotation_arr).float()
+        if len(annotation_torch.shape)==5:
+            annotation_torch=torch.squeeze(annotation_torch,dim=1)
 
         #encoed meta/id data for network in cfg
         meta_data_restructured = self.meta_feat_structure(np.array(meta_arr))

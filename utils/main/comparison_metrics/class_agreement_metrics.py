@@ -15,9 +15,13 @@ class class_agreement_metrics():
 
     def _get_metrics(self):
         #check if multi class
+
         if np.unique(self.pred_class_arr).size < 2:
-            #only one class for classification problem
-            tn, fp, fn, tp = confusion_matrix(self.gt_class_arr, self.pred_class_arr).ravel()
+            if np.all(self.pred_class_arr == self.gt_class_arr) == True:
+                tn, fp, fn, tp = 0,0,0,0
+            else:
+                #only one class for classification problem
+                tn, fp, fn, tp = confusion_matrix(self.gt_class_arr, self.pred_class_arr).ravel()
             total = tn + fp + fn + tp
             if total == 0:
                 accuracy = 0
@@ -33,6 +37,7 @@ class class_agreement_metrics():
             else:
                 recall = 100 * float(tp) / float(tp + fn)
                 recall = 100 * float(tp) / float(tp + fn)
+
         else:
             #multi class so outputs will be an array for tn, fp, fn, tp    
             classes = set(self.gt_class_arr)

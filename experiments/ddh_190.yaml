@@ -36,9 +36,9 @@ DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 5 
-  COMBINE_REVIEWERS: False #true as default if there are multiple folders of reviewers
+  COMBINE_REVIEWERS: False 
   SIGMA: 4 #if sigma is NONE no guassian applied
-  FLIP_AXIS: TRUE
+  FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,512]
 
   AUGMENTATION:

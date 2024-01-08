@@ -95,8 +95,8 @@ class validation():
                 else:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device))
                 total_loss += loss
-
-                predicted_points, target_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
+                
+                target_points, predicted_points = evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
                 # save figures
                 if self.save_img == True:
