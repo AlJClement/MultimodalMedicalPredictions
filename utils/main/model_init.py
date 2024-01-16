@@ -45,6 +45,7 @@ class model_init():
     def get_net_from_conf(self, get_net_info=True):
         net = self.net(self.cfg)
         net = net.to(self.device)
+        net.train()
         if get_net_info == True:
             return net, self.get_net_info(net)
         else:

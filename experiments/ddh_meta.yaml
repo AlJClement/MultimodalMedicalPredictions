@@ -18,7 +18,7 @@ MODEL:
   DEVICE: cuda
 
   #
-  META_FEATURES: [100,100,100] 
+  META_FEATURES: [10,10,10] 
  # NAME: 'unet_plus_plus'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'

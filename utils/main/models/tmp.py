@@ -45,12 +45,13 @@ class unet_plus_plus_meta(nn.Module):
         xx=xx.view(-1,feat[1])
         print('xx before meta: ',xx.size())
         
-        print(meta.shape)
         meta_shape = meta.shape[1]
         
         meta_flat=meta.view(-1,meta_shape)
+        print('meta_shape',meta_shape)
         meta_flat=meta_flat.repeat(1,self.out_channels)
-        
+        print('meta_flat',meta_flat.shape)
+
         xx=torch.cat((xx,meta_flat),dim=0)
         print(xx.shape)
         #flatten to linear layer
