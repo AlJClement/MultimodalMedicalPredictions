@@ -78,7 +78,7 @@ class test():
             meta_data = Variable(meta).to(self.device)
             
             pred = self.net(data, meta_data)
-            predicted_points, target_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
+            target_points,predicted_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
             #plot and caluclate values for each subject in the batch
             for i in range(self.bs):

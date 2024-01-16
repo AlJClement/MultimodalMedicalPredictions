@@ -10,7 +10,14 @@ torch.cuda.empty_cache()
 class unet_plus_plus_meta(nn.Module):
     def __init__(self, cfg):
         super(unet_plus_plus_meta, self).__init__()
-
+        self.unet = smp.UnetPlusPlus(
+            encoder_name=cfg.MODEL.ENCODER_NAME,
+            encoder_weights=cfg.MODEL.ENCODER_WEIGHTS,
+            decoder_channels=cfg.MODEL.DECODER_CHANNELS,
+            decoder_use_batchnorm=cfg.MODEL.BATCH_NORM_DECODER,
+            in_channels=cfg.MODEL.IN_CHANNELS,
+            classes=cfg.MODEL.OUT_CHANNELS,
+        )
         self.in_channels=cfg.MODEL.IN_CHANNELS
         self.out_channels=cfg.MODEL.OUT_CHANNELS
         self.init_features=cfg.MODEL.INIT_FEATURES
@@ -29,60 +36,51 @@ class unet_plus_plus_meta(nn.Module):
 
         self.device = cfg.MODEL.DEVICE
 
-        self.unet = smp.UnetPlusPlus(
-            encoder_name=cfg.MODEL.ENCODER_NAME,
-            encoder_weights=cfg.MODEL.ENCODER_WEIGHTS,
-            decoder_channels=cfg.MODEL.DECODER_CHANNELS,
-            decoder_use_batchnorm=cfg.MODEL.BATCH_NORM_DECODER,
-            in_channels=cfg.MODEL.IN_CHANNELS,
-            classes=cfg.MODEL.OUT_CHANNELS,
-        )
-        self.lin_end = self._lin_end()
-
-    def _lin_end(self):
-        #print("pred; ",xx.shape) torch.Size([1, 5, 512, 512]) 
-        feat = (self.bs, self.out_channels, self.im_size_h,self.im_size_w)
-        #print(feat)
-        feats = self.bs*self.im_size_h*self.im_size_w
-        
-        #xx is input from previous model so ,bs, img size w, im size h
-        xx = torch.tensor([self.out_channels, self.bs*self.im_size_h*self.im_size_w])
+    def lin_end(self, xx, meta):
+        bs = self.bs
+        print("pred; ",xx.shape)
+        feat = (bs, self.out_channels, self.im_size_h,self.im_size_w)
+        print(feat)
+        feats = bs*self.im_size_h*self.im_size_w
         xx=xx.view(-1,feat[1])
-        #print('xx before meta: ',xx.size()) torch.Size([262144, 5])
+        print('xx before meta: ',xx.size())
         
-        #print(meta.shape) torch.Size([1, 1, 3, 100]) 
-        meta_shape = self.meta_features.shape[1]
+        print(meta.shape)
+        meta_shape = meta.shape[1]
         
-        meta_flat=self.meta_features.view(-1,meta_shape)
+        meta_flat=meta.view(-1,meta_shape)
         meta_flat=meta_flat.repeat(1,self.out_channels)
         
         xx=torch.cat((xx,meta_flat),dim=0)
-        #print(xx.shape)torch.Size([262444, 5]) 
+        print(xx.shape)
         #flatten to linear layer
         xx=torch.flatten(xx.view(xx.size(1), -1))
-        #print('xx:', xx.shape)torch.Size([1312220])
+        print('xx:', xx.shape)
         
         in_features_lin = list(xx.shape)[0] #feats + self.num_meta_feats*self.bs
         _out_features_lin = self.num_meta_features*self.bs #list(xx.shape)[0] #
         out_features_lin = feats * self.out_channels
+
+        print('in_features_lin:', in_features_lin)
+        print('_out_feats:', _out_features_lin)
+        print('out_feats:', out_features_lin)
+        
         name = "meta"
         lin = nn.Sequential(OrderedDict(
                 [(name+'_1_linear', nn.Linear(in_features=in_features_lin, out_features=_out_features_lin)),
                  (name+'_2_linear', nn.Linear(in_features=_out_features_lin, out_features=out_features_lin)),
                 ]))
-        #print('in_features_lin:', in_features_lin)
-        #print('_out_feats:', _out_features_lin)
-        #print('out_feats:', out_features_lin)
         
         _lin=lin.to(self.device)
         x_lin=_lin(xx)
-        #print('out:',x_lin.shape)
+        print('out:',x_lin.shape)
     
-        un_flat=nn.Squential(nn.Unflatten(0, (bs,self.out_channels,self.im_size_h,self.im_size_w)))
+        un_flat=nn.Sequential(nn.Unflatten(0, (bs,self.out_channels,self.im_size_h,self.im_size_w)))
 
         x=un_flat(x_lin)
 
-        return x/home/scratch/allent/MultimodalMedicalPredictions/utils/main/models/unet_plus_plus_meta.py
+        return x
+
 
     def two_d_softmax(self, x):
         exp_y = torch.exp(x)
@@ -90,8 +88,9 @@ class unet_plus_plus_meta(nn.Module):
     
     def forward(self, im, meta):
         xx = self.unet(im)
-        print(xx.shape)
         x = self.lin_end(xx, meta)
         return self.two_d_softmax(x)
+
+        
     
 

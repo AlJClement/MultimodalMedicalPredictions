@@ -166,7 +166,7 @@ class dataloader(Dataset):
         '''loads annotations, loads array for each folder if there are subfolders in the label folder'''
         #Get sub-directories for annotations 
         ann_points, ann_array, folder_ls = [], [], []
-        print(ann_paths)
+        #print(ann_paths)
         for ann_path in ann_paths:
             folder_name = ann_path.split("/")[-2]
             if self.annotation_type=="LANDMARKS":
@@ -175,7 +175,7 @@ class dataloader(Dataset):
                 _np_ann_points=_ann_points.to_xy_array().reshape(-1, self.num_landmarks, 2)[0]
                 #get array of the points with guassian if applied
                 _ann_array = self.add_sigma_channels(_np_ann_points, img_shape)
-                print(_np_ann_points)
+                #print(_np_ann_points)
             else:
                 ann_points = 'None'
                 raise ValueError('only capable for landmarks right now')

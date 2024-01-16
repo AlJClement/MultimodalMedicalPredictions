@@ -2,6 +2,7 @@ import torch
 from .models import *
 from preprocessing.metadata_import import MetadataImport
 from torchsummary import summary
+from torchinfo import summary
 import numpy as np
 class model_init():
     def __init__(self,cfg) -> None:
@@ -24,11 +25,21 @@ class model_init():
 
         return
     
+    def get_net_parameters(self, net):
+        params = [p.numel() for p in net.parameters()]
+        params_total = sum(params)
+        print('Trainable params: ', params_total)
+        return
+    
     def get_net_info(self,net):
         '''add the info to logger'''
-        input_im_size = torch.tensor([self.in_channels,self.im_size[0],self.im_size[1]])
-        input_meta_shape = torch.tensor([self.in_channels,len(self.meta_features),int(np.average(self.meta_features))])
+        input_im_size = torch.tensor([self.bs, self.in_channels,self.im_size[0],self.im_size[1]])
+        input_meta_shape = torch.tensor([self.bs,self.in_channels,len(self.meta_features),int(np.average(self.meta_features))])
+        
+        #no bs for torch summary
+        #net_summary_torchsummary= summary(net,[tuple(input_im_size.detach().numpy()), tuple(input_meta_shape.detach().numpy())])
         net_summary= summary(net,[tuple(input_im_size.detach().numpy()), tuple(input_meta_shape.detach().numpy())])
+
         return  net_summary
             
     def get_net_from_conf(self, get_net_info=True):

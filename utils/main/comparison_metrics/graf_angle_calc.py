@@ -117,7 +117,8 @@ class graf_angle_calc():
         a_rad = np.arccos(np.dot(v_baseline,v_bonyroof)/(np.linalg.norm(v_baseline)*np.linalg.norm(v_bonyroof)))
         alpha = math.degrees(a_rad)
         alpha = a_rad*180/np.pi
-
+        if alpha > 90:
+            alpha = alpha - 90
         #b_rad = np.arccos(np.dot(v_baseline,v_cartroof)/(np.linalg.norm(v_baseline)*np.linalg.norm(v_cartroof)))
         #b = math.degrees(b_rad)
 

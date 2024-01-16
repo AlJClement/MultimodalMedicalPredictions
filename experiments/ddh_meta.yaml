@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/medimaging/multimodal_datasets/ddh_190/partition_0.7_0.15_0.15.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json
+  PARTITION: /data/medimaging/multimodal_datasets/ddh_190/partition_0.7_0.15_0.15_0.04153.json  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json
   IMAGES: /data/medimaging/multimodal_datasets/ddh_190/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/medimaging/multimodal_datasets/ddh_190/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   META_PATH: /data/medimaging/multimodal_datasets/ddh_190/multimodal.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/metadata.csv
@@ -51,7 +51,7 @@ DATASET:
 
 OUTPUT_PATH: ./output
 
-TRAIN:
+TRAIN:  
   BATCH_SIZE: 1
   LR: 0.001
   EPOCHS: 5
@@ -61,3 +61,5 @@ TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth
   COMPARISON_METRICS: 
     - graf_angle_calc().graf_class_comparison
+    - landmark_metrics().get_eres
+    - landmark_metrics().get_radial_errors
