@@ -25,6 +25,7 @@ class unet_plus_plus_meta(nn.Module):
         self.features=self.init_features
         self.im_size_h = self.im_size[0]
         self.im_size_w = self.im_size[1]
+        self.bn=nn.Sequential(nn.BatchNorm2d(self.out_channels))
 
         self.device = cfg.MODEL.DEVICE
 
@@ -49,9 +50,9 @@ class unet_plus_plus_meta(nn.Module):
         _out_features_lin = self.num_meta_features*self.bs
         out_features_lin = feats * self.out_channels
         name = "meta"
-        print(in_features_lin)#in_features_lin: 1312220
-        print(_out_features_lin)#_out_feats: 300
-        print(out_features_lin)#out_feats: 1310720
+        #print(in_features_lin)#in_features_lin: 1312220
+        #print(_out_features_lin)#_out_feats: 300
+        #print(out_features_lin)#out_feats: 1310720
 
         self.lin = nn.Sequential(OrderedDict(
                 [(name+'_1_linear', nn.Linear(in_features=in_features_lin, out_features=_out_features_lin)),
@@ -68,22 +69,27 @@ class unet_plus_plus_meta(nn.Module):
         unet_encoding = self.unet(im)
 
         #xx is input from previous unet output
-        xx=unet_encoding.view(-1,self.feat[1])
-        print('xx before meta: ',xx.size()) #torch.Size([262144, 5])
         
-        print(meta.shape) #torch.Size([1, 1, 3, 100])         
-        meta_flat=meta.view(-1,meta.shape[0])
+        xx=unet_encoding.view(-1,self.feat[1])
+        #print('xx before meta: ',xx.size()) #torch.Size([262144, 5])
+        #xx=self.two_d_softmax(xx)
+        #print(meta.shape) #torch.Size([1, 1, 3, 100])         
+        meta_flat=meta.view(-1,meta.shape[1])
         meta_flat=meta_flat.repeat(1,self.out_channels)
         
         xx=torch.cat((xx,meta_flat),dim=0)
-        print(xx.shape) #torch.Size([262444, 5]) 
+        #print(xx.shape) #torch.Size([262444, 5]) 
         #flatten to linear layer
         xx=torch.flatten(xx.view(xx.size(1), -1))
         
-        print('xx:', xx.shape) #torch.Size([1312220])
+        #print('xx:', xx.shape) #torch.Size([1312220])
         lin_layer = self.lin(xx)
-        x = self.un_flat(lin_layer)
+        x_lin = self.un_flat(lin_layer)
 
+        #x_lin = x_lin.transpose(0,1)
+        #print('new_shape:',x_lin.shape)
+        x=self.bn(x_lin)
+        
         return self.two_d_softmax(x)
     
 

@@ -39,7 +39,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 4 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
-  CACHED_IMAGE_SIZE: [512,512]
+  CACHED_IMAGE_SIZE: [512,384]
 
   AUGMENTATION:
     ROTATION_FACTOR: 2
@@ -55,7 +55,7 @@ OUTPUT_PATH: ./output
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
-  EPOCHS: 10
+  EPOCHS: 1
   LOSS: nll_across_batch
   L2_REG: True
 

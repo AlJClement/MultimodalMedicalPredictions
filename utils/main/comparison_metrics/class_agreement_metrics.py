@@ -19,6 +19,8 @@ class class_agreement_metrics():
         if np.unique(self.pred_class_arr).size < 2:
             if np.all(self.pred_class_arr == self.gt_class_arr) == True:
                 tn, fp, fn, tp = 0,0,0,0
+            elif np.unique(self.pred_class_arr).size == 1:
+                tn, fp, fn, tp = 0,0,0,0
             else:
                 #only one class for classification problem
                 tn, fp, fn, tp = confusion_matrix(self.gt_class_arr, self.pred_class_arr).ravel()

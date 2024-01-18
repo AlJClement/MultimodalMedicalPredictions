@@ -36,12 +36,12 @@ DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 5 
-  SIGMA: 10 #if sigma is NONE no guassian applied
+  SIGMA: 4 #if sigma is NONE no guassian applied
   FLIP_AXIS: TRUE
   CACHED_IMAGE_SIZE: [512,512]
 
   AUGMENTATION:
-    ROTATION_FACTOR: 5
+    ROTATION_FACTOR: 2
     INTENSITY_FACTOR: 0.5
     SF: 0.2
     TRANSLATION_X: 0.05
@@ -52,10 +52,11 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:  
-  BATCH_SIZE: 1
+  BATCH_SIZE: 2
   LR: 0.001
-  EPOCHS: 5
+  EPOCHS: 10
   LOSS: nll_across_batch
+  L2_REG: True
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth

@@ -5,6 +5,8 @@ import torch
 target_path = pathlib.Path(os.path.abspath(__file__)).parents[1]
 sys.path.append(target_path)
 from ..evaluation_helper import evaluation_helper
+import pandas as pd
+import numpy as np
 class landmark_metrics():
     def __init__(self) -> None:
         '''calcualtions between two different sets of landmarks'''
@@ -58,3 +60,24 @@ class landmark_metrics():
                 ere_ls.append(['ere p'+str(i) , p])
                 i = i +1
             return ere_ls
+
+class landmark_overall_metrics():
+    def __init__(self) -> None:
+        pass
+
+    def get_sdr_statistics(self,radial_errors, thresholds =[2.0,3.0,4.0]):
+        #if radial errors are a df convert to numpy
+        if type(radial_errors) == pd.Series:
+            radial_errors = radial_errors.to_numpy()
+            
+        successful_detection_rates = []
+        for threshold in thresholds:
+            filter = np.where(radial_errors < threshold, 1.0, 0.0)
+            sdr = 100 * np.sum(filter) / np.size(radial_errors)
+            successful_detection_rates.append(sdr)
+            
+        txt = "Successful Detection Rates: "
+        for sdr_rate in successful_detection_rates:
+            txt += "{:.2f}%\t".format(sdr_rate)
+
+        return successful_detection_rates, txt

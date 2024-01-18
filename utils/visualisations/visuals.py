@@ -14,7 +14,7 @@ class visuals():
                 compressed_channels = output[c]
         return compressed_channels
 
-    def heatmaps(self, image, output, target_points, predicted_points):
+    def heatmaps(self, image, output, target_points, predicted_points, w_landmarks=True):
         fig, ax = plt.subplots(1, 1)
         image = image.detach().cpu().numpy()
         output = output.detach().cpu().numpy()
@@ -22,14 +22,18 @@ class visuals():
         target_points = target_points.cpu().detach().numpy()
 
         _output = self.channels_thresholded(output)
-        ax.imshow(_output, cmap='inferno', alpha = 0.4)
-        ax.imshow(image, cmap='Greys_r')
+        ax.imshow(_output, cmap='inferno', alpha = 1)
+
         ax.axis('off')
 
-        #add landmarks
-        ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=10)
-        ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=10)
-
+        if w_landmarks == True:
+            ax.imshow(image, cmap='Greys_r')
+            #add landmarks
+            ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=10)
+            ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=10)
+        else:
+            ax.imshow(image, cmap='Greys_r',alpha=0.4)
+            
         plt.savefig(self.save_path)
         plt.close()
 

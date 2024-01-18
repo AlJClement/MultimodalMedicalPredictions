@@ -40,9 +40,26 @@ class comparison():
         #order by true
         plt.clf()
         dataset = pd.DataFrame({'pred': pred, 'true': true}, columns=['pred', 'true'])
+
+        #plot theta vs theta true vs pred
+        
+        plt.scatter(dataset['true'], dataset['pred'], c='b', alpha=1)
+        plt.xlabel('True Graf Angle')
+        plt.ylabel('Predicted Graf Angle')
+        
+        x, y =dataset['true'], dataset['pred']
+        #add line of best fit
+        #add line of best fit to plot
+
+        coef = np.polyfit(x,y,1)
+        poly1d_fn = np.poly1d(coef) 
+        m, b = np.polyfit(x, y, 1)
+        plt.plot(x,y, 'yo', x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker
+        plt.savefig('./output/'+loc+'/true_vs_pred.png')
+        #sort to plot so we can see thresholds        #plot true and pred
+        plt.clf()
         dataset = dataset.sort_values('true')
         dataset.reset_index(drop=True)
-        #plot true and pred
         patient = range(len(dataset))
         plt.scatter(patient,dataset['true'], c='g', alpha=1)
         plt.scatter(patient,dataset['pred'], c='r', alpha=0.5)
@@ -52,11 +69,10 @@ class comparison():
         for thresh in self.threshold_list:
             plt.axhline(y=thresh, color='b', linestyle='--')
 
-        plt.savefig('./output/'+loc+'/true_vs_pred.png')
+        plt.savefig('./output/'+loc+'/true_vs_pred_bypatient.png')
+
         return
     
-
-
     #T-SNE         visualisations.comparison().get_tsne_map(comparison_df['class pred'].to_numpy(),comparison_df['class true'].to_numpy())
 
     def get_tsne_map(self, pred_diagnosis, true_diagnosis):

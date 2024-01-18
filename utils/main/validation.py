@@ -15,9 +15,14 @@ from visualisations import visuals
 from .evaluation_helper import evaluation_helper
 import pandas as pd
 from .comparison_metrics import *
+from .comparison_metrics import landmark_metrics, landmark_overall_metrics
+
 class validation():
     def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
+        self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
+        self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
+        self.max_epochs = cfg.TRAIN.EPOCHS
 
         self.net = net
         self.logger = logger
@@ -82,7 +87,6 @@ class validation():
 
             for batch_idx, (data, target, meta_data, id) in enumerate(dataloader):
                 predicted_points = []
-                scaled_predicted_points = []
                 
                 batches += 1
                 data, target = Variable(data).to(self.device), Variable(target).to(self.device)
@@ -98,21 +102,26 @@ class validation():
                 
                 target_points, predicted_points = evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
-                # save figures
-                if self.save_img == True:
-                    for i in range(self.bs):
-                        if self.save_img  == True:
-                            #
-                            print('saving validation img:', id[i])
-                            visuals(self.outputpath+'/'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
+                # save figures only on last epoch
+                if epoch == self.max_epochs:
+                    ##only save on max epoch
+                    if self.save_img == True:
+                        for i in range(self.bs):
+                            if self.save_img  == True:
+                                #
+                                print('saving validation img:', id[i])
+                                visuals(self.outputpath+'/'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
+                                visuals(self.outputpath+'/heatmap_'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
+                
+                for i in range(self.bs):
+                    #add to comparison df
+                    print('Alpha for', id[i])
+                    id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
 
-                        #add to comparison df
-                        id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
-
-                        if comparison_df.empty == True:
-                            comparison_df = id_metric_df
-                        else:
-                            comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
+                    if comparison_df.empty == True:
+                        comparison_df = id_metric_df
+                    else:
+                        comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
 
             
         comparison_df.to_csv(self.outputpath+'/comparison_metrics.csv')
@@ -123,11 +132,22 @@ class validation():
 
 
         comparsion_summary_ls = self.comparison_summary(comparison_df)
-        self.logger.info("SUMMARY: {}".format(comparsion_summary_ls))
+        self.logger.info("MEAN VALUES: {}".format(comparsion_summary_ls))
 
         #from df get class agreement metrics TP, TN, FN, FP
         class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', loc='validation')._get_metrics()
         self.logger.info("Class Agreement: {}".format(class_agreement))
+
+        if self.dataset_type == 'LANDMARKS':
+            #calculate SDR
+            try:
+                for i in range(self.num_landmarks):
+                    col= 'landmark radial error p'+str(i+1)
+                    sdr_stats, txt = landmark_overall_metrics().get_sdr_statistics(comparison_df[col])
+                    self.logger.info("{} for {}".format(txt, col))
+
+            except:
+                raise ValueError('Check Landmark radial errors are calcuated')
 
         #plot angles pred vs angles 
         visualisations.comparison(self.dataset_name).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
