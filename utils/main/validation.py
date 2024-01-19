@@ -104,15 +104,16 @@ class validation():
 
                 # save figures only on last epoch
                 if epoch == self.max_epochs:
+                    pass
                     ##only save on max epoch
-                    if self.save_img == True:
-                        for i in range(self.bs):
-                            if self.save_img  == True:
-                                #
-                                print('saving validation img:', id[i])
-                                visuals(self.outputpath+'/'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
-                                visuals(self.outputpath+'/heatmap_'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
-                
+                if self.save_img == True:
+                    for i in range(self.bs):
+                        if self.save_img  == True:
+                            #
+                            print('saving validation img:', id[i])
+                            visuals(self.outputpath+'/'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
+                            visuals(self.outputpath+'/heatmap_'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
+            
                 for i in range(self.bs):
                     #add to comparison df
                     print('Alpha for', id[i])
