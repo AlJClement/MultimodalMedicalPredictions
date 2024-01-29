@@ -62,6 +62,7 @@ C.TRAIN.L2_REG = True
 C.TEST = CN()
 C.TEST.NETWORK = ''
 C.TEST.COMPARISON_METRICS = []
+C.TEST.SDR_THRESHOLD = []
 
 def get_cfg_defaults():
     """Get a yacs CfgNode object with default values above."""

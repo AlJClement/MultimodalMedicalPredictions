@@ -1,8 +1,13 @@
 import matplotlib.pyplot as plt
 import os
 class visuals():
-    def __init__(self, save_path) -> None:
+    def __init__(self, save_path, pixelsize) -> None:
         self.save_path = save_path
+        try:
+            self.pixelsize = pixelsize.detach().cpu().numpy()
+        except:
+            self.pixelsize = pixelsize
+        
         pass
     
     def channels_thresholded(self, output):
@@ -20,6 +25,7 @@ class visuals():
         output = output.detach().cpu().numpy()
         predicted_points = predicted_points.detach().cpu().numpy()
         target_points = target_points.cpu().detach().numpy()
+        #print(self.pixelsize)
 
         _output = self.channels_thresholded(output)
         ax.imshow(_output, cmap='inferno', alpha = 1)
@@ -29,8 +35,8 @@ class visuals():
         if w_landmarks == True:
             ax.imshow(image, cmap='Greys_r')
             #add landmarks
-            ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=10)
-            ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=10)
+            ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=10)
+            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=10)
         else:
             ax.imshow(image, cmap='Greys_r',alpha=0.4)
             

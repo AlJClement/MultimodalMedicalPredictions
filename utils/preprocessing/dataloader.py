@@ -32,6 +32,7 @@ class dataloader(Dataset):
         if not os.path.exists(self.cache_dir):
             os.makedirs(self.cache_dir)
         
+        self.pixel_size = cfg.DATASET.PIXEL_SIZE
         #downsample size
         self.downsampled_image_width = cfg.DATASET.CACHED_IMAGE_SIZE[0]
         self.downsampled_image_height = cfg.DATASET.CACHED_IMAGE_SIZE[1]
@@ -246,13 +247,13 @@ class dataloader(Dataset):
                         #if its a list loop (*multiple annotators, kept seperate)
                         for aa in _annotation_arr:
                             i=0
-                            _a = visuals('').channels_thresholded(_annotation_arr)
+                            _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr)
                             plt.imshow(_a)
                             plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+folder_ls[i]+self.img_extension),_a)
                             plt.close()
                             i=i+1
                     else:
-                        _a = visuals('').channels_thresholded(_annotation_arr[0])
+                        _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr[0])
                         plt.imshow(_a)
                         plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
                         plt.close()

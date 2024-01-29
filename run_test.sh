@@ -10,4 +10,4 @@ source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env
 
 #run python code
 
-python ./utils/run_test.py --cfg ddh_meta
+python ./utils/run_test.py --cfg ddh_190

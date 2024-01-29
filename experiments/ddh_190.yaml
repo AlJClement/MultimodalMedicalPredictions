@@ -1,9 +1,9 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/medimaging/multimodal_datasets/ddh_190/partition_0.7_0.15_0.15_0.04153.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15.json
-  IMAGES: /data/medimaging/multimodal_datasets/ddh_190/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /data/medimaging/multimodal_datasets/ddh_190/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /data/medimaging/multimodal_datasets/ddh_190/multimodal.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/metadata.csv
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
   #make the first col always the patient ID col
   ID_COL: Accession Number
   META_COLS: [gender: hot, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
@@ -24,7 +24,7 @@ MODEL:
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
-    - 256
+    - 512
     - 256
     - 256
     - 128
@@ -37,12 +37,13 @@ DATASET:
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 5 
   COMBINE_REVIEWERS: False 
-  SIGMA: 4 #if sigma is NONE no guassian applied
+  SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
-  CACHED_IMAGE_SIZE: [512,512]
+  CACHED_IMAGE_SIZE: [512,352]
+  PIXEL_SIZE: [0.0700711,0.0700711]
 
   AUGMENTATION:
-    ROTATION_FACTOR: 2
+    ROTATION_FACTOR: 0
     INTENSITY_FACTOR: 0.5
     SF: 0.2
     TRANSLATION_X: 0.05
@@ -53,9 +54,9 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 18
   LR: 0.001
-  EPOCHS: 100
+  EPOCHS: 30
   LOSS: nll_across_batch
   L2_REG: True
 
@@ -65,3 +66,4 @@ TEST:
     - graf_angle_calc().graf_class_comparison
     - landmark_metrics().get_eres
     - landmark_metrics().get_radial_errors
+  SDR_THRESHOLD: [0.5, 1.0, 2.0, 4.0]

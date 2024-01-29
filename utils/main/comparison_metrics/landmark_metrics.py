@@ -62,10 +62,11 @@ class landmark_metrics():
             return ere_ls
 
 class landmark_overall_metrics():
-    def __init__(self) -> None:
+    def __init__(self, pixelsize) -> None:
+        self.pixel_size = pixelsize.detach().cpu().numpy()
         pass
 
-    def get_sdr_statistics(self,radial_errors, thresholds =[2.0,3.0,4.0]):
+    def get_sdr_statistics(self,radial_errors, thresholds):
         #if radial errors are a df convert to numpy
         if type(radial_errors) == pd.Series:
             radial_errors = radial_errors.to_numpy()
@@ -77,7 +78,10 @@ class landmark_overall_metrics():
             successful_detection_rates.append(sdr)
             
         txt = "Successful Detection Rates: "
+        i = 0
         for sdr_rate in successful_detection_rates:
-            txt += "{:.2f}%\t".format(sdr_rate)
+            #print(thresholds[i],thresholds[i]/self.pixel_size[0], sdr_rate)
+            txt += "{:.2f} mm [{:.2f}\t pixels]: {:.2f}%\t".format(thresholds[i], thresholds[i]/self.pixel_size[0], sdr_rate)
+            i=i+1
 
         return successful_detection_rates, txt

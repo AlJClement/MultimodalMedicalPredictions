@@ -40,7 +40,6 @@ class validation():
 
         self.evaluation = evaluation_helper()
         self.save_img = save_img
-        self.pixelsize = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
 
         self.outputpath=cfg.OUTPUT_PATH +'/validation'
         if os.path.exists(self.outputpath)==False:
@@ -48,8 +47,7 @@ class validation():
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
 
         self.comparison_metrics=cfg.TEST.COMPARISON_METRICS
-
-        pass
+        self.sdr_thresholds = cfg.TEST.SDR_THRESHOLD
     
     def _get_optimizer(self,net):
         optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
@@ -76,6 +74,22 @@ class validation():
                 pass
         return summary_ls
     
+    def alpha_thresholds(self, df_col, thresholds=[1,2,5,10]):
+        #this function calculates the different percentages of angle difference that lays in these thresholds
+        if type(df_col) == pd.Series:
+            alpha_diff = df_col.to_numpy()
+            
+        alpha_thresh = []
+        for threshold in thresholds:
+            filter = np.where(alpha_diff < threshold, 1.0, 0.0)
+            percent = 100 * np.sum(filter) / np.size(alpha_diff)
+            alpha_thresh.append(percent)
+            
+        txt = ""
+        for val in alpha_thresh:
+            txt += "{:.2f}%\t".format(val)
+    
+        return txt 
     
     def val_meta(self, dataloader, epoch):
         self.net.eval()
@@ -110,9 +124,10 @@ class validation():
                     for i in range(self.bs):
                         if self.save_img  == True:
                             #
-                            print('saving validation img:', id[i])
-                            visuals(self.outputpath+'/'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
-                            visuals(self.outputpath+'/heatmap_'+id[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
+                            #print('saving validation img:', id[i])
+                            #print(self.pixel_size[0])
+                            visuals(self.outputpath+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
+                            visuals(self.outputpath+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
             
                 for i in range(self.bs):
                     #add to comparison df
@@ -131,11 +146,14 @@ class validation():
         av_loss = av_loss.cpu().detach().numpy()
         print('Validation Set Average Loss: {:.4f}'.format(av_loss,  flush=True))
 
-
+        #Get mean values from comparison summary ls, landmark metrics
         comparsion_summary_ls = self.comparison_summary(comparison_df)
         self.logger.info("MEAN VALUES: {}".format(comparsion_summary_ls))
 
-        #from df get class agreement metrics TP, TN, FN, FP
+        alpha_thresh_percentages=self.alpha_thresholds(comparison_df['difference alpha'])
+        self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
+        
+        #from df get classification metrics TP, TN, FN, FP
         class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', loc='validation')._get_metrics()
         self.logger.info("Class Agreement: {}".format(class_agreement))
 
@@ -144,7 +162,7 @@ class validation():
             try:
                 for i in range(self.num_landmarks):
                     col= 'landmark radial error p'+str(i+1)
-                    sdr_stats, txt = landmark_overall_metrics().get_sdr_statistics(comparison_df[col])
+                    sdr_stats, txt = landmark_overall_metrics(self.pixel_size).get_sdr_statistics(comparison_df[col], self.sdr_thresholds)
                     self.logger.info("{} for {}".format(txt, col))
 
             except:

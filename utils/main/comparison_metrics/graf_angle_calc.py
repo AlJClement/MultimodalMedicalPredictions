@@ -13,6 +13,7 @@ class graf_angle_calc():
             "i": {'a':'>=60', 'd': 'Normal: Discharge Patient'},
             "ii": {'a':'43-60', 'd': 'Rescan +/- brace'},
             "iii/iv": {'a':'<43', 'd':'Abnormal: Clinical Review + treat'},
+            "Nan": {'a':'<43', 'd':'Alpha Not Predicted, landmark on same point'},
             }
 
         pass
@@ -31,18 +32,22 @@ class graf_angle_calc():
         return i1,i2,br,ll,l
 
     def get_alpha_category(self, alpha:float):
+        #print('alpha is', alpha)
         if alpha >= 60:
             return '>=60'
         elif alpha > 43 and alpha < 60:
             return'43-60'
         elif alpha < 43:
             return'<43'
+        elif np.isnan(alpha):
+            return 'Nan'
         else:
             raise ValueError
 
     def get_alpha_class(self, alpha: float):
         '''get classification and discription from dictionary based on, angle'''
         alpha = self.get_alpha_category(alpha)
+        print(alpha)
         for key in self.grf_dic.items(): 
             if self.grf_dic[key[0]]['a'] == alpha:
                 graf_class = key[0]
@@ -109,16 +114,28 @@ class graf_angle_calc():
             return ValueError('There are not only 5 landmarks')
         
         i1, i2, br, ll, l = self.get_landmarks(landmarks, flip_axis = True)
-
+        #print(i1, i2, br, ll, l)
+        
         v_baseline = self.get_vector(i1,i2)
+        #print(v_baseline)
         #v_cartroof = self.get_vector(self.br,self.l)
         v_bonyroof = self.get_vector(br,ll)
+        #print(v_bonyroof)
+
         #angles using arccosbeta
-        a_rad = np.arccos(np.dot(v_baseline,v_bonyroof)/(np.linalg.norm(v_baseline)*np.linalg.norm(v_bonyroof)))
-        alpha = math.degrees(a_rad)
-        alpha = a_rad*180/np.pi
-        if alpha > 90:
-            alpha = alpha - 90
+        try:
+            a_rad = np.arccos(np.dot(v_baseline,v_bonyroof)/(np.linalg.norm(v_baseline)*np.linalg.norm(v_bonyroof)))
+            alpha = math.degrees(a_rad)
+            alpha = a_rad*180/np.pi
+            if alpha > 90:
+                alpha = alpha - 90
+        except:
+            a_rad = 0.0
+            alpha = 0.0
+            print(np.dot(v_baseline,v_bonyroof),(np.linalg.norm(v_baseline),np.linalg.norm(v_bonyroof)))
+            print('arc cos did not work')
+
+
         #b_rad = np.arccos(np.dot(v_baseline,v_cartroof)/(np.linalg.norm(v_baseline)*np.linalg.norm(v_cartroof)))
         #b = math.degrees(b_rad)
 

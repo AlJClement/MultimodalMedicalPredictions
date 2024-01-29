@@ -42,22 +42,27 @@ class comparison():
         dataset = pd.DataFrame({'pred': pred, 'true': true}, columns=['pred', 'true'])
 
         #plot theta vs theta true vs pred
-        
+        fig = plt.figure()
+        ax = fig.add_subplot()
+        ax.set_aspect('equal', adjustable='box')
+
         plt.scatter(dataset['true'], dataset['pred'], c='b', alpha=1)
-        plt.xlabel('True Graf Angle')
-        plt.ylabel('Predicted Graf Angle')
-        
+        plt.axis('equal')
         x, y =dataset['true'], dataset['pred']
         #add line of best fit
-        #add line of best fit to plot
-
         coef = np.polyfit(x,y,1)
         poly1d_fn = np.poly1d(coef) 
         m, b = np.polyfit(x, y, 1)
         plt.plot(x,y, 'yo', x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker
+        plt.xlabel('True Graf Angle')
+        plt.ylabel('Predicted Graf Angle')
+        #ax.set_aspect('equal', adjustable='box')
         plt.savefig('./output/'+loc+'/true_vs_pred.png')
         #sort to plot so we can see thresholds        #plot true and pred
+
         plt.clf()
+        fig2 = plt.figure()
+        ax2 = fig2.add_subplot()
         dataset = dataset.sort_values('true')
         dataset.reset_index(drop=True)
         patient = range(len(dataset))
