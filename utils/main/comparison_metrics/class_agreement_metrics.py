@@ -13,9 +13,30 @@ class class_agreement_metrics():
         self.loc = loc
         pass
 
-    def _get_metrics(self):
-        #check if multi class
+    def _get_metrics(self,group = False, groups=[('i'),('ii','iii/iv')]):
+        #check if group == true, if it does then the defined 'groups will group classes'
+        # for example in ddh we group 1 vs 2/3/4 and 1/2 vd 3/4. 
+        new_class_str = ''
+        pred_class_arr = self.pred_class_arr 
+        gt_class_arr = self.gt_class_arr
+        if group == True:
+            #loop in the groups and combine the classes in botht he pred cols and true cols as the new name combined.
+            for g in groups:
+                if len(g)==0:
+                    pass
+                else:
+                    print('combing classes')
+                    for c in len(g):
+                        new_class_str = c+'&'+new_class_str
+                    for c in len(g):
+                        pred_class_arr=list(map(lambda x: x.replace(c, new_class_str), pred_class_arr))
+                        gt_class_arr=list(map(lambda x: x.replace(c, new_class_str), gt_class_arr)) 
+        else:
+            #use given pred and true cols with as many classes as exist
 
+            pass 
+
+        #check if multi class
         if np.unique(self.pred_class_arr).size < 2:
             if np.all(self.pred_class_arr == self.gt_class_arr) == True:
                 tn, fp, fn, tp = 0,0,0,0

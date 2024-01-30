@@ -13,7 +13,7 @@ class graf_angle_calc():
             "i": {'a':'>=60', 'd': 'Normal: Discharge Patient'},
             "ii": {'a':'43-60', 'd': 'Rescan +/- brace'},
             "iii/iv": {'a':'<43', 'd':'Abnormal: Clinical Review + treat'},
-            "Nan": {'a':'<43', 'd':'Alpha Not Predicted, landmark on same point'},
+            "Nan": {'a':'nan', 'd':'Alpha Not Predicted, landmark on same point'},
             }
 
         pass
@@ -37,10 +37,10 @@ class graf_angle_calc():
             return '>=60'
         elif alpha > 43 and alpha < 60:
             return'43-60'
-        elif alpha < 43:
+        elif alpha <= 43:
             return'<43'
-        elif np.isnan(alpha):
-            return 'Nan'
+        # elif np.isnan(alpha):
+        #     return 'Nan'
         else:
             raise ValueError
 
