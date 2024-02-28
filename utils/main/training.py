@@ -19,6 +19,11 @@ class training():
             self.loss_func = eval('L2RegLoss(cfg.TRAIN.LOSS)')
         else:
             self.loss_func = eval(cfg.TRAIN.LOSS)
+        
+        if (cfg.TRAIN.LOSS).split('_')[-1]=='wclass':
+            self.add_class_loss = True
+        else:
+            self.add_class_loss = False
 
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
@@ -70,9 +75,15 @@ class training():
             pred = self.net(data, meta_data)
 
             if self.l2_reg==True:
-                loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
+                if self.add_class_loss==True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device),class_pred, class_target, self.net)
+                else:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
             else:
-                loss = self.loss_func(pred.to(self.device), target.to(self.device))
+                if self.add_class_loss==True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), class_pred, class_target)
+                else:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), class_pred, class_target)
 
                 
             loss.backward()
