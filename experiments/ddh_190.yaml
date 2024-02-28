@@ -58,6 +58,7 @@ TRAIN:
   LR: 0.001
   EPOCHS: 30
   LOSS: nll_across_batch
+  LOSS_CLASS: True #this adds a term for loss based on the final class output
   L2_REG: True
 
 TEST:
