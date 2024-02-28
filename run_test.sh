@@ -1,7 +1,7 @@
 #!/bin/sh
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=8
-#SBATCH --time=01:00:00
+#SBATCH --ntasks-per-node=1
+#SBATCH --time=00:00:10
 #SBATCH --clusters=htc
 #SBATCH --gres=gpu:1
 
