@@ -63,6 +63,7 @@ C.TEST = CN()
 C.TEST.NETWORK = ''
 C.TEST.COMPARISON_METRICS = []
 C.TEST.SDR_THRESHOLD = []
+C.TEST.SDR_UNITS = ''
 
 def get_cfg_defaults():
     """Get a yacs CfgNode object with default values above."""

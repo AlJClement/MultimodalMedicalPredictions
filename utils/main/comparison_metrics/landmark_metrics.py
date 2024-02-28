@@ -62,18 +62,25 @@ class landmark_metrics():
             return ere_ls
 
 class landmark_overall_metrics():
-    def __init__(self, pixelsize) -> None:
+    def __init__(self, pixelsize, unit='pixels') -> None:
         self.pixel_size = pixelsize.detach().cpu().numpy()
+        self.unit=unit
         pass
 
-    def get_sdr_statistics(self,radial_errors, thresholds):
+    def get_sdr_statistics(self, radial_errors, thresholds):
         #if radial errors are a df convert to numpy
         if type(radial_errors) == pd.Series:
             radial_errors = radial_errors.to_numpy()
             
         successful_detection_rates = []
         for threshold in thresholds:
-            filter = np.where(radial_errors < threshold, 1.0, 0.0)
+            if self.unit == 'pixels':
+                #convert radial erradial_errorsror to pixels
+                radial_errors = radial_errors/self.pixel_size
+                filter = np.where(radial_errors < threshold, 1.0, 0.0)
+            else:
+                filter = np.where(radial_errors < threshold, 1.0, 0.0)
+
             sdr = 100 * np.sum(filter) / np.size(radial_errors)
             successful_detection_rates.append(sdr)
             
@@ -81,7 +88,12 @@ class landmark_overall_metrics():
         i = 0
         for sdr_rate in successful_detection_rates:
             #print(thresholds[i],thresholds[i]/self.pixel_size[0], sdr_rate)
-            txt += "{:.2f} mm [{:.2f}\t pixels]: {:.2f}%\t".format(thresholds[i], thresholds[i]/self.pixel_size[0], sdr_rate)
+            if self.unit == 'pixels':
+                txt += "{:.2f} mm [{:.2f}\t pixels]: {:.2f}%\t".format(thresholds[i], thresholds[i]/self.pixel_size, sdr_rate)
+            else:
+                txt += "{:.2f} pixels [{:.2f}\t mm]: {:.2f}%\t".format(thresholds[i], thresholds[i]*self.pixel_size[0], sdr_rate)
+            
             i=i+1
+    
 
         return successful_detection_rates, txt

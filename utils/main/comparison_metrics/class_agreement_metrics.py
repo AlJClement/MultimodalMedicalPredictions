@@ -3,6 +3,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn.metrics import multilabel_confusion_matrix
 import visualisations
 from visualisations import *
+import re
 
 class class_agreement_metrics():
     def __init__(self, dataset_name, df_col, pred_col, true_col, loc='test'):
@@ -16,35 +17,49 @@ class class_agreement_metrics():
     def _get_metrics(self,group = False, groups=[('i'),('ii','iii/iv')]):
         #check if group == true, if it does then the defined 'groups will group classes'
         # for example in ddh we group 1 vs 2/3/4 and 1/2 vd 3/4. 
-        new_class_str = ''
         pred_class_arr = self.pred_class_arr 
         gt_class_arr = self.gt_class_arr
         if group == True:
             #loop in the groups and combine the classes in botht he pred cols and true cols as the new name combined.
             for g in groups:
-                if len(g)==0:
+                if len(g)==1:
                     pass
                 else:
                     print('combing classes')
-                    for c in len(g):
-                        new_class_str = c+'&'+new_class_str
-                    for c in len(g):
-                        pred_class_arr=list(map(lambda x: x.replace(c, new_class_str), pred_class_arr))
-                        gt_class_arr=list(map(lambda x: x.replace(c, new_class_str), gt_class_arr)) 
+                    i=0
+                    for c in g:
+                        if i == 0:
+                            new_class_str = c
+                            i = i +1
+                        else:
+                            new_class_str = new_class_str + '&'+c
+
+                    for i in range(len(g)):
+                        #replace with ints so then you can replace with string and overlaping strings wont cause doubles#
+                        c=g[i]
+                        pred_class_arr = ['new_class' if x==c else x for x in pred_class_arr]
+                        gt_class_arr =  ['new_class' if x==c else x for x in gt_class_arr]
+
+                        
+                    for i in range(len(g)):
+                        c=g[i]
+                        pred_class_arr=[new_class_str if x=='new_class' else x for x in pred_class_arr]
+                        gt_class_arr=[new_class_str if x=='new_class' else x for x in gt_class_arr]
         else:
-            #use given pred and true cols with as many classes as exist
+            #use given pred and true cols with as many classes as exist                   pred_class_arr=list(map(lambda x: x.replace(list(g), new_class_str), _pred_class_arr))
+
 
             pass 
 
         #check if multi class
-        if np.unique(self.pred_class_arr).size < 2:
-            if np.all(self.pred_class_arr == self.gt_class_arr) == True:
+        if np.unique(pred_class_arr).size < 2:
+            if np.all(pred_class_arr == gt_class_arr) == True:
                 tn, fp, fn, tp = 0,0,0,0
-            elif np.unique(self.pred_class_arr).size == 1:
+            elif np.unique(pred_class_arr).size == 1:
                 tn, fp, fn, tp = 0,0,0,0
             else:
                 #only one class for classification problem
-                tn, fp, fn, tp = confusion_matrix(self.gt_class_arr, self.pred_class_arr).ravel()
+                tn, fp, fn, tp = confusion_matrix(gt_class_arr, pred_class_arr).ravel()
             total = tn + fp + fn + tp
             if total == 0:
                 accuracy = 0
@@ -63,11 +78,11 @@ class class_agreement_metrics():
 
         else:
             #multi class so outputs will be an array for tn, fp, fn, tp    
-            classes = set(self.gt_class_arr)
+            classes = set(gt_class_arr)
             if self.diagnosis_name=='ddh':
                 classes = ['i','ii','iii/iv']
             
-            confusion_matrix_multiclasses = multilabel_confusion_matrix(self.gt_class_arr, self.pred_class_arr)#, labels=classes)
+            confusion_matrix_multiclasses = multilabel_confusion_matrix(gt_class_arr, pred_class_arr)#, labels=classes)
 
             ##plot confusion matrix
             visualisations.comparison(self.diagnosis_name).confusion_matrix_multiclass(classes, confusion_matrix_multiclasses, self.loc)
