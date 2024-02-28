@@ -57,8 +57,8 @@ TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
   EPOCHS: 30
-  LOSS: nll_across_batch
-  L2_REG: True
+  LOSS: nll_across_batch_wclass
+  LOSS_CLASS: True #this adds a term for loss based on the final class output
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth

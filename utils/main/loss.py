@@ -5,7 +5,10 @@ import torch.nn as nn
 # dimensions are [B, C, W, H]
 # the log is done within this loss function whereas normally it would be a log softmax
 # why? - i think because think about log graph would be really steep
-
+def nll_across_batch_wclass(output, target, class_output, class_target):
+    nll = target * torch.log(output.double())
+    return -torch.mean(torch.sum(nll, dim=(2, 3)))
+    
 def nll_across_batch(output, target):
     nll = target * torch.log(output.double())
     return -torch.mean(torch.sum(nll, dim=(2, 3)))
