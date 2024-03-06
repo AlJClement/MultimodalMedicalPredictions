@@ -5,9 +5,57 @@ import torch.nn as nn
 # dimensions are [B, C, W, H]
 # the log is done within this loss function whereas normally it would be a log softmax
 # why? - i think because think about log graph would be really steep
-def nll_across_batch_wclass(output, target, class_output, class_target):
+def nll_across_batch_wclass(output, target, class_output, class_target, gamma=0.2,add_weights=False):
     nll = target * torch.log(output.double())
-    return -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+
+    #maybe try making this conservative so minus the 
+    #replace strings wthi values for classes
+    classes = {'i':0,'ii':1,'iii/iv':2}
+    class_output_, class_target_=np.array(class_output), np.array(class_target)
+    for c,val in classes.items():
+        for i in range(len(class_output_)):
+            if class_output_[i] == c: 
+                class_output_[i]= int(val)
+            if class_target_[i] == c: 
+               class_target_[i]= int(val)
+
+    one_output=class_output_.astype(int)
+    one_target=class_target_.astype(int)
+    _one_o=torch.LongTensor(one_output)
+    _one_t=torch.LongTensor(one_target)
+
+    ##hot encode
+    nb_classes = len(classes)
+
+    one_hot_outputs=torch.nn.functional.one_hot(_one_o,nb_classes)
+    one_hot_targets=torch.nn.functional.one_hot(_one_t,nb_classes)
+
+    ##if add weights:
+    weights = torch.LongTensor([[1],[2],[10]])
+    if add_weights == True:
+        one_hot_outputs= torch.transpose((torch.transpose(one_hot_outputs,0,1)*weights),1,0)
+
+
+
+
+    nll = (one_hot_outputs)*torch.log(one_hot_targets.double())
+    nll_class = -torch.mean(torch.sum(nll))
+
+    return nll_img*(1-gamma)+ nll_class*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
+
+
+def nll_across_batch_walpha(output, target, alpha_output, alpha_target, gamma = 0.2):
+    nll = target * torch.log(output.double())
+    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+
+    nll = torch.FloatTensor(alpha_target)*torch.log(torch.FloatTensor(alpha_output).double())
+    nll_alpha = -torch.mean(torch.sum(nll))
+    
+    mse = torch.pow(torch.FloatTensor(alpha_target )- torch.FloatTensor(alpha_output).double(), 2)
+    mse_alpha=-torch.mean(torch.sum(mse))
+
+    return nll_img*(1-gamma)+ mse_alpha*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
     
 def nll_across_batch(output, target):
     nll = target * torch.log(output.double())
@@ -39,12 +87,21 @@ class L2RegLoss(nn.Module):
         self.mu = mu
         self.lam = lam
         self.main_loss=eval(main_loss_str)
+        if main_loss_str.split('_')[-1]=='walpha' or main_loss_str .split('_')[-1]== 'wclass':
+            self.addclass=True
 
-    def forward(self, x, target, model):
+    def forward(self, x, target, model, class_output=None,class_target=None):
         #abs(p) for l1
         l2 = [p.pow(2).sum() for p in model.parameters()]
         l2 = sum(l2)
-        loss = self.main_loss(x, target) + self.lam*l2
-        
+
+        if self.addclass==True:
+            print('pred:',class_output)
+            print('target:',class_target)
+            loss = self.main_loss(x, target,class_output,class_target) + self.lam*l2
+        else:
+            loss = self.main_loss(x, target) + self.lam*l2
+
+            
         return loss
     

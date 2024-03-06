@@ -15,7 +15,6 @@ from visualisations import visuals
 from .evaluation_helper import evaluation_helper
 import pandas as pd
 from .comparison_metrics import *
-from .comparison_metrics import landmark_metrics, landmark_overall_metrics
 
 class validation():
     def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
@@ -31,6 +30,18 @@ class validation():
             self.loss_func = eval('L2RegLoss(cfg.TRAIN.LOSS)')
         else:
             self.loss_func = eval(cfg.TRAIN.LOSS)
+        
+        if (cfg.TRAIN.LOSS).split('_')[-1]=='wclass':
+            self.add_class_loss = True
+        else:
+            self.add_class_loss = False
+
+        if (cfg.TRAIN.LOSS).split('_')[-1]=='walpha':
+            self.add_alpha_loss = True
+        else:
+            self.add_alpha_loss = False
+
+        self.class_calculation = graf_angle_calc()
 
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
@@ -132,10 +143,25 @@ class validation():
                 
                 # get prediction
                 pred = self.net(data,meta_data)            
+
+                if self.add_class_loss==True or self.add_alpha_loss == True:
+                    pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
+
                 if self.l2_reg==True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
+                    if self.add_class_loss==True:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_classes, target_classes )
+                    elif self.add_alpha_loss== True:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas)
+                    else:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
                 else:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device))
+                    if self.add_class_loss==True:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), pred_classes, self.net, target_classes)
+                    elif self.add_alpha_loss== True:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), pred_alphas, self.net, target_alphas)
+                    else:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device))
+
                 total_loss += loss
                 
                 target_points, predicted_points = evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)

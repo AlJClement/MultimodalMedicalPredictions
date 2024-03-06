@@ -3,6 +3,11 @@ import math as math
 from matplotlib import pyplot as plt
 import os
 import math
+import sys
+import pathlib
+target_path = pathlib.Path(os.path.abspath(__file__)).parents[1]
+sys.path.append(target_path)
+from .. import evaluation_helper
 class graf_angle_calc():
     def __init__(self) -> None:
         '''
@@ -39,15 +44,13 @@ class graf_angle_calc():
             return'43-60'
         elif alpha <= 43:
             return'<43'
-        # elif np.isnan(alpha):
-        #     return 'Nan'
         else:
             raise ValueError
 
     def get_alpha_class(self, alpha: float):
         '''get classification and discription from dictionary based on, angle'''
         alpha = self.get_alpha_category(alpha)
-        print(alpha)
+        #print(alpha)
         for key in self.grf_dic.items(): 
             if self.grf_dic[key[0]]['a'] == alpha:
                 graf_class = key[0]
@@ -148,6 +151,9 @@ class graf_angle_calc():
             plt.text(xt,yt,'a='+str(round(alpha))+u"\u00b0",color='w')
             plt.show()
 
+        if np.isnan(alpha)==True:
+            print('alpha is nan')
+
         return alpha
     
     def graf_class_comparison(self, pred, pred_map, true, true_map, pixelsize):
@@ -173,3 +179,24 @@ class graf_angle_calc():
                     ]
      
         return ls_values
+    
+    def get_class_from_output(self, pred, target, pixelsize):
+        pred_alpha, target_alpha, pred_class, target_class = [],[],[],[]
+        ### get landmarks for each one in the bach
+        target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(pred, target, pixelsize)            
+
+        for i in range(pred.shape[0]):
+            #calculate alpha and class for each pred and target in the batch
+            t_alpha= self.calculate_alpha(target_points[i])
+            t_class= self.get_alpha_class(t_alpha)
+
+            p_alpha= self.calculate_alpha(predicted_points[i])
+            p_class= self.get_alpha_class(p_alpha)
+            
+            ##add to output arr
+            pred_alpha.append(p_alpha)
+            target_alpha.append(t_alpha)
+            pred_class.append(p_class[0])
+            target_class.append(t_class[0])
+
+        return pred_alpha, pred_class, target_alpha, target_class

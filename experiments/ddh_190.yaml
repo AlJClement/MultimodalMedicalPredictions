@@ -37,13 +37,13 @@ DATASET:
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 5 
   COMBINE_REVIEWERS: False 
-  SIGMA: 4 #if sigma is NONE no guassian applied
+  SIGMA: 6 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,352]
   PIXEL_SIZE: [0.0700711,0.0700711]
 
   AUGMENTATION:
-    ROTATION_FACTOR: 0
+    ROTATION_FACTOR: 1
     INTENSITY_FACTOR: 0.5
     SF: 0.2
     TRANSLATION_X: 0.1
@@ -56,9 +56,8 @@ OUTPUT_PATH: ./output
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
-  EPOCHS: 30
+  EPOCHS: 10
   LOSS: nll_across_batch_wclass
-  LOSS_CLASS: True #this adds a term for loss based on the final class output
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth

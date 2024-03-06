@@ -137,15 +137,13 @@ class test():
                 #add to comparison df
                 id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
 
-                for i in range(self.bs):
-                    #add to comparison df
-                    print('Alpha for', id[i])
-                    id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
+                print('Alpha for', id[i])
+                id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
 
-                    if comparison_df.empty == True:
-                        comparison_df = id_metric_df
-                    else:
-                        comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
+                if comparison_df.empty == True:
+                    comparison_df = id_metric_df
+                else:
+                    comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
 
             t_s=datetime.datetime.now()
 

@@ -5,6 +5,8 @@ import datetime
 from .model_init import model_init
 from .loss import *
 torch.cuda.empty_cache() 
+from .comparison_metrics import graf_angle_calc
+from .evaluation_helper import evaluation_helper
 
 class training():
     def __init__(self, cfg, logger, l2_reg=True):
@@ -25,6 +27,13 @@ class training():
         else:
             self.add_class_loss = False
 
+        if (cfg.TRAIN.LOSS).split('_')[-1]=='walpha':
+            self.add_alpha_loss = True
+        else:
+            self.add_alpha_loss = False
+
+        self.class_calculation = graf_angle_calc()
+
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
         self.momentum = 0.99
@@ -32,6 +41,8 @@ class training():
         self.device = torch.device(cfg.MODEL.DEVICE)
         if cfg.MODEL.DEVICE == 'cuda':
             torch.cuda.empty_cache()
+        self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
+        
         pass
 
     def _get_network(self):
@@ -74,18 +85,25 @@ class training():
             #target shape: (B, C, W, H) - where C is #landmarks
             pred = self.net(data, meta_data)
 
+            if self.add_class_loss==True or self.add_alpha_loss == True:
+                pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
+
+            
             if self.l2_reg==True:
                 if self.add_class_loss==True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device),class_pred, class_target, self.net)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_classes, target_classes )
+                elif self.add_alpha_loss== True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas)
                 else:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
             else:
                 if self.add_class_loss==True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), class_pred, class_target)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_classes, target_classes)
+                elif self.add_alpha_loss== True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas)
                 else:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), class_pred, class_target)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device))
 
-                
             loss.backward()
             self.optimizer.step()
             total_loss += loss.item()
