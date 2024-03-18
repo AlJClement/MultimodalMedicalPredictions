@@ -78,9 +78,12 @@ class graf_angle_calc():
         return x, y, xt, yt
     
     def get_vector(self,p1,p2):
+        
         x1,y1 = p1
         x2,y2 = p2
         v=[x2-x1,y2-y1]
+        if v[0] == 0 and v[1]==0:
+            return [0.0,0.1]
         return v
     
     def get_intersection(self, vec1, vec2):
@@ -118,8 +121,10 @@ class graf_angle_calc():
         
         i1, i2, br, ll, l = self.get_landmarks(landmarks, flip_axis = True)
         #print(i1, i2, br, ll, l)
-        
+        #if i1 and i2 are predicted the same - move them one pixel apart in y.. we assume its vertical
+     
         v_baseline = self.get_vector(i1,i2)
+
         #print(v_baseline)
         #v_cartroof = self.get_vector(self.br,self.l)
         v_bonyroof = self.get_vector(br,ll)

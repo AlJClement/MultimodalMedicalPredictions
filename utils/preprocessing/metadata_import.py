@@ -18,10 +18,11 @@ class MetadataImport():
             col_name, value = list(dic.items())[0]
             col_names.append(col_name)
 
-        meta = pd.read_csv(self.metapath, usecols=col_names)
+        meta = pd.read_csv(self.metapath,dtype=object, usecols=col_names)
         return meta
         
     def _get_array(self, meta_df, patid):
+        patid=patid.split('_')[0]
         pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
         return pat_meta_arr
         
@@ -64,7 +65,7 @@ class MetadataImport():
 
                 if col_encodetype == 'hot':
                     new_cols = self._hot_encode(meta_data_col, num, col_name)
-                elif col_encodetype == 'continous':
+                elif col_encodetype == 'continuous':
                     new_cols = self._duplicate_col(meta_data_col, num)
                 elif col_encodetype == 'tokenize':
                     new_cols = self._tokenize(meta_data_col, num)

@@ -85,7 +85,7 @@ class class_agreement_metrics():
             confusion_matrix_multiclasses = multilabel_confusion_matrix(gt_class_arr, pred_class_arr)#, labels=classes)
 
             ##plot confusion matrix
-            visualisations.comparison(self.diagnosis_name).confusion_matrix_multiclass(classes, confusion_matrix_multiclasses, self.loc)
+            visualisations.comparison(self.diagnosis_name).confusion_matrix_multiclass(classes, confusion_matrix_multiclasses, self.loc, name =str(groups[0]) +' vs '+str(groups[1]))
 
             #find values for all
             accuracy = np.array([])
@@ -137,4 +137,8 @@ class class_agreement_metrics():
 
         metric_str=metric_str[:-2]
 
-        return metric_str
+        ls = [['percision: ',round(precision[0],2),round(precision[1],2)],
+              ['recall: ',round(recall[0],2),round(recall[1],2)],
+              ['accuracy: ',round(accuracy[0],2),round(accuracy[1],2)]]
+
+        return ls

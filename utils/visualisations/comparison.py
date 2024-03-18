@@ -15,7 +15,7 @@ class comparison():
             return ValueError('must set the threshold_dic dicitonary')
         pass        
 
-    def confusion_matrix_multiclass(self, classes, confusion_matrix_multiclasses, loc='test'):
+    def confusion_matrix_multiclass(self, classes, confusion_matrix_multiclasses,loc='test',name =''):
         fig, ax= plt.subplots(1, confusion_matrix_multiclasses.shape[0])
         fig.set_figheight(2)
         fig.set_figwidth(20)
@@ -26,9 +26,9 @@ class comparison():
             # labels, title and ticks
             ax[c].set_xlabel('Predicted labels')
             ax[c].set_ylabel('True labels')
-            ax[c].set_title('Confusion Matrix: '+ class_name)
+            ax[c].set_title('Confusion Matrix: '+ name)
         
-        plt.savefig('./output/'+loc+'/Confusion_Matrix_allclasses.png')
+        plt.savefig('./output/'+loc+'/Confusion_Matrix_allclasses'+str(c)+'.png')
 
     def to_one_hot(self, y, num_classes):
         y = y.squeeze().astype(int)

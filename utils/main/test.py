@@ -21,7 +21,7 @@ torch.cuda.empty_cache()
 class test():
     def __init__(self, cfg, logger):
         self.cfg=cfg
-        self.plot_predictions = False
+        self.plot_predictions = True
         self.logger = logger
         self.net = self.load_network(cfg.TEST.NETWORK)
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
@@ -165,11 +165,16 @@ class test():
 
         #from df get class agreement metrics TP, TN, FN, FP
         class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
-        self.logger.info("Class Agreement: {}".format(class_agreement))
+        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[0]))
+        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[1]))
+        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[2]))
 
         class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
-        self.logger.info("Class Agreement: {}".format(class_agreement))
-        
+
+        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[0]))
+        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[1]))
+        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[2]))
+
 
         sdr_summary = ""
         if self.dataset_type == 'LANDMARKS':
@@ -188,7 +193,7 @@ class test():
                 sdr_summary = sdr_summary.T.mean(axis=1)
 
                 #get mean
-                self.logger.info("SDR all landmarks: {}".format(sdr_summary))
+                self.logger.info("SDR all landmarks: {},{},{},{}".format(round(sdr_summary[0],2),round(sdr_summary[1],2),round(sdr_summary[2],2),round(sdr_summary[3],2)))
 
             except:
                 raise ValueError('Check Landmark radial errors are calcuated')

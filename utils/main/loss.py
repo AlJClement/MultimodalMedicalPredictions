@@ -5,7 +5,7 @@ import torch.nn as nn
 # dimensions are [B, C, W, H]
 # the log is done within this loss function whereas normally it would be a log softmax
 # why? - i think because think about log graph would be really steep
-def nll_across_batch_wclass(output, target, class_output, class_target, gamma=0.2,add_weights=False):
+def nll_across_batch_wclass(output, target, class_output, class_target, gamma=0.2,add_weights=True):
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
@@ -32,17 +32,19 @@ def nll_across_batch_wclass(output, target, class_output, class_target, gamma=0.
     one_hot_targets=torch.nn.functional.one_hot(_one_t,nb_classes)
 
     ##if add weights:
-    weights = torch.LongTensor([[1],[2],[10]])
+    weights = torch.LongTensor([[10],[2],[1]])
     if add_weights == True:
         one_hot_outputs= torch.transpose((torch.transpose(one_hot_outputs,0,1)*weights),1,0)
-
-
+        one_hot_targets= torch.transpose((torch.transpose(one_hot_targets,0,1)*weights),1,0)
 
 
     nll = (one_hot_outputs)*torch.log(one_hot_targets.double())
     nll_class = -torch.mean(torch.sum(nll))
+    
+    mse = torch.pow((one_hot_targets - one_hot_outputs).double(), 2)
+    mse_class=-torch.mean(torch.sum(mse))
 
-    return nll_img*(1-gamma)+ nll_class*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
+    return nll_img*(1-gamma)+ mse_class*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
 
 
 def nll_across_batch_walpha(output, target, alpha_output, alpha_target, gamma = 0.2):
@@ -87,8 +89,10 @@ class L2RegLoss(nn.Module):
         self.mu = mu
         self.lam = lam
         self.main_loss=eval(main_loss_str)
-        if main_loss_str.split('_')[-1]=='walpha' or main_loss_str .split('_')[-1]== 'wclass':
+        if main_loss_str.split('_')[-1]=='walpha' or main_loss_str.split('_')[-1]== 'wclass':
             self.addclass=True
+        else:
+            self.addclass=False
 
     def forward(self, x, target, model, class_output=None,class_target=None):
         #abs(p) for l1

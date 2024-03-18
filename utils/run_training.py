@@ -26,7 +26,7 @@ def main():
     cfg_name = args.cfg
 
     # print the arguments into the log
-    help = helper(cfg_name)
+    help = helper(cfg_name, 'training')
     logger = help.setup_logger()
     logger.info("-----------Arguments-----------")
     logger.info(vars(args))

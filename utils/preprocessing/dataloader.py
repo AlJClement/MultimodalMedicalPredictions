@@ -92,14 +92,17 @@ class dataloader(Dataset):
                         #get image file
                         #add annotation folders
                         ann_list = []
-                    
-                        for label_folder in os.listdir(self.label_dir):
-                            img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))                        
-                            annotation_dic[i].append([os.path.join(self.label_dir, label_folder,id + label_folder + self.ann_extension)])
+                        if len(os.listdir(self.label_dir))<10:
+                            for label_folder in os.listdir(self.label_dir):
+                                img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))                                
+                                annotation_dic[i].append([os.path.join(self.label_dir, label_folder,id + label_folder + self.ann_extension)])
+                        else:    
+                            img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))       
+                            label_folder = ''                 
+                            annotation_dic[i].append([os.path.join(self.label_dir,id + self.ann_extension)])
 
                     else: 
                         #keeps each patient seperate
-                        
                         #get image file
                         img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))
                         #add annotation folders
@@ -117,7 +120,13 @@ class dataloader(Dataset):
     
     def get_img(self, seq, img_path:str):
         '''loads images as arr'''
-        image = io.imread(img_path, as_gray=True)
+        try:
+            #assumes file is jpg
+            image = io.imread(img_path, as_gray=True)
+        except:
+            #if its saved as png
+            image = io.imread(img_path[:-4]+'.png', as_gray=True)
+
         # Augment image
         image_resized = seq(image=image)
         image_rescaled = (image_resized - np.min(image_resized)) / np.ptp(image_resized)
@@ -134,10 +143,13 @@ class dataloader(Dataset):
             kps_np_array = np.loadtxt(ann_path[:-4]+ext, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
 
         if self.flip_axis:
-            kps_np_array = np.flip(kps_np_array, axis=1)
+            if ann_path.split('/')[-1][0]=='A':
+                kps_np_array = np.flip(kps_np_array, axis=1)
         # Augment landmark annotations
         kps = KeypointsOnImage.from_xy_array(kps_np_array, shape=image_shape)
         landmarks_arr = seq(keypoints=kps)
+        
+
         return landmarks_arr
 
     def add_sigma_channels(self, ann_points, img_shape, plot=False):
@@ -193,7 +205,7 @@ class dataloader(Dataset):
 
         return ann_arr_multireviewer,ann_points,folder_ls
     
-    def get_numpy_dataset(self, save_cache=True):
+    def get_numpy_dataset(self, save_cache=False):
         '''this function inputs the cfg and gets out a numpy array of the desired input structure'''
         # output is : 
         # [im_arr (numscans, size h, size w),
@@ -224,39 +236,37 @@ class dataloader(Dataset):
             cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
 
             if save_cache==True:
-                if os.path.exists(cache_data_dir):
-                    pass
-                else:
-                    #save input data files for debugging
-                    cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
-                    if not os.path.exists(cache_data_dir):
-                        os.makedirs(cache_data_dir)
 
-                    #save img
-                    _im = Image.fromarray(_im_arr)
-                    _im.save(os.path.join(cache_data_dir,pat_id+self.img_extension))
-                    #save annonation points
-                    for i in range(len(folder_ls)):
-                        ann_folder = folder_ls[i]
-                        annotation = annotation_points[i] 
-                        np.savetxt(os.path.join(cache_data_dir,pat_id+ann_folder+'.txt'), annotation, fmt="%.14g", delimiter=" ")
+                #save input data files for debugging
+                cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
+                if not os.path.exists(cache_data_dir):
+                    os.makedirs(cache_data_dir)
 
-                    
-                    #plot annotation array
-                    if len(annotation_points)>1:
-                        #if its a list loop (*multiple annotators, kept seperate)
-                        for aa in _annotation_arr:
-                            i=0
-                            _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr)
-                            plt.imshow(_a)
-                            plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+folder_ls[i]+self.img_extension),_a)
-                            plt.close()
-                            i=i+1
-                    else:
-                        _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr[0])
+                #save img
+                _im = Image.fromarray(_im_arr)
+                _im.save(os.path.join(cache_data_dir,pat_id+self.img_extension))
+                #save annonation points
+                for i in range(len(folder_ls)):
+                    ann_folder = folder_ls[i]
+                    annotation = annotation_points[i] 
+                    np.savetxt(os.path.join(cache_data_dir,pat_id+ann_folder+'.txt'), annotation, fmt="%.14g", delimiter=" ")
+
+                
+                #plot annotation array
+                if len(annotation_points)>1:
+                    #if its a list loop (*multiple annotators, kept seperate)
+                    for aa in _annotation_arr:
+                        i=0
+                        _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr)
                         plt.imshow(_a)
-                        plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
+                        plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+folder_ls[i]+self.img_extension),_a)
                         plt.close()
+                        i=i+1
+                else:
+                    _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr[0])
+                    plt.imshow(_a)
+                    plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
+                    plt.close()
 
             if meta_arr.empty:
                 id_arr = np.array([pat_id])

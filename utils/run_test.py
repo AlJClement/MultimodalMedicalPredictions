@@ -24,7 +24,7 @@ def main():
     cfg_name = args.cfg
 
     # print the arguments into the log
-    help = helper(cfg_name)
+    help = helper(cfg_name, 'test')
     logger = help.setup_logger()
     cfg = help._get_cfg()
 

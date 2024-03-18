@@ -1,0 +1,69 @@
+INPUT_PATHS:
+  DATASET_NAME: ddh
+  PARTITION: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/partition_0.7_0.15_0.15_0.02898.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/img/all_merged #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/txt_w190_g #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/metadata_march24.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+  #make the first col always the patient ID col
+  ID_COL: Accession Number
+  META_COLS: [Sex: hot, Age(Days): continuous] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
+
+MODEL: 
+  #NAME: unet_meta_lastlayer
+  #IN_CHANNELS: 1
+  OUT_CHANNELS: 5 #for 5 landmarks
+  #INIT_FEATURES: 4
+  #META_FEATURES: [100, 100, 100] 
+  # #how large to make the linear layer, if its ZERO no features added
+  DEVICE: cuda
+
+  #
+  META_FEATURES: [100,100,100] 
+  NAME: 'unet_plus_plus'
+  ENCODER_NAME: 'resnet34'
+  ENCODER_WEIGHTS: 'imagenet'
+  BATCH_NORM_DECODER: True
+  DECODER_CHANNELS:
+    - 256
+    - 256
+    - 256
+    - 128
+    - 64
+  IN_CHANNELS: 1
+
+
+DATASET:
+  IMAGE_EXT: ".jpg"
+  ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
+  NUM_LANDMARKS: 5 
+  COMBINE_REVIEWERS: False 
+  SIGMA: 6 #if sigma is NONE no guassian applied
+  FLIP_AXIS: True
+  CACHED_IMAGE_SIZE: [512,352]
+  PIXEL_SIZE: [0.0700711,0.0700711]
+
+  AUGMENTATION:
+    ROTATION_FACTOR: 1
+    INTENSITY_FACTOR: 0.5
+    SF: 0.2
+    TRANSLATION_X: 0.1
+    TRANSLATION_Y: 0.1
+    ELASTIC_STRENGTH: 0
+    ELASTIC_SMOOTHNESS: 0
+
+OUTPUT_PATH: ./output
+
+TRAIN:
+  BATCH_SIZE: 4
+  LR: 0.001
+  EPOCHS: 50
+  LOSS: nll_across_batch
+
+TEST:
+  NETWORK: ./output/model:1/_model_run:1_idx.pth
+  COMPARISON_METRICS: 
+    - graf_angle_calc().graf_class_comparison
+    - landmark_metrics().get_eres
+    - landmark_metrics().get_radial_errors
+  SDR_THRESHOLD: [0.5, 1.0, 2.0, 4.0]
+  SDR_UNITS: 'mm' #'pixels'

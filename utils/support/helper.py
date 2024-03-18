@@ -6,12 +6,12 @@ from .default_config import get_cfg_defaults
 from datetime import datetime
 
 class helper():
-    def __init__(self, cfg_name) -> None:
+    def __init__(self, cfg_name, set) -> None:
         '''Helper function contains functions to 'help' the overall organization of the outputs/repos
         ex. logger functions etc'''
         self.cfg=self.load_cfg(os.path.join(os.getcwd(),'experiments',cfg_name+'.yaml'))#
         self.cfg_name = cfg_name
-        self.log_path = self.cfg.OUTPUT_PATH +'/'+cfg_name+"_"+self._get_datetime()+'.txt'
+        self.log_path = self.cfg.OUTPUT_PATH +'/'+cfg_name+"_"+self._get_datetime()+set+'.txt'
         self.dataset_name = self.cfg.INPUT_PATHS.DATASET_NAME
         self.output_path = self.cfg.OUTPUT_PATH
         if not os.path.exists(self.output_path):
