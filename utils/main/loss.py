@@ -100,7 +100,7 @@ class L2RegLoss(nn.Module):
         else:
             self.addclass=False
 
-    def forward(self, x, target, model, class_output=None,class_target=None):
+    def forward(self, x, target, model, class_output=None,class_target=None, gamma=0.0):
         #abs(p) for l1
         l2 = [p.pow(2).sum() for p in model.parameters()]
         l2 = sum(l2)
@@ -108,7 +108,7 @@ class L2RegLoss(nn.Module):
         if self.addclass==True:
             print('pred:',class_output)
             print('target:',class_target)
-            loss = self.main_loss(x, target,class_output,class_target) + self.lam*l2
+            loss = self.main_loss(x, target,class_output,class_target,gamma) + self.lam*l2
         else:
             loss = self.main_loss(x, target) + self.lam*l2
 
