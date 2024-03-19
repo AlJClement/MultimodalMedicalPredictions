@@ -1,9 +1,9 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/partition_0.7_0.15_0.15_0.02898.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  IMAGES: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/img/all_merged #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/txt_w190_g #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/metadata_march24.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_march24/partition_0.7_0.15_0.15_0.02898.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_march24/img/all_merged #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_march24/txt_w190_g #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_march24/metadata_march24.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
   #make the first col always the patient ID col
   ID_COL: Accession Number
   META_COLS: [Sex: hot, Age(Days): continuous] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
@@ -54,10 +54,10 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 6
   LR: 0.001
-  EPOCHS: 50
-  LOSS: nll_across_batch
+  EPOCHS: 20
+  LOSS: nll_across_batch_walpha
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth

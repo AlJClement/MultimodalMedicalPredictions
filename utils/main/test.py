@@ -185,10 +185,11 @@ class test():
                     sdr_stats, txt = landmark_overall_metrics(self.pixel_size, self.sdr_units).get_sdr_statistics(comparison_df[col], self.sdr_thresholds)
                     self.logger.info("{} for {}".format(txt, col))
 
-                    if sdr_summary == "":
-                        sdr_summary = np.array([sdr_stats])
-                    else:
+                    try:
+                        print(sdr_summary)
                         sdr_summary=np.concatenate((sdr_summary,np.array([sdr_stats])), axis=0)
+                    except:
+                        sdr_summary = np.array([sdr_stats])
                 
                 sdr_summary = sdr_summary.T.mean(axis=1)
 
