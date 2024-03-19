@@ -5,7 +5,7 @@ import torch.nn as nn
 # dimensions are [B, C, W, H]
 # the log is done within this loss function whereas normally it would be a log softmax
 # why? - i think because think about log graph would be really steep
-def nll_across_batch_wclass(output, target, class_output, class_target, gamma=0.2,add_weights=True):
+def nll_across_batch_wclass(output, target, class_output, class_target, gamma=0.2,add_weights=False):
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
@@ -47,18 +47,24 @@ def nll_across_batch_wclass(output, target, class_output, class_target, gamma=0.
     return nll_img*(1-gamma)+ mse_class*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
 
 
-def nll_across_batch_walpha(output, target, alpha_output, alpha_target, gamma = 0.2):
+def nll_across_batch_nll_walpha(output, target, alpha_output, alpha_target, gamma = 0.2):
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
     nll = torch.FloatTensor(alpha_target)*torch.log(torch.FloatTensor(alpha_output).double())
     nll_alpha = -torch.mean(torch.sum(nll))
-    
+
+    return nll_img*(1-gamma)+ nll_alpha*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
+   
+def nll_across_batch_mse_walpha(output, target, alpha_output, alpha_target, gamma = 0.2):
+    nll = target * torch.log(output.double())
+    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+        
     mse = torch.pow(torch.FloatTensor(alpha_target )- torch.FloatTensor(alpha_output).double(), 2)
     mse_alpha=-torch.mean(torch.sum(mse))
 
-    return nll_img*(1-gamma)+ mse_alpha*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
-    
+    return nll_img*(1-gamma)+ mse_alpha*gamma
+
 def nll_across_batch(output, target):
     nll = target * torch.log(output.double())
     return -torch.mean(torch.sum(nll, dim=(2, 3)))

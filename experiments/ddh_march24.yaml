@@ -57,7 +57,8 @@ TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
   EPOCHS: 50
-  LOSS: nll_across_batch
+  LOSS: nll_across_batch_nll_walpha #nll_across_batch_mse_walpha
+  GAMMA: 0.1
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth
