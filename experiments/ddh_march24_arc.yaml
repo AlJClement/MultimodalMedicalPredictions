@@ -56,14 +56,9 @@ OUTPUT_PATH: ./output
 TRAIN:
   BATCH_SIZE: 6
   LR: 0.001
-<<<<<<< HEAD:experiments/ddh_march24_arc.yaml
   EPOCHS: 20
-  LOSS: nll_across_batch_walpha
-=======
-  EPOCHS: 50
-  LOSS: nll_across_batch_nll_walpha #nll_across_batch_mse_walpha
-  GAMMA: 0.1
->>>>>>> 5e11e3961d518c0c41503301234116772aecfd8a:experiments/ddh_march24.yaml
+  LOSS: nll_across_batch_mse_walpha
+  GAMMA: 1.0
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth

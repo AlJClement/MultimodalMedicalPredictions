@@ -8,4 +8,4 @@ module load Anaconda3
 source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env
 
 #run python code
-python ./utils/run_training.py --cfg ddh_march24
+python ./utils/run_training.py --cfg ddh_march24_arc
