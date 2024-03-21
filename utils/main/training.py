@@ -94,14 +94,14 @@ class training():
             
             if self.l2_reg==True:
                 if self.add_class_loss==True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_classes, target_classes,self.gamma)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,pred_classes, target_classes,self.gamma)
                 elif self.add_alpha_loss== True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
                 else:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
             else:
                 if self.add_class_loss==True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_classes, target_classes,self.gamma)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,pred_alphas, target_alphas, pred_classes, target_classes,self.gamma)
                 elif self.add_alpha_loss== True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
                 else:
