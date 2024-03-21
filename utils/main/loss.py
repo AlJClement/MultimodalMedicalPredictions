@@ -36,7 +36,7 @@ def nll_across_batch_mse_wclass(output, target, pred_alphas, target_alphas, clas
     one_hot_targets=torch.nn.functional.one_hot(_one_t,nb_classes)
 
     ##if add weights:
-    weights = torch.LongTensor([[1],[10],[100]])
+    weights = torch.LongTensor([[1],[2],[4]])
     if add_weights == True:
         one_hot_outputs= torch.transpose((torch.transpose(one_hot_outputs,0,1)*weights),1,0)
         one_hot_targets= torch.transpose((torch.transpose(one_hot_targets,0,1)*weights),1,0)
