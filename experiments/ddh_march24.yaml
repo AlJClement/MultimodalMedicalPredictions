@@ -55,11 +55,11 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 4
   LR: 0.001
-  EPOCHS: 20
-  LOSS: nll_across_batch_mse_wclass
-  GAMMA: 1.0
+  EPOCHS: 10
+  LOSS: nll_across_batch ##_mse_wclass
+  GAMMA: 0.0 #                                                                                                                                                                                                    .6
 
 TEST:
   NETWORK: ./output/model:1/_model_run:1_idx.pth

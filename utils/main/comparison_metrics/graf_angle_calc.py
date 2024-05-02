@@ -116,8 +116,7 @@ class graf_angle_calc():
         v_baseline: is the vector along the labrum
         v_bonyroof: vector along bony rim
         beta angle calculations commented out'''
-        if len(landmarks) != 5:
-            return ValueError('There are not only 5 landmarks')
+        #get landmarks in this function will assume the first 5 are the order as above.
         
         i1, i2, br, ll, l = self.get_landmarks(landmarks, flip_axis = True)
         #print(i1, i2, br, ll, l)
