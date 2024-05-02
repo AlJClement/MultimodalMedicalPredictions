@@ -145,6 +145,8 @@ class dataloader(Dataset):
         if self.flip_axis:
             if ann_path.split('/')[-1][0]=='A':
                 kps_np_array = np.flip(kps_np_array, axis=1)
+            if ann_path.split('/')[-1][0]=='0': #rnoh
+                kps_np_array = np.flip(kps_np_array, axis=1)
         # Augment landmark annotations
         kps = KeypointsOnImage.from_xy_array(kps_np_array, shape=image_shape)
         landmarks_arr = seq(keypoints=kps)
