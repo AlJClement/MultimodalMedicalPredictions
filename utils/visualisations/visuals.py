@@ -26,6 +26,10 @@ class visuals():
         predicted_points = predicted_points.detach().cpu().numpy()
         target_points = target_points.cpu().detach().numpy()
         #print(self.pixelsize)
+        #comment out if you want 5 landmarks plotted
+        output = output[:4]
+        predicted_points = predicted_points[:4]
+        target_points=target_points[:4]
 
         _output = self.channels_thresholded(output)
         ax.imshow(_output, cmap='inferno', alpha = 1)
@@ -38,6 +42,7 @@ class visuals():
             ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=10)
             ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=10)
         else:
+            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=1)
             ax.imshow(image, cmap='Greys_r',alpha=0.4)
             
         plt.savefig(self.save_path)

@@ -136,6 +136,7 @@ class dataloader(Dataset):
     
     def get_landmarks(self, ann_path, seq, image_shape):
         # Get annotations
+        print(ann_path)
         try:
             kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
         except:
@@ -230,6 +231,9 @@ class dataloader(Dataset):
             ##LOAD ANNOTATIONS##
             _annotation_arr, annotation_points, folder_ls = self.get_ann(annotation_files[self.set][i], seq, _im_arr.shape, orig_shape)
 
+            _annotation_arr = _annotation_arr[:5]
+            annotation_points= annotation_points[:5]
+            print(len(_annotation_arr))
             ##LOAD META##
             _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id)
             if _meta_arr.empty:
@@ -293,7 +297,7 @@ class dataloader(Dataset):
         #expand numpy arr and make values as torch
         im_arr = np.expand_dims(im_arr,axis=1)
         im_torch = torch.from_numpy(im_arr).float()
-            
+
         annotation_torch = torch.from_numpy(annotation_arr).float()
         if len(annotation_torch.shape)==5:
             annotation_torch=torch.squeeze(annotation_torch,dim=1)

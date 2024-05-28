@@ -74,8 +74,18 @@ class class_agreement_metrics():
                 pass
             else:
                 recall = 100 * float(tp) / float(tp + fn)
-                recall = 100 * float(tp) / float(tp + fn)
 
+            if tn+fp == 0:
+                specificity = 0.0
+                pass
+            else:
+                specificity = 100 * float(tn) / float(tn + fp)
+            
+            if tp + _fn == 0:
+                sensitivity = 0.0
+                pass
+            else:
+                sensitivity = 100 * float(tp) / float(tp + fn)
         else:
             #multi class so outputs will be an array for tn, fp, fn, tp    
             classes = set(gt_class_arr)
@@ -92,6 +102,8 @@ class class_agreement_metrics():
             precision = np.array([])
             recall =  np.array([])
             total = np.array([])
+            sensitivity = np.array([])
+            specificity = np.array([])
             tn, fp, fn, tp = np.array([]),np.array([]),np.array([]),np.array([])
 
             for _class in confusion_matrix_multiclasses:
@@ -106,18 +118,34 @@ class class_agreement_metrics():
                     _precision = 0.0
                 else:
                     _precision = 100 * float(_tp) / float(_tp + _fp)
+
                 if _tp+_fn == 0:
                     _recall = 0.0
                     pass
                 else:
                     _recall = 100 * float(_tp) / float(_tp + _fn)
                 
+                if _tn+_fp == 0:
+                    _specificity = 0.0
+                    pass
+                else:
+                    _specificity = 100 * float(_tn) / float(_tn + _fp)
+                
+                if _tp + _fn == 0:
+                    _sensitivity = 0.0
+                    pass
+                else:
+                    _sensitivity = 100 * float(_tp) / float(_tp + _fn)
+                    
                 precision = np.append(precision, _precision)
                 accuracy = np.append(accuracy, _accuracy)
                 recall = np.append(recall, _recall)
                 total =  np.append(total, _total)
+                specificity = np.append(specificity, _specificity)
+                sensitivity =  np.append(sensitivity, _sensitivity)
                 
                 tn, fp, fn, tp = np.append(tn,_tn),np.append(fp,_fp), np.append(fn,_fn),np.append(tn,_tp)
+
 
         ls = [['TN:', tn],
               ['FP:', fp], 
@@ -125,7 +153,10 @@ class class_agreement_metrics():
               ['TP:', tp],
               ['percision: ',precision],
               ['recall: ', recall],
-              ['accuracy', accuracy]]
+              ['accuracy', accuracy],
+              ['sensitivity', sensitivity],
+              ['specificity', specificity]]
+        print(ls)
         
         metric_str = ''
         for i in ls:
@@ -139,6 +170,8 @@ class class_agreement_metrics():
 
         ls = [['percision: ',round(precision[0],2),round(precision[1],2)],
               ['recall: ',round(recall[0],2),round(recall[1],2)],
-              ['accuracy: ',round(accuracy[0],2),round(accuracy[1],2)]]
-
+              ['accuracy: ',round(accuracy[0],2),round(accuracy[1],2)],
+              ['sensitivity: ',round(sensitivity[0],2),round(sensitivity[1],2)],
+              ['specificity: ',round(specificity[0],2),round(specificity[1],2)]]
+                
         return ls
