@@ -81,7 +81,7 @@ class class_agreement_metrics():
             else:
                 specificity = 100 * float(tn) / float(tn + fp)
             
-            if tp + _fn == 0:
+            if tp +fn == 0:
                 sensitivity = 0.0
                 pass
             else:
@@ -168,10 +168,10 @@ class class_agreement_metrics():
 
         metric_str=metric_str[:-2]
 
-        ls = [['percision: ',round(precision[0],2),round(precision[1],2)],
-              ['recall: ',round(recall[0],2),round(recall[1],2)],
-              ['accuracy: ',round(accuracy[0],2),round(accuracy[1],2)],
-              ['sensitivity: ',round(sensitivity[0],2),round(sensitivity[1],2)],
-              ['specificity: ',round(specificity[0],2),round(specificity[1],2)]]
+        # ls = [['percision: ',round(precision[0],2),round(precision[1],2)],
+        #       ['recall: ',round(recall[0],2),round(recall[1],2)],
+        #       ['accuracy: ',round(accuracy[0],2),round(accuracy[1],2)],
+        #       ['sensitivity: ',round(sensitivity[0],2),round(sensitivity[1],2)],
+        #       ['specificity: ',round(specificity[0],2),round(specificity[1],2)]]
                 
         return ls

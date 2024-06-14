@@ -125,7 +125,12 @@ class dataloader(Dataset):
             image = io.imread(img_path, as_gray=True)
         except:
             #if its saved as png
-            image = io.imread(img_path[:-4]+'.png', as_gray=True)
+            try:
+                image = io.imread(img_path[:-4]+'.png', as_gray=True)
+            except:
+                #add _ between L/R and series number
+                new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
+                image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
 
         # Augment image
         image_resized = seq(image=image)
@@ -147,6 +152,8 @@ class dataloader(Dataset):
             if ann_path.split('/')[-1][0]=='A':
                 kps_np_array = np.flip(kps_np_array, axis=1)
             if ann_path.split('/')[-1][0]=='0': #rnoh
+                kps_np_array = np.flip(kps_np_array, axis=1)
+            if ann_path.split('/')[-1][0]=='R': #rnoh
                 kps_np_array = np.flip(kps_np_array, axis=1)
         # Augment landmark annotations
         kps = KeypointsOnImage.from_xy_array(kps_np_array, shape=image_shape)
@@ -275,11 +282,13 @@ class dataloader(Dataset):
                     plt.close()
 
             if meta_arr.empty:
+                accessionid_arr = np.array([pat_id])
                 id_arr = np.array([pat_id])
                 meta_arr = _meta_arr
                 im_arr = np.expand_dims(_im_arr,axis=0)
                 annotation_arr =np.expand_dims(_annotation_arr,axis=0)
             else:
+                accessionid_arr = np.concatenate((accessionid_arr,np.array([pat_id])),0)
                 id_arr = np.concatenate((id_arr,np.array([pat_id])),0)
                 im_arr = np.concatenate((im_arr, np.expand_dims(_im_arr,axis=0)),0)
                 annotation_arr = np.concatenate((annotation_arr,np.expand_dims(_annotation_arr,axis=0)),0)
@@ -291,7 +300,7 @@ class dataloader(Dataset):
             meta_arr.to_csv(meta_path)
         
         #drop first col of ids
-        id_arr = meta_arr[self.pat_id_col]
+        accessionid_arr = meta_arr[self.pat_id_col]
         meta_arr=meta_arr.drop(self.pat_id_col,axis=1)
 
         #expand numpy arr and make values as torch
@@ -310,7 +319,10 @@ class dataloader(Dataset):
         id_arr = np.array(id_arr)
         id_arr = np.expand_dims(id_arr,axis=1)
 
-        return im_torch, annotation_torch, meta_torch, id_arr
+        accessionid_arr = np.array(accessionid_arr)
+        accessionid_arr = np.expand_dims(accessionid_arr,axis=1)
+
+        return im_torch, annotation_torch, meta_torch, id_arr #, accessionid_arr
 
     def __getitem__(self, index):
         x = self.data[index]

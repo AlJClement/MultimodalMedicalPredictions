@@ -1,8 +1,7 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/partition_0.7_0.15_0.15_0.02898.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/partition_subset.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/img/all_merged #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  DCMS:  /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/img/all_merged 
   LABELS: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/txt_all10 #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   META_PATH: /data/medimaging/multimodal_datasets/ddh_march24/combine_190_MIUA/metadata_march24.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
   

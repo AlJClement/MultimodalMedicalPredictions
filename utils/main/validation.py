@@ -17,11 +17,13 @@ import pandas as pd
 from .comparison_metrics import *
 
 class validation():
-    def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
+    def __init__(self, cfg, logger, net, l2_reg=True, save_img=True, save_heatmap_asdcms=True):
+        self.dcm_dir = cfg.INPUT_PATHS.DCMS
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
         self.max_epochs = cfg.TRAIN.EPOCHS
+        self.img_extension = cfg.DATASET.IMAGE_EXT
 
         self.net = net
         self.logger = logger
@@ -43,7 +45,6 @@ class validation():
         else:
             self.add_alpha_loss = False
 
-
         self.class_calculation = graf_angle_calc()
 
         self.bs = cfg.TRAIN.BATCH_SIZE
@@ -51,9 +52,11 @@ class validation():
         self.momentum = 0.99
         self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
+        self.combine_graf_fhc=cfg.TRAIN.COMBINE_GRAF_FHC
 
         self.evaluation = evaluation_helper()
         self.save_img = save_img
+        self.save_heatmap_asdcms = save_heatmap_asdcms
 
         self.outputpath=cfg.OUTPUT_PATH +'/validation'
         if os.path.exists(self.outputpath)==False:
@@ -63,6 +66,7 @@ class validation():
         self.comparison_metrics=cfg.TEST.COMPARISON_METRICS
         self.sdr_thresholds = cfg.TEST.SDR_THRESHOLD
         self.sdr_units = cfg.TEST.SDR_UNITS
+        
     
     def _get_optimizer(self,net):
         optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
@@ -129,23 +133,31 @@ class validation():
     
         return txt 
     
-    def get_combined_agreement(self, df, name_pred, name_true):
+    def get_combined_agreement(self, df, name_pred, name_true, groups):
         #if they agree yes, if they dont make it the more conservative of the two
         # get classes as binary 
+        i=0
+        for group in groups:
+            #convert class to graf class as abnormal/normal based on grouping    
+            new_class =['n','a']
+            if len(group)==2:
+                if i == 0:
+                    a,b=0,1
+                else:
+                    a,b=1,0
+                df['graf class pred']=df['class pred'].apply(lambda x: new_class[a] if x in group else new_class[b])
+                df['graf class true']=df['class true'].apply(lambda x: new_class[a] if x in group else new_class[b])
+            else:
+                pass
+            i=i+1
 
-        if df['class true'] == df['fhc true']:
-            df[name_true] = 1
-        else:
-            df[name_true] = 1
-
-        
-        if df['class pred'] == df['fhc pred']:
-            df[name_pred] = 1
-        else:
-            df[name_pred] = 1
+        #check fhc == graf
+        df['true agree']=(df['graf class true'] == df['fhc class true'])
+        df[name_true] = np.where(df['true agree'] == True, df['graf class true'], 'a')
+        df['pred agree']=(df['graf class pred'] == df['fhc class pred'])
+        df[name_true] = np.where(df['pred agree'] == True, df['graf class pred'], 'a')
 
         return df
-
     
     def val_meta(self, dataloader, epoch):
         self.net.eval()
@@ -196,11 +208,20 @@ class validation():
                     for i in range(self.bs):
                         if self.save_img  == True:
                             #
-                            #print('saving validation img:', id[i])
+                            print('saving validation img:', id[i])
                             #print(self.pixel_size[0])
                             visuals(self.outputpath+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
                             visuals(self.outputpath+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=True)
-            
+
+                            if self.save_heatmap_asdcms == True:
+                                out_dcm_dir = self.outputpath+'/as_dcms' 
+                                if os.path.exists(out_dcm_dir)==False:
+                                    os.mkdir(out_dcm_dir)
+
+                                dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
+                                visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
+                                visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
+                            
                 for i in range(self.bs):
                     #add to comparison df
                     print('Alpha for', id[i])
@@ -233,22 +254,24 @@ class validation():
         class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
         self.logger.info("Class Agreement GRAF: {}".format(class_agreement))
 
+        if self.combine_graf_fhc==True:
         # #add fhc cols for normal and abnormal (n and a)
-        # comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
-        # comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
+            comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
+            comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
 
-        # class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true', loc='validation')._get_metrics(group=True,groups=[('n'),('a')])
-        # self.logger.info("Class Agreement FHC: {}".format(class_agreement))
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true', loc='validation')._get_metrics(group=True,groups=[('n'),('a')])
+            self.logger.info("Class Agreement FHC: {}".format(class_agreement))
 
-        
-        # ## Concensus of FHC and Graf
-        # comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&i', 'graf&fhc true i_ii&iii&i')
-        # comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv')
-        # class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&i', 'graf&fhc true i_ii&iii&i', loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
-        # self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
-        # class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
-        # self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
-        
+
+            ## Concensus of FHC and Graf
+            comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&i', 'graf&fhc true i_ii&iii&i', groups=[('i'),('ii','iii/iv')])
+            comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&i', 'graf&fhc true i_ii&iii&iv', loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+            self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
+
+
         if self.dataset_type == 'LANDMARKS':
             #calculate SDR
             try:
