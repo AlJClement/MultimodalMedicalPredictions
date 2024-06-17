@@ -22,6 +22,7 @@ class unet_plus_plus(nn.Module):
             encoder_weights=cfg.MODEL.ENCODER_WEIGHTS,
             decoder_channels=cfg.MODEL.DECODER_CHANNELS,
             decoder_use_batchnorm=cfg.MODEL.BATCH_NORM_DECODER,
+            decoder_attention_type=cfg.MODEL.ATTENTION,
             in_channels=cfg.MODEL.IN_CHANNELS,
             classes=cfg.MODEL.OUT_CHANNELS,
         )

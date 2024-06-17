@@ -1,10 +1,15 @@
 *.pth
 *.png
+*.jpg
+*.dcm
 *.txt
 *.out
 
+june5th/
 output/
 .vscode/
 cache/
 output_history/
 MIUA/
+june5th
+

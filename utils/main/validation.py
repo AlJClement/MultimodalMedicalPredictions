@@ -50,7 +50,10 @@ class validation():
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
         self.momentum = 0.99
-        self.optimizer = self._get_optimizer(self.net)
+        if net==None:
+            self.optimizer=None
+        else:
+            self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
         self.combine_graf_fhc=cfg.TRAIN.COMBINE_GRAF_FHC
 
@@ -155,7 +158,7 @@ class validation():
         df['true agree']=(df['graf class true'] == df['fhc class true'])
         df[name_true] = np.where(df['true agree'] == True, df['graf class true'], 'a')
         df['pred agree']=(df['graf class pred'] == df['fhc class pred'])
-        df[name_true] = np.where(df['pred agree'] == True, df['graf class pred'], 'a')
+        df[name_pred] = np.where(df['pred agree'] == True, df['graf class pred'], 'a')
 
         return df
     
@@ -211,7 +214,7 @@ class validation():
                             print('saving validation img:', id[i])
                             #print(self.pixel_size[0])
                             visuals(self.outputpath+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
-                            visuals(self.outputpath+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=True)
+                            visuals(self.outputpath+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
 
                             if self.save_heatmap_asdcms == True:
                                 out_dcm_dir = self.outputpath+'/as_dcms' 
@@ -220,7 +223,7 @@ class validation():
 
                                 dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
                                 visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
-                                visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
+                                visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
                             
                 for i in range(self.bs):
                     #add to comparison df
@@ -264,9 +267,9 @@ class validation():
 
 
             ## Concensus of FHC and Graf
-            comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&i', 'graf&fhc true i_ii&iii&i', groups=[('i'),('ii','iii/iv')])
+            comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', groups=[('i'),('ii','iii/iv')])
             comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&i', 'graf&fhc true i_ii&iii&iv', loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
             self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))

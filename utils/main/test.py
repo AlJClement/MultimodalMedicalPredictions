@@ -18,16 +18,21 @@ import pandas as pd
 from .comparison_metrics import *
 import torch
 torch.cuda.empty_cache() 
+from .validation import validation
+
 class test():
-    def __init__(self, cfg, logger):
+    def __init__(self, cfg, logger, save_heatmap_asdcms=True):
+        self.combine_graf_fhc=True
+        self.dcm_dir = cfg.INPUT_PATHS.DCMS
+        self.validation = validation(cfg,logger,net=None)
         self.cfg=cfg
         self.plot_predictions = True
         self.logger = logger
         self.net = self.load_network(cfg.TEST.NETWORK)
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
+        self.save_heatmap_asdcms = save_heatmap_asdcms
 
-    
         self.loss_func = eval(cfg.TRAIN.LOSS)
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
@@ -133,7 +138,16 @@ class test():
                     print('saving test img:', id[i])
                     visuals(self.save_img_path+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
                     visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
-            
+
+                    if self.save_heatmap_asdcms == True:
+                        out_dcm_dir = self.save_img_path+'/as_dcms' 
+                        if os.path.exists(out_dcm_dir)==False:
+                            os.mkdir(out_dcm_dir)
+
+                        dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
+                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
+                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
+                    
                 #add to comparison df
                 id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
 
@@ -176,6 +190,23 @@ class test():
         self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[2]))
 
 
+        if self.combine_graf_fhc==True:
+        # #add fhc cols for normal and abnormal (n and a)
+            comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
+            comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
+
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true', loc='test')._get_metrics(group=True,groups=[('n'),('a')])
+            self.logger.info("Class Agreement FHC: {}".format(class_agreement))
+
+
+            ## Concensus of FHC and Graf
+            comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', groups=[('i'),('ii','iii/iv')])
+            comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', loc='test')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', loc='test')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+            self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
+
         sdr_summary = ""
         if self.dataset_type == 'LANDMARKS':
             #calculate SDR
@@ -186,7 +217,7 @@ class test():
                     self.logger.info("{} for {}".format(txt, col))
 
                     try:
-                        print(sdr_summary)
+                        #print(sdr_summary)
                         sdr_summary=np.concatenate((sdr_summary,np.array([sdr_stats])), axis=0)
                     except:
                         sdr_summary = np.array([sdr_stats])
