@@ -73,10 +73,12 @@ class visuals():
             #put array into dcm version
             self.save_dcm_heatmap(_output, dcm_loc)
         else:
-            plt.savefig(self.save_path)
+            plt.savefig(self.save_path,dpi=1200, bbox_inches='tight')
             from PIL import Image
             im = Image.open(self.save_path+'.png')
             rgb_im = im.convert('RGB')
             rgb_im.save(self.save_path+'.jpg')
             plt.close()
+            
+        plt.close()
         return

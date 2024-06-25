@@ -21,7 +21,7 @@ torch.cuda.empty_cache()
 from .validation import validation
 
 class test():
-    def __init__(self, cfg, logger, save_heatmap_asdcms=True):
+    def __init__(self, cfg, logger, save_heatmap_asdcms=False):
         self.combine_graf_fhc=True
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
         self.validation = validation(cfg,logger,net=None)
