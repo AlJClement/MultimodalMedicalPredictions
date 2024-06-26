@@ -3,9 +3,10 @@ import os
 import datetime
 import os
 import tempfile
+from PIL import Image
 
 import pydicom
-
+import imgaug.augmenters as iaa
 class visuals():
     def __init__(self, save_path, pixelsize, img_ext='.jpg') -> None:
         self.img_ext = img_ext
@@ -39,6 +40,11 @@ class visuals():
         save_dcm_path = self.save_path.rsplit('/',1)[0]+'/'+self.save_path.split('/')[-1]+'.dcm'
         ds.save_as(save_dcm_path)
         return
+    
+    def downsample(self, w=1024, h=768):
+        #default is ddh
+        preprocessing_steps = [iaa.Resize({"width": w, "height": h}),]
+        return iaa.Sequential(preprocessing_steps)
     
     def heatmaps(self, image, output, target_points, predicted_points, w_landmarks=True, all_landmarks=True, as_dcm=False, dcm_loc=''):
         fig, ax = plt.subplots(1, 1)
@@ -74,11 +80,14 @@ class visuals():
             self.save_dcm_heatmap(_output, dcm_loc)
         else:
             plt.savefig(self.save_path,dpi=1200, bbox_inches='tight')
-            from PIL import Image
             im = Image.open(self.save_path+'.png')
             rgb_im = im.convert('RGB')
             rgb_im.save(self.save_path+'.jpg')
             plt.close()
-            
+
+            #img_highres = self.downsample(rgb_im)
+            img_highres=rgb_im.resize((1024,768))
+            img_highres.save(self.save_path+'_highres.jpg')
+
         plt.close()
         return
