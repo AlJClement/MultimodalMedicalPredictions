@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/medimaging/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_test.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /data/medimaging/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_0.01674.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/medimaging/multimodal_datasets/ddh_march24/final_selection_June5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/medimaging/multimodal_datasets/ddh_march24/final_selection_June5th/dcms 
   LABELS: /data/medimaging/multimodal_datasets/ddh_march24/final_selection_June5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -53,12 +53,12 @@ DATASET:
     ELASTIC_STRENGTH: 0
     ELASTIC_SMOOTHNESS: 0
 
-OUTPUT_PATH: ./testoutput
+OUTPUT_PATH: ./output_wattention_sig5
 
 TRAIN:
   BATCH_SIZE: 2
   LR: 0.001
-  EPOCHS: 2
+  EPOCHS: 10
   LOSS: nll_across_batch ##_mse_wclass
   GAMMA: 0.0 #
   COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6

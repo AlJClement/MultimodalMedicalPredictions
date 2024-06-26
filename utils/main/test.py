@@ -184,15 +184,15 @@ class test():
 
         #from df get class agreement metrics TP, TN, FN, FP
         class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true',self.output_path)._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
-        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[0]))
-        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[1]))
-        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[2]))
+        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[4]))
+        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[5]))
+        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[6]))
 
         class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.output_path)._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
 
-        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[0]))
-        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[1]))
-        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[2]))
+        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[4]))
+        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[5]))
+        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[6]))
 
 
         if self.combine_graf_fhc==True:
