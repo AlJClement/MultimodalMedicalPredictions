@@ -61,7 +61,7 @@ class validation():
         self.save_img = save_img
         self.save_heatmap_asdcms = save_heatmap_asdcms
 
-        self.outputpath=cfg.OUTPUT_PATH +'/validation'
+        self.outputpath=cfg.OUTPUT_PATH
         if os.path.exists(self.outputpath)==False:
             os.mkdir(self.outputpath)
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
@@ -251,10 +251,10 @@ class validation():
         self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
 
         #from df get classification metrics TP, TN, FN, FP for graf
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.outputpath,loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
         self.logger.info("Class Agreement GRAF: {}".format(class_agreement))
 
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.outputpath, loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
         self.logger.info("Class Agreement GRAF: {}".format(class_agreement))
 
         if self.combine_graf_fhc==True:
@@ -262,16 +262,16 @@ class validation():
             comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
             comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
 
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true', loc='validation')._get_metrics(group=True,groups=[('n'),('a')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true',  self.outputpath, loc='validation')._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement FHC: {}".format(class_agreement))
 
 
             ## Concensus of FHC and Graf
             comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', groups=[('i'),('ii','iii/iv')])
             comparison_df = self.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv',  self.outputpath, loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
             self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', self.outputpath,  loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
 
 
@@ -287,7 +287,7 @@ class validation():
                 raise ValueError('Check Landmark radial errors are calcuated')
 
         #plot angles pred vs angles 
-        visualisations.comparison(self.dataset_name).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
+        visualisations.comparison(self.dataset_name,self.outputpath).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
 
 
         return av_loss

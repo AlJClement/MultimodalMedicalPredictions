@@ -6,12 +6,13 @@ from visualisations import *
 import re
 
 class class_agreement_metrics():
-    def __init__(self, dataset_name, df_col, pred_col, true_col, loc='test'):
+    def __init__(self, dataset_name, df_col, pred_col, true_col, outpath, loc='test'):
         #df col: column with ones and zeros defining equal or different classes
         self.gt_class_arr = df_col[true_col].to_numpy()
         self.pred_class_arr = df_col[pred_col].to_numpy()
         self.diagnosis_name = dataset_name
         self.loc = loc
+        self.output_path = outpath
         pass
 
     def _get_metrics(self,group = False, groups=[('i'),('ii','iii/iv')]):
@@ -25,7 +26,7 @@ class class_agreement_metrics():
                 if len(g)==1:
                     pass
                 else:
-                    print('combing classes')
+                    #print('combing classes')
                     i=0
                     for c in g:
                         if i == 0:
@@ -52,14 +53,23 @@ class class_agreement_metrics():
             pass 
 
         #check if multi class
-        if np.unique(pred_class_arr).size < 2:
+        if np.unique(gt_class_arr).size <= 2:
             if np.all(pred_class_arr == gt_class_arr) == True:
-                tn, fp, fn, tp = 0.0,0.0,0.0,0.0
-            elif np.unique(pred_class_arr).size == 1:
-                tn, fp, fn, tp = 0.0,0.0,0.0,0.0
+                #then all classes are the same, confusion matrix will give back one value
+                #if only one value figure out if its true neg or true positive
+                x = confusion_matrix(gt_class_arr, pred_class_arr).ravel()
+
+                #get one value from gt_class_arr and figure out if its the first or second class. if its the first in the list its tp if second tn
+                if gt_class_arr[0]==groups[0]:
+                    tn = float(x[0])
+                    fp, fn, tp = 0.0,0.0,0.0
+                else:
+                    tp = float(x[0])
+                    tn, fp, fn = 0.0,0.0,0.0
             else:
                 #only one class for classification problem
                 tn, fp, fn, tp = confusion_matrix(gt_class_arr, pred_class_arr).ravel()
+
             total = tn + fp + fn + tp
             if total == 0:
                 accuracy = 0.0
@@ -95,7 +105,7 @@ class class_agreement_metrics():
             confusion_matrix_multiclasses = multilabel_confusion_matrix(gt_class_arr, pred_class_arr)#, labels=classes)
 
             ##plot confusion matrix
-            visualisations.comparison(self.diagnosis_name).confusion_matrix_multiclass(classes, confusion_matrix_multiclasses, self.loc, name =str(groups[0]) +' vs '+str(groups[1]))
+            visualisations.comparison(self.diagnosis_name,self.output_path).confusion_matrix_multiclass(classes, confusion_matrix_multiclasses, self.loc, name =str(groups[0]) +' vs '+str(groups[1]))
 
             #find values for all
             accuracy = np.array([])

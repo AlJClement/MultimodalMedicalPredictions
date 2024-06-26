@@ -66,14 +66,14 @@ class visuals():
             ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=10)
             ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=10)
         else:
-            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=1)
+            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=10)
             ax.imshow(image, cmap='Greys_r',alpha=0.4)
 
         if as_dcm == True:
             #put array into dcm version
             self.save_dcm_heatmap(_output, dcm_loc)
         else:
-            plt.savefig(self.save_path)
+            plt.savefig(self.save_path,dpi=1200, bbox_inches='tight')
             from PIL import Image
             im = Image.open(self.save_path+'.png')
             rgb_im = im.convert('RGB')

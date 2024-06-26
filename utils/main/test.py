@@ -28,7 +28,6 @@ class test():
         self.cfg=cfg
         self.plot_predictions = True
         self.logger = logger
-        self.net = self.load_network(cfg.TEST.NETWORK)
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
         self.save_heatmap_asdcms = save_heatmap_asdcms
@@ -41,6 +40,9 @@ class test():
 
         if cfg.MODEL.DEVICE == 'cuda':
             torch.cuda.empty_cache()
+
+        self.output_path = cfg.OUTPUT_PATH
+        self.net = self.load_network(self.output_path+cfg.TEST.NETWORK)
 
         self.save_img_path = cfg.OUTPUT_PATH +'/test'
 
@@ -115,10 +117,12 @@ class test():
             
             
         txt = ""
+        txt_norm=""
         for val in alpha_thresh:
             txt += "{:.2f}%, (agreeance {:.2f}%, disagreeance {:.2f}%)\t".format(val[0],val[1],val[2])
+            txt_norm += "{:.2f}%, (agreeance {:.2f}%, disagreeance {:.2f}%)\t".format(val[0],100*val[1]/val[0],100*val[2]/val[0])
     
-        return txt 
+        return txt, txt_norm 
     
     def run(self, dataloader):
         comparison_df = pd.DataFrame([])
@@ -164,7 +168,7 @@ class test():
         t_e=datetime.datetime.now()
         total_time=t_e-t_s
         print('Time taken for epoch = ', total_time)
-        comparison_df.to_csv('./output/test/comparison_metrics.csv')
+        comparison_df.to_csv(self.output_path+'/test/comparison_metrics.csv')
         print('Saving Results to comparison_metrics.csv')
 
         self.logger.info("---------TEST RESULTS--------")
@@ -174,16 +178,17 @@ class test():
         self.logger.info("MEAN VALUES: {}".format(comparsion_summary_ls))
         self.logger.info("MRE: {} +/- {} %".format(MRE[0], MRE[1]))
 
-        alpha_thresh_percentages=self.alpha_thresholds(comparison_df)
+        alpha_thresh_percentages,alpha_thresh_percentages_normalized=self.alpha_thresholds(comparison_df)
         self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
+        self.logger.info("Alpha Thresholds Normalized: {}".format(alpha_thresh_percentages_normalized))
 
         #from df get class agreement metrics TP, TN, FN, FP
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true',self.output_path)._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
         self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[0]))
         self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[1]))
         self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[2]))
 
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.output_path)._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
 
         self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[0]))
         self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[1]))
@@ -195,16 +200,16 @@ class test():
             comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
             comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
 
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true', loc='test')._get_metrics(group=True,groups=[('n'),('a')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement FHC: {}".format(class_agreement))
 
 
             ## Concensus of FHC and Graf
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', groups=[('i'),('ii','iii/iv')])
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', loc='test')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
             self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', loc='test')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
 
         sdr_summary = ""
@@ -229,9 +234,10 @@ class test():
 
             except:
                 raise ValueError('Check Landmark radial errors are calcuated')
-
+        #get mean alpha difference
+        self.logger.info('ALPHA MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].mean(),3)))
 
         #plot angles pred vs angles 
-        visualisations.comparison(self.dataset_name).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy())
+        visualisations.comparison(self.dataset_name, self.output_path).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy())
 
         return 

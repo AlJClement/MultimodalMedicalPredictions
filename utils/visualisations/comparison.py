@@ -3,10 +3,11 @@ import numpy as np
 import seaborn as sns
 from sklearn.manifold import TSNE
 import pandas as pd
-
+import scipy
 class comparison():
-    def __init__(self,dataset_name):
+    def __init__(self,dataset_name, output_path):
         self.dataset_name = dataset_name
+        self.output_path = output_path
 
         if self.dataset_name == 'ddh':
             #threshold for classes at 60 and 43
@@ -15,7 +16,7 @@ class comparison():
             return ValueError('must set the threshold_dic dicitonary')
         pass        
 
-    def confusion_matrix_multiclass(self, classes, confusion_matrix_multiclasses,loc='test',name =''):
+    def confusion_matrix_multiclass(self, classes, confusion_matrix_multiclasses,name =''):
         fig, ax= plt.subplots(1, confusion_matrix_multiclasses.shape[0])
         fig.set_figheight(2)
         fig.set_figwidth(20)
@@ -28,7 +29,7 @@ class comparison():
             ax[c].set_ylabel('True labels')
             ax[c].set_title('Confusion Matrix: '+ name)
         
-        plt.savefig('./output/'+loc+'/Confusion_Matrix_allclasses'+str(c)+'.png')
+        plt.savefig(self.output_path+'/'+'/Confusion_Matrix_allclasses'+str(c)+'.png')
 
     def to_one_hot(self, y, num_classes):
         y = y.squeeze().astype(int)
@@ -53,11 +54,19 @@ class comparison():
         coef = np.polyfit(x,y,1)
         poly1d_fn = np.poly1d(coef) 
         m, b = np.polyfit(x, y, 1)
-        plt.plot(x,y, 'yo', x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker
+        plt.plot(x,y, 'yo', x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker 
         plt.xlabel('True Graf Angle')
         plt.ylabel('Predicted Graf Angle')
+        txt = 'y = '+str(round(m,3))+'x+'+str(round(b,3))
+        plt.text(0.99, 0.1, txt, horizontalalignment='right',verticalalignment='top', transform=ax.transAxes)
+        
+        #get r value
+        slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(x, y)
+
+        plt.text(0.1, 0.99, 'r='+str(round(r_value,3)), horizontalalignment='left',verticalalignment='top', transform=ax.transAxes)
+
         #ax.set_aspect('equal', adjustable='box')
-        plt.savefig('./output/'+loc+'/true_vs_pred.png')
+        plt.savefig(self.output_path+'/'+loc+'/true_vs_pred.png')
         #sort to plot so we can see thresholds        #plot true and pred
 
         plt.clf()
@@ -74,7 +83,7 @@ class comparison():
         for thresh in self.threshold_list:
             plt.axhline(y=thresh, color='b', linestyle='--')
 
-        plt.savefig('./output/'+loc+'/true_vs_pred_bypatient.png')
+        plt.savefig(self.output_path+'/'+loc+'/true_vs_pred_bypatient.png')
 
         return
     
@@ -99,6 +108,6 @@ class comparison():
                         palette=sns.color_palette("hls", 5),
                         data=df).set(title="Class Predictions") 
         figure = t.get_figure()    
-        figure.savefig("./output/tsne.png", dpi=400)
+        figure.savefig(self.output_path+"tsne.png", dpi=400)
 
         return
