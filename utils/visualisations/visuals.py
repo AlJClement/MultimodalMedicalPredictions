@@ -79,4 +79,6 @@ class visuals():
             rgb_im = im.convert('RGB')
             rgb_im.save(self.save_path+'.jpg')
             plt.close()
+            
+        plt.close()
         return

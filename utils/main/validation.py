@@ -17,13 +17,16 @@ import pandas as pd
 from .comparison_metrics import *
 
 class validation():
-    def __init__(self, cfg, logger, net, l2_reg=True, save_img=True, save_heatmap_asdcms=True):
+    def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
         self.max_epochs = cfg.TRAIN.EPOCHS
         self.img_extension = cfg.DATASET.IMAGE_EXT
+
+        self.save_heatmap_asdcms=cfg.TRAIN.SAVE_VAL_DCM
+
 
         self.net = net
         self.logger = logger
@@ -59,7 +62,6 @@ class validation():
 
         self.evaluation = evaluation_helper()
         self.save_img = save_img
-        self.save_heatmap_asdcms = save_heatmap_asdcms
 
         self.outputpath=cfg.OUTPUT_PATH
         if os.path.exists(self.outputpath)==False:

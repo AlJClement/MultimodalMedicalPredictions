@@ -3,7 +3,7 @@ INPUT_PATHS:
   PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
   
   #make the first col always the patient ID col
@@ -32,7 +32,7 @@ MODEL:
     - 128
     - 64
   IN_CHANNELS: 1
-  ATTENTION: scse #None
+  ATTENTION: None #None
 
 
 DATASET:
@@ -40,7 +40,7 @@ DATASET:
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 7 
   COMBINE_REVIEWERS: False 
-  SIGMA: 4 #if sigma is NONE no guassian applied
+  SIGMA: 5 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,352]
   PIXEL_SIZE: [0.0700711,0.0700711]
@@ -59,7 +59,7 @@ OUTPUT_PATH: ./output
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
-  EPOCHS: 50
+  EPOCHS: 20
   LOSS: nll_across_batch ##_mse_wclass
   GAMMA: 0.0 #
   COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6
