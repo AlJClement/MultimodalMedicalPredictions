@@ -63,7 +63,7 @@ class validation():
         self.evaluation = evaluation_helper()
         self.save_img = save_img
 
-        self.outputpath=cfg.OUTPUT_PATH
+        self.outputpath=cfg.OUTPUT_PATH+'/validation'
         if os.path.exists(self.outputpath)==False:
             os.mkdir(self.outputpath)
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)

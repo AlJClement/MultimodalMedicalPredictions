@@ -1,10 +1,10 @@
 #!/bin/sh
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=020:00:00
+#SBATCH --time=10:00:00
 #SBATCH --gres=gpu:1
 #SBATCH --clusters=htc
-#SBATCH --partition=medium
+#SBATCH --partition=short
 #SBATCH --mem-per-cpu=50G
 
 

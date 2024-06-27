@@ -236,6 +236,7 @@ class test():
                 raise ValueError('Check Landmark radial errors are calcuated')
         #get mean alpha difference
         self.logger.info('ALPHA MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].mean(),3)))
+        self.logger.info('ALPHA ABSOLUTE MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].apply(abs).mean(),3)))
 
         #plot angles pred vs angles 
         visualisations.comparison(self.dataset_name, self.output_path).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy())
