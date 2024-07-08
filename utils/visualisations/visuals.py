@@ -69,17 +69,17 @@ class visuals():
         if w_landmarks == True:
             ax.imshow(image, cmap='Greys_r')
             #add landmarks
-            ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=10)
-            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=10)
+            ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=5)
+            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
         else:
-            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=10)
+            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
             ax.imshow(image, cmap='Greys_r',alpha=0.4)
 
         if as_dcm == True:
             #put array into dcm version
             self.save_dcm_heatmap(_output, dcm_loc)
         else:
-            plt.savefig(self.save_path,dpi=1200, bbox_inches='tight')
+            plt.savefig(self.save_path,dpi=1200, bbox_inches='tight', pad_inches = 0)
             im = Image.open(self.save_path+'.png')
             rgb_im = im.convert('RGB')
             rgb_im.save(self.save_path+'.jpg')

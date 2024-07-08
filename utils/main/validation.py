@@ -63,7 +63,7 @@ class validation():
         self.evaluation = evaluation_helper()
         self.save_img = save_img
 
-        self.outputpath=cfg.OUTPUT_PATH+'/validation'
+        self.outputpath=cfg.OUTPUT_PATH
         if os.path.exists(self.outputpath)==False:
             os.mkdir(self.outputpath)
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
@@ -215,8 +215,13 @@ class validation():
                             #
                             print('saving validation img:', id[i])
                             #print(self.pixel_size[0])
-                            visuals(self.outputpath+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
-                            visuals(self.outputpath+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
+                            validation_dir=self.outputpath+'/validation'
+                            if os.path.exists(validation_dir)==False:
+                                os.mkdir(validation_dir)
+
+
+                            visuals(validation_dir+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
+                            visuals(validation_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
 
                             if self.save_heatmap_asdcms == True:
                                 out_dcm_dir = self.outputpath+'/as_dcms' 

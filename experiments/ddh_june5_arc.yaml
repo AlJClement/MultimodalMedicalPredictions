@@ -26,13 +26,13 @@ MODEL:
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
-    - 512
+    - 256
     - 256
     - 256
     - 128
     - 64
   IN_CHANNELS: 1
-  ATTENTION: scse
+  ATTENTION: None
 
 
 DATASET:
@@ -40,7 +40,7 @@ DATASET:
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 7 
   COMBINE_REVIEWERS: False 
-  SIGMA: 5 #if sigma is NONE no guassian applied
+  SIGMA: 3 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,352]
   PIXEL_SIZE: [0.0700711,0.0700711]
@@ -54,14 +54,14 @@ DATASET:
     ELASTIC_STRENGTH: 0
     ELASTIC_SMOOTHNESS: 0
 
-OUTPUT_PATH: ./output_512_sig5
+OUTPUT_PATH: ./output_noatten_sig3
 
 TRAIN:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 4
   LR: 0.001
   EPOCHS: 20
-  LOSS: nll_across_batch ##_mse_wclass
-  GAMMA: 0.0 #
+  LOSS: nll_across_batch #_mse_walpha
+  GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6
 
 TEST:
