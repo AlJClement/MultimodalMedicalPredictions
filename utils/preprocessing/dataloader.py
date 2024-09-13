@@ -129,7 +129,7 @@ class dataloader(Dataset):
                 image = io.imread(img_path[:-4]+'.png', as_gray=True)
             except:
                 #add _ between L/R and series number
-                new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
+                new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'png.'
                 image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
 
         # Augment image
@@ -146,7 +146,8 @@ class dataloader(Dataset):
             kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
         except:
             ext = ann_path.split('/')[-2]+'.txt'
-            kps_np_array = np.loadtxt(ann_path[:-4]+ext, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
+            ext = '.txt'
+            kps_np_array = np.loadtxt(ann_path[:-4]+'_g'+ext, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
 
         if self.flip_axis:
             if ann_path.split('/')[-1][0]=='A':
@@ -154,6 +155,8 @@ class dataloader(Dataset):
             if ann_path.split('/')[-1][0]=='0': #rnoh
                 kps_np_array = np.flip(kps_np_array, axis=1)
             if ann_path.split('/')[-1][0]=='R': #rnoh
+                kps_np_array = np.flip(kps_np_array, axis=1)
+            if ann_path.split('/')[-1][0]=='P': #MKUH
                 kps_np_array = np.flip(kps_np_array, axis=1)
         # Augment landmark annotations
         kps = KeypointsOnImage.from_xy_array(kps_np_array, shape=image_shape)
@@ -233,18 +236,24 @@ class dataloader(Dataset):
             pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
 
             ##LOAD IMAGES##
+            print(img_files[self.set][i])
             _im_arr, orig_shape = self.get_img(seq,img_files[self.set][i])
             
             ##LOAD ANNOTATIONS##
             _annotation_arr, annotation_points, folder_ls = self.get_ann(annotation_files[self.set][i], seq, _im_arr.shape, orig_shape)
 
-            _annotation_arr = _annotation_arr[:5]
-            annotation_points= annotation_points[:5]
+            # _annotation_arr = _annotation_arr[:5]
+            # annotation_points= annotation_points[:5]
             print(len(_annotation_arr))
             ##LOAD META##
             _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id)
             if _meta_arr.empty:
-                raise ValueError('no meta data found for: ', pat_id)
+                try:
+                    pat_id_rnoh=pat_id.split('_')[1]
+                    _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id_rnoh)
+                    
+                except:
+                    raise ValueError('no meta data found for: ', pat_id)
 
             cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
 
