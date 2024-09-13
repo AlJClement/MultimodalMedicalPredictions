@@ -194,7 +194,6 @@ class dataloader(Dataset):
             folder_name = ann_path.split("/")[-2]
             if self.annotation_type=="LANDMARKS":
                 _ann_points = self.get_landmarks(ann_path, seq, orig_img_shape)
-
                 _np_ann_points=_ann_points.to_xy_array().reshape(-1, self.num_landmarks, 2)[0]
                 #get array of the points with guassian if applied
                 _ann_array = self.add_sigma_channels(_np_ann_points, img_shape)

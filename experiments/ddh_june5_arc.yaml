@@ -32,7 +32,7 @@ MODEL:
     - 128
     - 64
   IN_CHANNELS: 1
-  ATTENTION: None
+  ATTENTION: scse
 
 
 DATASET:
@@ -40,7 +40,7 @@ DATASET:
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 7 
   COMBINE_REVIEWERS: False 
-  SIGMA: 3 #if sigma is NONE no guassian applied
+  SIGMA: 5 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,352]
   PIXEL_SIZE: [0.0700711,0.0700711]
@@ -54,10 +54,10 @@ DATASET:
     ELASTIC_STRENGTH: 0
     ELASTIC_SMOOTHNESS: 0
 
-OUTPUT_PATH: ./output_noatten_sig3
+OUTPUT_PATH: ./output_boa_sept24
 
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 2
   LR: 0.001
   EPOCHS: 20
   LOSS: nll_across_batch #_mse_walpha
