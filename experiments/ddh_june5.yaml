@@ -1,12 +1,14 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/partition_stanmore_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/CS_RNOH.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+  PARTITION: /data/medimaging/june5th/partition_0.7_0.15_0.15_0.01674.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /data/medimaging/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+  
   #make the first col always the patient ID col
   ID_COL: Accession Number
-  META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
+  META_COLS: [Sex: hot, Age(Days): continuous] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
 
 MODEL: 
   #NAME: unet_meta_lastlayer
@@ -32,10 +34,11 @@ MODEL:
   IN_CHANNELS: 1
   ATTENTION: scse
 
+
 DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
-  NUM_LANDMARKS: 7
+  NUM_LANDMARKS: 7 
   COMBINE_REVIEWERS: False 
   SIGMA: 5 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
@@ -51,10 +54,10 @@ DATASET:
     ELASTIC_STRENGTH: 0
     ELASTIC_SMOOTHNESS: 0
 
-OUTPUT_PATH: ./output
+OUTPUT_PATH: ./output_boa_sept24
 
 TRAIN:
-  BATCH_SIZE: 1
+  BATCH_SIZE: 2
   LR: 0.001
   EPOCHS: 20
   LOSS: nll_across_batch #_mse_walpha

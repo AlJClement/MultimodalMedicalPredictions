@@ -56,7 +56,7 @@ class dataloader(Dataset):
         self.meta_feat_structure = self.model_init.get_modelspecific_feature_structure()
 
         self.set = set
-        self.data, self.target, self.meta, self.ids = self.get_numpy_dataset() 
+        self.data, self.target, self.meta, self.ids, self.orig_img_shape = self.get_numpy_dataset() 
 
         return
     
@@ -148,7 +148,8 @@ class dataloader(Dataset):
             ext = ann_path.split('/')[-2]+'.txt'
             ext = '.txt'
             kps_np_array = np.loadtxt(ann_path[:-4]+'_g'+ext, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
-
+        
+        print('truth:',kps_np_array)
         if self.flip_axis:
             if ann_path.split('/')[-1][0]=='A':
                 kps_np_array = np.flip(kps_np_array, axis=1)
@@ -197,7 +198,6 @@ class dataloader(Dataset):
             folder_name = ann_path.split("/")[-2]
             if self.annotation_type=="LANDMARKS":
                 _ann_points = self.get_landmarks(ann_path, seq, orig_img_shape)
-
                 _np_ann_points=_ann_points.to_xy_array().reshape(-1, self.num_landmarks, 2)[0]
                 #get array of the points with guassian if applied
                 _ann_array = self.add_sigma_channels(_np_ann_points, img_shape)
@@ -238,6 +238,7 @@ class dataloader(Dataset):
             ##LOAD IMAGES##
             print(img_files[self.set][i])
             _im_arr, orig_shape = self.get_img(seq,img_files[self.set][i])
+            print('orig_shape:',orig_shape)
             
             ##LOAD ANNOTATIONS##
             _annotation_arr, annotation_points, folder_ls = self.get_ann(annotation_files[self.set][i], seq, _im_arr.shape, orig_shape)
@@ -295,6 +296,7 @@ class dataloader(Dataset):
                 id_arr = np.array([pat_id])
                 meta_arr = _meta_arr
                 im_arr = np.expand_dims(_im_arr,axis=0)
+                orig_shape_arr = np.expand_dims(orig_shape,axis=0)
                 annotation_arr =np.expand_dims(_annotation_arr,axis=0)
             else:
                 accessionid_arr = np.concatenate((accessionid_arr,np.array([pat_id])),0)
@@ -302,6 +304,7 @@ class dataloader(Dataset):
                 im_arr = np.concatenate((im_arr, np.expand_dims(_im_arr,axis=0)),0)
                 annotation_arr = np.concatenate((annotation_arr,np.expand_dims(_annotation_arr,axis=0)),0)
                 meta_arr=pd.concat([meta_arr,_meta_arr])
+                orig_shape_arr=np.concatenate((orig_shape_arr,np.array([orig_shape])),0)
 
         if save_cache==True:                      
             #save meta dictionary, with ids
@@ -316,6 +319,10 @@ class dataloader(Dataset):
         im_arr = np.expand_dims(im_arr,axis=1)
         im_torch = torch.from_numpy(im_arr).float()
 
+        #expand numpy arr and make values as torch
+        orig_shape_arr = np.expand_dims(orig_shape_arr,axis=1)
+        orig_shape_arr = torch.from_numpy(orig_shape_arr).float()
+
         annotation_torch = torch.from_numpy(annotation_arr).float()
         if len(annotation_torch.shape)==5:
             annotation_torch=torch.squeeze(annotation_torch,dim=1)
@@ -328,10 +335,13 @@ class dataloader(Dataset):
         id_arr = np.array(id_arr)
         id_arr = np.expand_dims(id_arr,axis=1)
 
+        orig_shape_arr = np.array(orig_shape_arr)
+        orig_shape_arr = np.expand_dims(orig_shape_arr,axis=1)
+
         accessionid_arr = np.array(accessionid_arr)
         accessionid_arr = np.expand_dims(accessionid_arr,axis=1)
 
-        return im_torch, annotation_torch, meta_torch, id_arr #, accessionid_arr
+        return im_torch, annotation_torch, meta_torch, id_arr, orig_shape_arr 
 
     def __getitem__(self, index):
         x = self.data[index]
@@ -342,7 +352,8 @@ class dataloader(Dataset):
             #means meta is empty
             meta = self.meta
         id = self.ids[index][0]
-        return x, y, meta, id
+        orig_size = self.orig_img_shape[index][0]
+        return x, y, meta, id, orig_size
 
     def __len__(self):
         return len(self.data)

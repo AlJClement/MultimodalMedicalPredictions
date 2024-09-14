@@ -1,15 +1,15 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/partition_stanmore_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+  PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/partition_stanmore_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/CS_RNOH.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
   #make the first col always the patient ID col
   ID_COL: Accession Number
   META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
 
 MODEL: 
-  #NAME: unet_meta_lastlayer
+  #NAME: unet_meta_lastlayer/experiments/datasets-in-use/multimodal-datasets/
   #IN_CHANNELS: 1
   OUT_CHANNELS: 5 #for 5 landmarks
   #INIT_FEATURES: 4

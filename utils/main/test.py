@@ -21,16 +21,18 @@ torch.cuda.empty_cache()
 from .validation import validation
 
 class test():
-    def __init__(self, cfg, logger, save_heatmap_asdcms=False):
+    def __init__(self, cfg, logger, save_heatmap_asdcms=False, save_txt=True):
         self.combine_graf_fhc=True
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
         self.validation = validation(cfg,logger,net=None)
         self.cfg=cfg
+        self.img_size = self.cfg.DATASET.CACHED_IMAGE_SIZE
         self.plot_predictions = True
         self.logger = logger
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
         self.save_heatmap_asdcms = save_heatmap_asdcms
+        self.save_txt=save_txt
 
         self.loss_func = eval(cfg.TRAIN.LOSS)
         self.bs = cfg.TRAIN.BATCH_SIZE
@@ -45,7 +47,10 @@ class test():
         self.net = self.load_network(self.output_path+cfg.TEST.NETWORK)
 
         self.save_img_path = cfg.OUTPUT_PATH +'/test'
-
+        if self.save_txt == True:
+            if not os.path.isdir(self.output_path+'/'+'txt/'):
+                os.makedirs(self.output_path+'/'+'txt/')
+    
         if not os.path.exists(self.save_img_path):
             os.mkdir(self.save_img_path)
         
@@ -126,32 +131,40 @@ class test():
     
     def run(self, dataloader):
         comparison_df = pd.DataFrame([])
-        for batch_idx, (data, target, meta, id) in enumerate(dataloader):
+        for batch_idx, (data, target, meta, id, orig_size) in enumerate(dataloader):
             print(batch_idx)
 
             data, target = Variable(data).to(self.device), Variable(target).to(self.device)
             meta_data = Variable(meta).to(self.device)
+            orig_size = Variable(orig_size).to(self.device)
             
             pred = self.net(data, meta_data)
             target_points,predicted_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
+            print('pred', pred.shape)
             #plot and caluclate values for each subject in the batch
             for i in range(self.bs):
 
                 if self.plot_predictions == True:
+                    print('data', data[i][0].shape)
                     print('saving test img:', id[i])
-                    visuals(self.save_img_path+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
-                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
+                    visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
+                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
 
                     if self.save_heatmap_asdcms == True:
+
                         out_dcm_dir = self.save_img_path+'/as_dcms' 
                         if os.path.exists(out_dcm_dir)==False:
                             os.mkdir(out_dcm_dir)
 
                         dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
-                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
-                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
-                    
+                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
+                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
+                
+                if self.save_txt == True:
+                    print(predicted_points[i])
+                    visuals(self.output_path+'/'+'txt/'+id[i],self.pixel_size, self.cfg).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_size[i])
+                
                 #add to comparison df
                 id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
 
