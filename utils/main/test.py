@@ -21,23 +21,28 @@ torch.cuda.empty_cache()
 from .validation import validation
 
 class test():
-    def __init__(self, cfg, logger, save_heatmap_asdcms=False, save_txt=True):
+    def __init__(self, cfg, logger):
         self.combine_graf_fhc=True
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
         self.validation = validation(cfg,logger,net=None)
         self.cfg=cfg
-        self.img_size = self.cfg.DATASET.CACHED_IMAGE_SIZE
-        self.plot_predictions = True
+        self.img_size = cfg.DATASET.CACHED_IMAGE_SIZE
         self.logger = logger
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
-        self.save_heatmap_asdcms = save_heatmap_asdcms
-        self.save_txt=save_txt
+
+        self.save_asdcms = cfg.TEST.SAVE_HEATMAPS_ASDCM
+        self.save_txt=cfg.TEST.SAVE_TXT
+        self.save_heatmap_land_img= cfg.TEST.SAVE_HEATMAPS_LANDMARKS_IMG
+        self.save_img_landmarks_predandtrue = cfg.TEST.SAVE_IMG_LANG_PREDANDTRUE
+        self.save_heatmap = cfg.TEST.SAVE_HEATMAPS_ALONE
+        self.save_heatmap_as_np = cfg.TEST.SAVE_HEATMAPS_NP
+        self.save_all_landmarks = cfg.TEST.SHOW_ALL_LANDMARKS
 
         self.loss_func = eval(cfg.TRAIN.LOSS)
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
-        self.momentum = 0.9
+        self.momentum = cfg.TRAIN.MOMENTUM
         self.device = torch.device(cfg.MODEL.DEVICE)
 
         if cfg.MODEL.DEVICE == 'cuda':
@@ -50,6 +55,10 @@ class test():
         if self.save_txt == True:
             if not os.path.isdir(self.output_path+'/'+'txt/'):
                 os.makedirs(self.output_path+'/'+'txt/')
+    
+        if self.save_heatmap_as_np == True:
+            if not os.path.isdir(self.output_path+'/np/'):
+                os.makedirs(self.output_path+'/np/')
     
         if not os.path.exists(self.save_img_path):
             os.mkdir(self.save_img_path)
@@ -141,30 +150,38 @@ class test():
             pred = self.net(data, meta_data)
             target_points,predicted_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
-            print('pred', pred.shape)
             #plot and caluclate values for each subject in the batch
             for i in range(self.bs):
-
-                if self.plot_predictions == True:
-                    print('data', data[i][0].shape)
-                    print('saving test img:', id[i])
+                print('Test Image:', id[i])
+                
+                if self.save_img_landmarks_predandtrue == True:
                     visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
-                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
 
-                    if self.save_heatmap_asdcms == True:
+                if self.save_heatmap_land_img == True:
+                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks)
 
-                        out_dcm_dir = self.save_img_path+'/as_dcms' 
-                        if os.path.exists(out_dcm_dir)==False:
-                            os.mkdir(out_dcm_dir)
+                if self.save_asdcms == True:
 
-                        dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
-                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
-                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
+                    out_dcm_dir = self.save_img_path+'/as_dcms' 
+                    if os.path.exists(out_dcm_dir)==False:
+                        os.mkdir(out_dcm_dir)
+
+                    dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
+
+                    if self.save_img_landmarks_predandtrue == True:
+                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+                    if self.save_heatmap_land_img == True:
+                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
                 
                 if self.save_txt == True:
-                    print(predicted_points[i])
                     visuals(self.output_path+'/'+'txt/'+id[i],self.pixel_size, self.cfg).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_size[i])
                 
+                if self.save_heatmap == True:
+                    visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
+
+                if self.save_heatmap_as_np == True:
+                    visuals(self.output_path+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg).save_np(pred[i])
+
                 #add to comparison df
                 id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
 

@@ -51,6 +51,11 @@ class visuals():
 
         return iaa.Sequential(preprocessing_steps)
 
+    def save_np(self, prediction):
+        prediction = prediction.detach().cpu().numpy()
+        print(prediction.shape)
+        np.save(self.save_path, prediction)
+        return
 
     def save_astxt(self, img, predicted_points, img_size, orig_size):
         image = img.detach().cpu().numpy()
@@ -81,7 +86,7 @@ class visuals():
 
         return
     
-    def heatmaps(self, image, output, target_points, predicted_points, w_landmarks=True, all_landmarks=True, as_dcm=False, dcm_loc='', save_high_res=True):
+    def heatmaps(self, image, output, target_points, predicted_points, w_landmarks=True, all_landmarks=True, with_img = True, as_dcm=False, dcm_loc='', save_high_res=True):
         fig, ax = plt.subplots(1, 1)
         image = image.detach().cpu().numpy()
         output = output.detach().cpu().numpy()
@@ -101,14 +106,15 @@ class visuals():
 
         ax.axis('off')
 
-        if w_landmarks == True:
-            ax.imshow(image, cmap='Greys_r')
-            #add landmarks
-            ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=5)
-            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
-        else:
-            ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
-            ax.imshow(image, cmap='Greys_r',alpha=0.4)
+        if with_img == True:
+            if w_landmarks == True:
+                ax.imshow(image, cmap='Greys_r')
+                #add landmarks
+                ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=5)
+                ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
+            else:
+                ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
+                ax.imshow(image, cmap='Greys_r',alpha=0.4)
             
         # with open(self.save_path+'.txt', 'a') as output:
         #     for i in range(len(predicted_points)):

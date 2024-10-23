@@ -129,7 +129,7 @@ class dataloader(Dataset):
                 image = io.imread(img_path[:-4]+'.png', as_gray=True)
             except:
                 #add _ between L/R and series number
-                new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'png.'
+                new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
                 image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
 
         # Augment image
