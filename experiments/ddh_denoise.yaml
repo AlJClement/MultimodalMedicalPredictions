@@ -46,14 +46,17 @@ DATASET:
   PIXEL_SIZE: [0.0700711,0.0700711]
 
   AUGMENTATION:
-    ROTATION_FACTOR: 1
-    INTENSITY_FACTOR: 0.5
-    SF: 0.2
-    TRANSLATION_X: 0.1
-    TRANSLATION_Y: 0.1
-    ELASTIC_STRENGTH: 0
-    ELASTIC_SMOOTHNESS: 0
-    SPECKLE_NOISE: 2.0
+  #all of the defined parameters allow for a range of the factors below
+    ROTATION_FACTOR: 1 #affineau
+    INTENSITY_FACTOR: 0.5 #multiplicaiton factor
+    SF: 0.2 #affine scale factor
+    TRANSLATION_X: 0.1 #affine
+    TRANSLATION_Y: 0.1 #affine
+    ELASTIC_STRENGTH: 0 #elastic (pixel movement) - alpha, distance of pixelmovement
+    ELASTIC_SMOOTHNESS: 0 #elastic (pixel movement) - sigma, smoothness
+    SPECKLE_NOISE: 2
+
+    SOME_OF: 2 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
 OUTPUT_PATH: ./output_denoise

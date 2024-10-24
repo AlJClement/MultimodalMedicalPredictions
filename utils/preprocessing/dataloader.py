@@ -18,10 +18,12 @@ from main import model_init
 from torch.utils.data import Dataset
 from visualisations import visuals
 from tqdm import tqdm
+from .augmentation import Augmentation
 
 class dataloader(Dataset):
     def __init__(self, cfg, set) -> None:
         #paths
+        self.cfg=cfg
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         self.partition_file_path = cfg.INPUT_PATHS.PARTITION
         self.img_dir = cfg.INPUT_PATHS.IMAGES
@@ -56,19 +58,16 @@ class dataloader(Dataset):
         self.meta_feat_structure = self.model_init.get_modelspecific_feature_structure()
 
         self.set = set
-        self.data, self.target, self.meta, self.ids, self.orig_img_shape = self.get_numpy_dataset() 
-
+        self.data, self.target, self.landmarks, self.meta, self.ids, self.orig_img_shape = self.get_numpy_dataset() 
+        
+        self.perform_aug = cfg.DATASET.AUGMENTATION.APPLY
+        self.save_aug = cfg.DATASET.AUGMENTATION.SAVE
+        if self.save_aug == True:
+            self.aug_path = self.cache_dir+'/augmentations'
+            if not os.path.exists(self.aug_path):
+                os.makedirs(self.aug_path)
         return
-    
-    def downsample_and_padd(self,):
-        # Define how to downsample and pad images
-        preprocessing_steps = [
-            iaa.Crop(px=1),
-            iaa.PadToAspectRatio(self.downsampled_aspect_ratio, position='right-bottom', pad_mode='edge'),
-            iaa.Resize({"width": self.downsampled_image_width, "height": self.downsampled_image_height}),
-        ]
-        seq = iaa.Sequential(preprocessing_steps)
-        return seq
+
     
     def get_partition(self):
         # open partition
@@ -226,7 +225,7 @@ class dataloader(Dataset):
         # meta_arr (numscans,num_metafeatures)]
 
         #initalize downsample/padd
-        seq = self.downsample_and_padd()
+        seq = Augmentation(self.cfg).downsample_and_padd()
         
         img_files, annotation_files = self.get_partition()
         meta_arr = pd.DataFrame([])
@@ -298,6 +297,7 @@ class dataloader(Dataset):
                 im_arr = np.expand_dims(_im_arr,axis=0)
                 orig_shape_arr = np.expand_dims(orig_shape,axis=0)
                 annotation_arr =np.expand_dims(_annotation_arr,axis=0)
+                landmark_arr = np.array([annotation_points])
             else:
                 accessionid_arr = np.concatenate((accessionid_arr,np.array([pat_id])),0)
                 id_arr = np.concatenate((id_arr,np.array([pat_id])),0)
@@ -305,6 +305,7 @@ class dataloader(Dataset):
                 annotation_arr = np.concatenate((annotation_arr,np.expand_dims(_annotation_arr,axis=0)),0)
                 meta_arr=pd.concat([meta_arr,_meta_arr])
                 orig_shape_arr=np.concatenate((orig_shape_arr,np.array([orig_shape])),0)
+                landmark_arr = np.concatenate((landmark_arr,np.array([annotation_points])),0)
 
         if save_cache==True:                      
             #save meta dictionary, with ids
@@ -341,19 +342,55 @@ class dataloader(Dataset):
         accessionid_arr = np.array(accessionid_arr)
         accessionid_arr = np.expand_dims(accessionid_arr,axis=1)
 
-        return im_torch, annotation_torch, meta_torch, id_arr, orig_shape_arr 
+        #expand numpy arr and make values as torch
+        landmark_arr = np.expand_dims(landmark_arr,axis=1)
+        landmark_torch = torch.from_numpy(landmark_arr).float()
+
+        return im_torch, annotation_torch, landmark_torch, meta_torch, id_arr, orig_shape_arr 
 
     def __getitem__(self, index):
         x = self.data[index]
         y = self.target[index]
+        landmarks = self.landmarks[index]
+        id = self.ids[index][0]
+
+        if len(landmarks)==1: 
+            pass
+        else:
+            raise ValueError('check num reviewers for augmentation')
+
+        if self.perform_aug==True:
+            aug_seq = Augmentation(self.cfg).augmentation_fn()
+
+            repeat = True
+            counter = 0
+            while repeat and counter < 1:
+                counter += 1
+                xx = x.cpu().detach().numpy().astype('uint8')
+                _kps = landmarks.cpu().detach().numpy().squeeze(1)
+                images = np.vstack((xx))
+                
+                kps = KeypointsOnImage.from_xy_array(_kps[0], shape=images.shape)
+                aug_image, _aug_kps = aug_seq(images=images,keypoints=kps)
+                
+                aug_kps=_aug_kps.to_xy_array().reshape(self.num_landmarks, 2)
+                aug_ann_array = self.add_sigma_channels(aug_kps, aug_image.shape)
+
+            #convert back to torch friendly   
+            x = torch.from_numpy(np.expand_dims(aug_image,axis=0)).float()
+            y = torch.from_numpy(np.expand_dims(aug_ann_array,axis=0)).float()
+            aug_landmarks = torch.from_numpy(np.expand_dims(aug_kps,axis=0)).float()
+            if self.save_aug == True:
+                visuals(self.aug_path+'/'+id).heatmaps(aug_image, aug_ann_array)
+
         try:
             meta = self.meta[index]
         except:
             #means meta is empty
             meta = self.meta
-        id = self.ids[index][0]
+
         orig_size = self.orig_img_shape[index][0]
-        return x, y, meta, id, orig_size
+        return x, y, aug_landmarks, meta, id, orig_size
 
     def __len__(self):
         return len(self.data)
