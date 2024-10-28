@@ -140,7 +140,7 @@ class test():
     
     def run(self, dataloader):
         comparison_df = pd.DataFrame([])
-        for batch_idx, (data, target, meta, id, orig_size) in enumerate(dataloader):
+        for batch_idx, (data, target, landmarks, meta, id, orig_imsize) in enumerate(dataloader):
             print(batch_idx)
 
             data, target = Variable(data).to(self.device), Variable(target).to(self.device)

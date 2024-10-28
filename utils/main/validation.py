@@ -172,7 +172,7 @@ class validation():
         with torch.no_grad():  # So no gradients accumulate#
             comparison_df = pd.DataFrame([])
 
-            for batch_idx, (data, target, meta_data, id) in enumerate(dataloader):
+            for batch_idx, (data, target, landmarks, meta_data, id, orig_imsize) in enumerate(dataloader):
                 predicted_points = []
                 
                 batches += 1
