@@ -177,10 +177,13 @@ class validation():
                 
                 batches += 1
                 data, target = Variable(data).to(self.device), Variable(target).to(self.device)
+                print(data.shape, target.shape)
                 meta_data = Variable(meta_data).to(self.device)
                 
                 # get prediction
                 pred = self.net(data,meta_data)            
+                print('pred',pred.shape)
+                print('targ',target.shape)
 
                 if self.add_class_loss==True or self.add_alpha_loss == True:
                     pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)

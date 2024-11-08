@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_test.json #0.01674.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -47,6 +47,7 @@ DATASET:
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
+    APPLY: False
     ROTATION_FACTOR: 1 #affineau
     INTENSITY_FACTOR: 0.5 #multiplicaiton factor
     SF: 0.2 #affine scale factor

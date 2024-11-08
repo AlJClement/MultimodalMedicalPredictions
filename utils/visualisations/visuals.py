@@ -110,7 +110,15 @@ class visuals():
         ax.imshow(_output, cmap='inferno', alpha = 1)
 
         ax.axis('off')
-        if target_points != None:
+        try:
+            target_points == None
+            tp_exist = None
+        except:
+            tp_exist = True
+            
+        if tp_exist == None:
+            ax.imshow(image, cmap='Greys_r',alpha=0.4)
+        else:
             if with_img == True:
                 if w_landmarks == True:
                     ax.imshow(image, cmap='Greys_r')
@@ -120,8 +128,6 @@ class visuals():
                 else:
                     ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
                     ax.imshow(image, cmap='Greys_r',alpha=0.4)
-        else:
-            ax.imshow(image, cmap='Greys_r',alpha=0.4)
                 
         # with open(self.save_path+'.txt', 'a') as output:
         #     for i in range(len(predicted_points)):
