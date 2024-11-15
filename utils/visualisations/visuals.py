@@ -111,8 +111,8 @@ class visuals():
 
         ax.axis('off')
         try:
-            target_points == None
-            tp_exist = None
+            if target_points == None:
+                tp_exist = None
         except:
             tp_exist = True
             
@@ -123,6 +123,7 @@ class visuals():
                 if w_landmarks == True:
                     ax.imshow(image, cmap='Greys_r')
                     #add landmarks
+                    print('adding landmarks')
                     ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=5)
                     ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
                 else:

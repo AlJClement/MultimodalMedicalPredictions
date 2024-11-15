@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_test.json #0.01674.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -47,25 +47,25 @@ DATASET:
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
-    APPLY: False
-    ROTATION_FACTOR: 1 #affineau
-    INTENSITY_FACTOR: 0.5 #multiplicaiton factor
-    SF: 0.2 #affine scale factor
-    TRANSLATION_X: 0.1 #affine
-    TRANSLATION_Y: 0.1 #affine
+    APPLY: True
+    ROTATION_FACTOR: 1 #affine
+    INTENSITY_FACTOR: 0.2 #multiplicaiton factor
+    SF: 0.0 #affine scale factor
+    TRANSLATION_X: 0.2 #affine
+    TRANSLATION_Y: 0.2 #affine
     ELASTIC_STRENGTH: 0 #elastic (pixel movement) - alpha, distance of pixelmovement
     ELASTIC_SMOOTHNESS: 0 #elastic (pixel movement) - sigma, smoothness
-    SPECKLE_NOISE: 2
+    SPECKLE_NOISE: 1
 
-    SOME_OF: 2 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
+    SOME_OF: 1 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
-OUTPUT_PATH: ./output_denoise
+OUTPUT_PATH: ./output_denoise_attempt
 
 TRAIN:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 4
   LR: 0.001
-  EPOCHS: 20
+  EPOCHS: 10
   LOSS: nll_across_batch #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6
