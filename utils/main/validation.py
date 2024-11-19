@@ -24,10 +24,23 @@ class validation():
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
         self.max_epochs = cfg.TRAIN.EPOCHS
         self.img_extension = cfg.DATASET.IMAGE_EXT
+        self.cfg=cfg
 
         self.save_heatmap_asdcms=cfg.TRAIN.SAVE_VAL_DCM
 
+        self.save_all_landmarks = cfg.TEST.SHOW_ALL_LANDMARKS
+        self.save_txt = cfg.TEST.SAVE_TXT
+        self.save_heatmap = cfg.TEST.SAVE_HEATMAPS_ALONE
+        self.save_heatmap_as_np = cfg.TEST.SAVE_HEATMAPS_NP
 
+        self.save_img_path = cfg.OUTPUT_PATH +'/validation'
+        if self.save_txt == True:
+            if not os.path.isdir(self.save_img_path+'/'+'txt/'):
+                os.makedirs(self.save_img_path+'/'+'txt/')
+    
+        if self.save_heatmap_as_np == True:
+            if not os.path.isdir(self.save_img_path+'/np/'):
+                os.makedirs(self.save_img_path+'/np/')
         self.net = net
         self.logger = logger
         self.l2_reg=l2_reg
@@ -177,10 +190,13 @@ class validation():
                 
                 batches += 1
                 data, target = Variable(data).to(self.device), Variable(target).to(self.device)
+                print(data.shape, target.shape)
                 meta_data = Variable(meta_data).to(self.device)
                 
                 # get prediction
                 pred = self.net(data,meta_data)            
+                print('pred',pred.shape)
+                print('targ',target.shape)
 
                 if self.add_class_loss==True or self.add_alpha_loss == True:
                     pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
@@ -231,6 +247,15 @@ class validation():
                                 dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
                                 visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
                                 visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
+
+                        if self.save_txt == True:
+                            visuals(validation_dir+'/'+'txt/'+id[i],self.pixel_size, self.cfg).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_size[i])
+                    
+                        if self.save_heatmap == True:
+                            visuals(validation_dir+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
+
+                        if self.save_heatmap_as_np == True:
+                            visuals(validation_dir+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg).save_np(pred[i])
                             
                 for i in range(self.bs):
                     #add to comparison df

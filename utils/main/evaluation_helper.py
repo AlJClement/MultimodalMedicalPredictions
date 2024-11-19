@@ -12,6 +12,7 @@ class evaluation_helper():
         # img tensor of size (B, C, W, H), where C is the channel
         '''
         # if img size is 4, vs if you just want to put one image in
+        print(img.size())
         B, C, W, H = img.size()
         dim=2
 
