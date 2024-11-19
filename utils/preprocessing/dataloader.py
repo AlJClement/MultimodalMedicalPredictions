@@ -378,7 +378,7 @@ class dataloader(Dataset):
 
             #convert back to torch friendly   
             x = torch.from_numpy(np.expand_dims(aug_image,axis=0)).float()
-            y = torch.from_numpy(np.expand_dims(aug_ann_array,axis=0)).float()
+            y = torch.from_numpy(aug_ann_array).float()
             aug_landmarks = torch.from_numpy(np.expand_dims(aug_kps,axis=0)).float()
             if self.save_aug == True:
                 visuals(self.aug_path+'/'+id).heatmaps(aug_image, aug_ann_array)

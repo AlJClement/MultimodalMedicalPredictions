@@ -94,7 +94,9 @@ class visuals():
         except:
             pass
 
-        if target_points != None:
+        if target_points == None:
+            pass
+        else:
             predicted_points = predicted_points.detach().cpu().numpy()
             target_points = target_points.cpu().detach().numpy()
         #print(self.pixelsize)
@@ -110,7 +112,9 @@ class visuals():
         ax.imshow(_output, cmap='inferno', alpha = 1)
 
         ax.axis('off')
-        if target_points != None:
+        if target_points is None:
+            ax.imshow(image, cmap='Greys_r',alpha=0.4)
+        else:
             if with_img == True:
                 if w_landmarks == True:
                     ax.imshow(image, cmap='Greys_r')
@@ -120,9 +124,7 @@ class visuals():
                 else:
                     ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
                     ax.imshow(image, cmap='Greys_r',alpha=0.4)
-        else:
-            ax.imshow(image, cmap='Greys_r',alpha=0.4)
-                
+
         # with open(self.save_path+'.txt', 'a') as output:
         #     for i in range(len(predicted_points)):
         #         row = predicted_points[i]/self.pixelsize
