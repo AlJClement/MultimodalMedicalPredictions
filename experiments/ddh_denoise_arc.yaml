@@ -60,7 +60,7 @@ DATASET:
     SOME_OF: 1 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
-OUTPUT_PATH: ./output_denoise_attempt
+OUTPUT_PATH: ./output
 
 TRAIN:
   BATCH_SIZE: 4

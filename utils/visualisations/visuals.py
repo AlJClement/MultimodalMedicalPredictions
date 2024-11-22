@@ -111,18 +111,14 @@ class visuals():
         _output = self.channels_thresholded(output)
         ax.imshow(_output, cmap='inferno', alpha = 1)
 
-        ax.axis('off')
-<<<<<<< HEAD
-        if target_points is None:
-=======
-        try:
-            if target_points == None:
-                tp_exist = None
-        except:
-            tp_exist = True
+        # ax.axis('off')
+        # try:
+        #     if target_points is None:
+        #         tp_exist = None
+        # except:
+        #     tp_exist = True
             
-        if tp_exist == None:
->>>>>>> 85c1f18141571741ec306a65e84c4c4d544393d5
+        if target_points is None:
             ax.imshow(image, cmap='Greys_r',alpha=0.4)
         else:
             if with_img == True:
@@ -135,11 +131,6 @@ class visuals():
                 else:
                     ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
                     ax.imshow(image, cmap='Greys_r',alpha=0.4)
-<<<<<<< HEAD
-
-=======
-                
->>>>>>> 85c1f18141571741ec306a65e84c4c4d544393d5
         # with open(self.save_path+'.txt', 'a') as output:
         #     for i in range(len(predicted_points)):
         #         row = predicted_points[i]/self.pixelsize
