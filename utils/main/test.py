@@ -156,10 +156,10 @@ class test():
                 print('Test Image:', id[i])
                 
                 if self.save_img_landmarks_predandtrue == True:
-                    visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
+                    visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
 
                 if self.save_heatmap_land_img == True:
-                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks)
+                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks)
 
                 if self.save_asdcms == True:
 
@@ -170,19 +170,25 @@ class test():
                     dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
 
                     if self.save_img_landmarks_predandtrue == True:
-                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
                     if self.save_heatmap_land_img == True:
-                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
                 
                 if self.save_txt == True:
-                    visuals(self.output_path+'/'+'txt/'+id[i],self.pixel_size, self.cfg).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_size[i])
+                    visuals(self.output_path+'/'+'txt/'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_size[i])
                 
                 if self.save_heatmap == True:
-                    visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
+                    visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
 
                 if self.save_heatmap_as_np == True:
-                    visuals(self.output_path+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg).save_np(pred[i])
+                    visuals(self.output_path+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
 
+                save_img=True
+                if save_img ==True:
+                    plt.imshow(np.squeeze(data[i].detach().cpu().numpy()), cmap='Greys_r')
+                    plt.axis('off')
+                    plt.savefig(self.save_img_path+'/'+id[i]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)
+                    
                 #add to comparison df
                 id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
 

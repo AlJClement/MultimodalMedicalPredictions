@@ -8,15 +8,24 @@ import numpy as np
 import pydicom
 import imgaug.augmenters as iaa
 from imgaug.augmentables import KeypointsOnImage
+import sys
+import os
+import pathlib
+target_path = pathlib.Path(os.path.abspath(__file__)).parents[1]
+sys.path.append(target_path)
+from preprocessing.augmentation import Augmentation
+
 
 class visuals():
-    def __init__(self, save_path=None, pixelsize=None, cfg=None, img_ext='.jpg') -> None:
+    def __init__(self, save_path=None, pixelsize=None, cfg=None, orig_size=None,img_ext='.jpg') -> None:
+        self.cfg=cfg
         self.img_ext = img_ext
         self.save_path = save_path
         try:
             self.pixelsize = pixelsize.detach().cpu().numpy()
         except:
             self.pixelsize = pixelsize
+        self.orig_size = orig_size.detach().cpu().numpy()
         
         pass
     
@@ -86,8 +95,9 @@ class visuals():
 
         return
     
-    def heatmaps(self, image, output, target_points=None, predicted_points=None, w_landmarks=True, all_landmarks=True, with_img = True, as_dcm=False, dcm_loc='', save_high_res=True):
+    def heatmaps(self, image, output, target_points=None, predicted_points=None, w_landmarks=True, all_landmarks=True, with_img = True, as_dcm=False, dcm_loc='', resize_to_orig=True,save_high_res=True):
         fig, ax = plt.subplots(1, 1)
+        
         try:
             image = image.detach().cpu().numpy()
             output = output.detach().cpu().numpy()
@@ -99,6 +109,16 @@ class visuals():
         else:
             predicted_points = predicted_points.detach().cpu().numpy()
             target_points = target_points.cpu().detach().numpy()
+        
+        if resize_to_orig == False:
+            predicted_points[:, 1] *= (image.shape[0]/self.orig_size[0][1])
+            predicted_points[:, 0] *= (image.shape[1]/self.orig_size[0][0])
+            target_points[:, 1] *= (image.shape[0]/self.orig_size[0][1])
+            target_points[:, 0] *= (image.shape[1]/self.orig_size[0][0])
+            image = Augmentation(self.cfg).upsample(self.orig_size, image)
+            output = Augmentation(self.cfg).upsample(self.orig_size, output)
+
+
         #print(self.pixelsize)
         #comment out if you want 5 landmarks plotted#
             if all_landmarks==True:
@@ -112,9 +132,6 @@ class visuals():
         ax.imshow(_output, cmap='inferno', alpha = 1)
 
         ax.axis('off')
-<<<<<<< HEAD
-        if target_points is None:
-=======
         try:
             if target_points == None:
                 tp_exist = None
@@ -122,7 +139,6 @@ class visuals():
             tp_exist = True
             
         if tp_exist == None:
->>>>>>> 85c1f18141571741ec306a65e84c4c4d544393d5
             ax.imshow(image, cmap='Greys_r',alpha=0.4)
         else:
             if with_img == True:
@@ -135,11 +151,7 @@ class visuals():
                 else:
                     ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
                     ax.imshow(image, cmap='Greys_r',alpha=0.4)
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> 85c1f18141571741ec306a65e84c4c4d544393d5
         # with open(self.save_path+'.txt', 'a') as output:
         #     for i in range(len(predicted_points)):
         #         row = predicted_points[i]/self.pixelsize
@@ -159,6 +171,9 @@ class visuals():
             rgb_im = im.convert('RGB')
             rgb_im.save(self.save_path+'.jpg')
             plt.close()
+
+
+
 
         plt.close()
         return

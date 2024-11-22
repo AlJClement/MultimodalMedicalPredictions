@@ -2,13 +2,15 @@ import imgaug.augmenters as iaa
 from torchvision import transforms
 from skimage.util import random_noise
 import numpy as np
-
+import cv2
 class Augmentation():
     def __init__(self,cfg) -> None:
         
         self.downsampled_image_width = cfg.DATASET.CACHED_IMAGE_SIZE[0]
         self.downsampled_image_height = cfg.DATASET.CACHED_IMAGE_SIZE[1]
         self.downsampled_aspect_ratio = self.downsampled_image_width / self.downsampled_image_height
+        self.upsample_aspect_ratio = self.downsampled_image_height / self.downsampled_image_width
+
         self.data_aug_params = cfg.DATASET.AUGMENTATION
         self.data_aug_some_of = cfg.DATASET.AUGMENTATION.SOME_OF
 
@@ -23,6 +25,23 @@ class Augmentation():
         ]
         seq = iaa.Sequential(preprocessing_steps)
         return seq
+    
+    def upsample(self,orig_size,image):
+
+        new_size = (int(orig_size[0][0]), int(orig_size[0][1]))
+
+        # Resize the image
+        if len(image.shape)<3:
+            resized_image = cv2.resize(image, new_size, interpolation=cv2.INTER_CUBIC)
+        else:
+            img = np.reshape(image, (image.shape[1],image.shape[2],image.shape[0]))
+            new_size = int(orig_size[0][1]), int(orig_size[0][0])
+            resized_image = cv2.resize(img, new_size, interpolation=cv2.INTER_CUBIC)
+            resized_image = np.reshape(resized_image, (resized_image.shape[2], resized_image.shape[0],resized_image.shape[1]))
+            for channel in range(resized_image.shape[0]):
+                resized_image[channel] = (resized_image[channel] - resized_image[channel].min()) / (resized_image[channel].max()-resized_image[channel].min())
+        return resized_image
+    
     
     def augmentation_fn(self,):
         ## check if you want some of or multiple
