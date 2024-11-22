@@ -130,15 +130,16 @@ class visuals():
 
         _output = self.channels_thresholded(output)
         ax.imshow(_output, cmap='inferno', alpha = 1)
-
         ax.axis('off')
-        try:
-            if target_points == None:
-                tp_exist = None
-        except:
-            tp_exist = True
+
+        # ax.axis('off')
+        # try:
+        #     if target_points is None:
+        #         tp_exist = None
+        # except:
+        #     tp_exist = True
             
-        if tp_exist == None:
+        if target_points is None:
             ax.imshow(image, cmap='Greys_r',alpha=0.4)
         else:
             if with_img == True:

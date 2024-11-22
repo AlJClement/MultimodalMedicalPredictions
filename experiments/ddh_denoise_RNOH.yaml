@@ -1,15 +1,13 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #0.06551.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
-  
+  PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/partition_stanmore_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_RNOH/CS_RNOH.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
   #make the first col always the patient ID col
   ID_COL: Accession Number
-  META_COLS: [Sex: hot, Age(Days): continuous] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
-
+  META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot
+  
 MODEL: 
   #NAME: unet_meta_lastlayer
   #IN_CHANNELS: 1
@@ -17,7 +15,7 @@ MODEL:
   #INIT_FEATURES: 4
   #META_FEATURES: [100, 100, 100] 
   # #how large to make the linear layer, if its ZERO no features added
-  DEVICE: cuda
+  DEVICE: cpu #cuda
 
   #
   META_FEATURES: [100,100,100] 
@@ -47,25 +45,24 @@ DATASET:
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
-    APPLY: True
     ROTATION_FACTOR: 1 #affine
-    INTENSITY_FACTOR: 0.2 #multiplicaiton factor
-    SF: 0.0 #affine scale factor
-    TRANSLATION_X: 0.2 #affine
-    TRANSLATION_Y: 0.2 #affine
+    INTENSITY_FACTOR: 0.5 #multiplicaiton factor
+    SF: 0.2 #affine scale factor
+    TRANSLATION_X: 0.3 #affine
+    TRANSLATION_Y: 0.3 #affine
     ELASTIC_STRENGTH: 0 #elastic (pixel movement) - alpha, distance of pixelmovement
     ELASTIC_SMOOTHNESS: 0 #elastic (pixel movement) - sigma, smoothness
-    SPECKLE_NOISE: 1
+    SPECKLE_NOISE: 2
 
-    SOME_OF: 1 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
+    SOME_OF: 2 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
-OUTPUT_PATH: ./output
+OUTPUT_PATH: ./output_denoise
 
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 2
   LR: 0.001
-  EPOCHS: 10
+  EPOCHS: 20
   LOSS: nll_across_batch #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6
