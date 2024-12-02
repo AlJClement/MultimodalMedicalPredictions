@@ -25,7 +25,8 @@ class visuals():
             self.pixelsize = pixelsize.detach().cpu().numpy()
         except:
             self.pixelsize = pixelsize
-        self.orig_size = orig_size.detach().cpu().numpy()
+        if orig_size is not None:
+            self.orig_size = orig_size.detach().cpu().numpy()
         
         pass
     

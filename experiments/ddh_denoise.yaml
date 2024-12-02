@@ -52,7 +52,7 @@ DATASET:
     TRANSLATION_Y: 0.3 #affine
     ELASTIC_STRENGTH: 0 #elastic (pixel movement) - alpha, distance of pixelmovement
     ELASTIC_SMOOTHNESS: 0 #elastic (pixel movement) - sigma, smoothness
-    SPECKLE_NOISE: 4
+    SPECKLE_NOISE: 1
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
