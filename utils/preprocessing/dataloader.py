@@ -133,7 +133,6 @@ class dataloader(Dataset):
                 image = io.imread(img_path[:-4]+'.png', as_gray=True)
             except:
                 #add _ between L/R and series number
-                print('HELLOOO',img_path.split('/')[-1])
                 new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
                 image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
 
@@ -241,7 +240,7 @@ class dataloader(Dataset):
             pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
 
             ##LOAD IMAGES##
-            print(img_files[self.set][i])
+            # print(img_files[self.set][i])
             _im_arr, orig_shape = self.get_img(seq,img_files[self.set][i])
             print('orig_shape:',orig_shape)
             
