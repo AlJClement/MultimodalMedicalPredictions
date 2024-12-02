@@ -63,7 +63,6 @@ DATASET:
     ELASTIC_STRENGTH: 0 #elastic (pixel movement) - alpha, distance of pixelmovement
     ELASTIC_SMOOTHNESS: 0 #elastic (pixel movement) - sigma, smoothness
     SPECKLE_NOISE: 2
-
     SOME_OF: 2 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 

@@ -259,7 +259,7 @@ class validation():
                             
                 for i in range(self.bs):
                     #add to comparison df
-                    print('Alpha for', id[i])
+                    print('Comparison metrics for', id[i])
                     id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
 
                     if comparison_df.empty == True:
@@ -279,15 +279,16 @@ class validation():
         self.logger.info("MEAN VALUES: {}".format(comparsion_summary_ls))
         self.logger.info("MRE: {} +/- {} %".format(MRE[0], MRE[1]))
 
-        alpha_thresh_percentages=self.alpha_thresholds(comparison_df)
-        self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
+        if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
+            alpha_thresh_percentages=self.alpha_thresholds(comparison_df)
+            self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
 
-        #from df get classification metrics TP, TN, FN, FP for graf
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.outputpath,loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
-        self.logger.info("Class Agreement GRAF: {}".format(class_agreement))
+            #from df get classification metrics TP, TN, FN, FP for graf
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.outputpath,loc='validation')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            self.logger.info("Class Agreement GRAF: {}".format(class_agreement))
 
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.outputpath, loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
-        self.logger.info("Class Agreement GRAF: {}".format(class_agreement))
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.outputpath, loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+            self.logger.info("Class Agreement GRAF: {}".format(class_agreement))
 
         if self.combine_graf_fhc==True:
         # #add fhc cols for normal and abnormal (n and a)
@@ -319,7 +320,8 @@ class validation():
                 raise ValueError('Check Landmark radial errors are calcuated')
 
         #plot angles pred vs angles 
-        visualisations.comparison(self.dataset_name,self.outputpath).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
+        if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
+            visualisations.comparison(self.dataset_name,self.outputpath).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
 
 
         return av_loss

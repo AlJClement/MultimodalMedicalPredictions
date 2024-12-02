@@ -19,6 +19,7 @@ from torch.utils.data import Dataset
 from visualisations import visuals
 from tqdm import tqdm
 from .augmentation import Augmentation
+from pathlib import Path
 
 class dataloader(Dataset):
     def __init__(self, cfg, set) -> None:
@@ -133,8 +134,14 @@ class dataloader(Dataset):
                 image = io.imread(img_path[:-4]+'.png', as_gray=True)
             except:
                 #add _ between L/R and series number
-                new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
-                image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
+                try:
+                    new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
+                    image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
+                except:
+                    #check if its in a subdirectory (Data Hand Atlas)
+                    parent=Path(img_path[:-4]).parent
+                    new_name = glob.glob(str(parent)+'/**/*/'+img_path.split('/')[-1])
+                    image = io.imread(new_name[0], as_gray=True)
 
         # Augment image
         image_resized = seq(image=image)
