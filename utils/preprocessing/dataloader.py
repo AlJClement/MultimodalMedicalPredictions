@@ -122,6 +122,7 @@ class dataloader(Dataset):
         return img_file_dic, annotation_dic
     
     def get_img(self, seq, img_path:str):
+        print(img_path)
         '''loads images as arr'''
         try:
             #assumes file is jpg
@@ -132,6 +133,7 @@ class dataloader(Dataset):
                 image = io.imread(img_path[:-4]+'.png', as_gray=True)
             except:
                 #add _ between L/R and series number
+                print('HELLOOO',img_path.split('/')[-1])
                 new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
                 image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
 

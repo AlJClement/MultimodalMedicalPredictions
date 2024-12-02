@@ -63,7 +63,7 @@ DATASET:
 OUTPUT_PATH: ./output
 
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 2
   LR: 0.001
   EPOCHS: 10
   LOSS: nll_across_batch #_mse_walpha

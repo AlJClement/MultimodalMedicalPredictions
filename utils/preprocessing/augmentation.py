@@ -62,7 +62,7 @@ class Augmentation():
             )
             seq = iaa.Sequential(aug)
         else:
-            aug =iaa.SomeOf(self.data_aug_some_of,[
+            aug =iaa.SomeOf((0,self.data_aug_some_of),[
                 iaa.Affine(translate_percent={"x": (-self.data_aug_params.TRANSLATION_X, self.data_aug_params.TRANSLATION_X),
                                             "y": (-self.data_aug_params.TRANSLATION_Y, self.data_aug_params.TRANSLATION_Y)},
                         scale=(1 - self.data_aug_params.SF, 1 + self.data_aug_params.SF),

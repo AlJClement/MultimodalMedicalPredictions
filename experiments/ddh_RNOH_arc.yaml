@@ -46,7 +46,7 @@ DATASET:
     APPLY: True
     ROTATION_FACTOR: 1 #affine
     INTENSITY_FACTOR: 0.2 #multiplicaiton factor
-    SF: 0.0 #affine scale factor
+    SF: 0.2 #affine scale factor
     TRANSLATION_X: 0.2 #affine
     TRANSLATION_Y: 0.2 #affine
     ELASTIC_STRENGTH: 0 #elastic (pixel movement) - alpha, distance of pixelmovement

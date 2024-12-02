@@ -5,7 +5,7 @@ import os
 import tempfile
 from PIL import Image
 import numpy as np
-import pydicom
+# import pydicom
 import imgaug.augmenters as iaa
 from imgaug.augmentables import KeypointsOnImage
 import sys
@@ -25,7 +25,8 @@ class visuals():
             self.pixelsize = pixelsize.detach().cpu().numpy()
         except:
             self.pixelsize = pixelsize
-        self.orig_size = orig_size.detach().cpu().numpy()
+        if orig_size is not None:
+            self.orig_size = orig_size.detach().cpu().numpy()
         
         pass
     
@@ -39,7 +40,7 @@ class visuals():
         return compressed_channels
 
     def save_dcm_heatmap(self, output_heatmap, dcm_loc):
-        ds = pydicom.dcmread(dcm_loc)
+        ds = '' #pydicom.dcmread(dcm_loc)
         read_arr = self.save_path.rsplit('/',2)[0]+'/'+self.save_path.split('/')[-1]+self.img_ext
 
         im_frame = Image.open(read_arr)
