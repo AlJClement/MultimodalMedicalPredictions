@@ -22,7 +22,7 @@ from .validation import validation
 
 class test():
     def __init__(self, cfg, logger):
-        self.combine_graf_fhc=True
+        self.combine_graf_fhc=cfg.TRAIN.COMBINE_GRAF_FHC
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
         self.validation = validation(cfg,logger,net=None)
         self.cfg=cfg

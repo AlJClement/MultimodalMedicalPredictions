@@ -69,9 +69,9 @@ DATASET:
 OUTPUT_PATH: ./output_denoise
 
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 4
   LR: 0.0001
-  EPOCHS: 10
+  EPOCHS: 6
   LOSS: nll_across_batch #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6
