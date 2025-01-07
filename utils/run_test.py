@@ -33,7 +33,7 @@ def main():
     help._dataset_shape(test_dataset)
 
     #load data into data loader (imports all data into a dataloader)
-    test_dataloader = DataLoader(test_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = True)
+    test_dataloader = DataLoader(test_dataset, batch_size=cfg.TEST.BATCH_SIZE, shuffle=False, drop_last = True)
     
     test(cfg,logger).run(test_dataloader)
 

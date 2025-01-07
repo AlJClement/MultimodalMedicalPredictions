@@ -38,7 +38,7 @@ DATASET:
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 37 
   COMBINE_REVIEWERS: False 
-  SIGMA: 3 #if sigma is NONE no guassian applied
+  SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
   CACHED_IMAGE_SIZE: [512,512]
   PIXEL_SIZE: [0.1,0.1]
@@ -57,12 +57,12 @@ DATASET:
     SOME_OF: 1 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
-OUTPUT_PATH: ./output_hands
+OUTPUT_PATH: ./output_hands_sigma1
 
 TRAIN:
-  BATCH_SIZE: 5
-  LR: 0.0001
-  EPOCHS: 5
+  BATCH_SIZE: 4
+  LR: 0.001
+  EPOCHS: 6
   LOSS: nll_across_batch #_mse_walpha
   GAMMA: 0.0
   # COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6
@@ -80,4 +80,5 @@ TEST:
   SAVE_HEATMAPS_LANDMARKS_IMG: True
   SAVE_IMG_LANG_PREDANDTRUE: True
   SAVE_HEATMAPS_NP: True
+  SAVE_TXT: True
   

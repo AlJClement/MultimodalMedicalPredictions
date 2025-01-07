@@ -40,7 +40,7 @@ class test():
         self.save_all_landmarks = cfg.TEST.SHOW_ALL_LANDMARKS
 
         self.loss_func = eval(cfg.TRAIN.LOSS)
-        self.bs = cfg.TRAIN.BATCH_SIZE
+        self.bs = cfg.TEST.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
         self.momentum = cfg.TRAIN.MOMENTUM
         self.device = torch.device(cfg.MODEL.DEVICE)
@@ -215,21 +215,24 @@ class test():
         self.logger.info("MEAN VALUES: {}".format(comparsion_summary_ls))
         self.logger.info("MRE: {} +/- {} %".format(MRE[0], MRE[1]))
 
-        alpha_thresh_percentages,alpha_thresh_percentages_normalized=self.alpha_thresholds(comparison_df)
-        self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
-        self.logger.info("Alpha Thresholds Normalized: {}".format(alpha_thresh_percentages_normalized))
+                #plot angles pred vs angles 
+        if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
+                
+            alpha_thresh_percentages,alpha_thresh_percentages_normalized=self.alpha_thresholds(comparison_df)
+            self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
+            self.logger.info("Alpha Thresholds Normalized: {}".format(alpha_thresh_percentages_normalized))
 
-        #from df get class agreement metrics TP, TN, FN, FP
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true',self.output_path)._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
-        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[4]))
-        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[5]))
-        self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[6]))
+            #from df get class agreement metrics TP, TN, FN, FP
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true',self.output_path)._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[4]))
+            self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[5]))
+            self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[6]))
 
-        class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.output_path)._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.output_path)._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
 
-        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[4]))
-        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[5]))
-        self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[6]))
+            self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[4]))
+            self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[5]))
+            self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[6]))
 
 
         if self.combine_graf_fhc==True:
@@ -271,11 +274,14 @@ class test():
 
             except:
                 raise ValueError('Check Landmark radial errors are calcuated')
-        #get mean alpha difference
-        self.logger.info('ALPHA MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].mean(),3)))
-        self.logger.info('ALPHA ABSOLUTE MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].apply(abs).mean(),3)))
+                
 
         #plot angles pred vs angles 
-        visualisations.comparison(self.dataset_name, self.output_path).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy())
+                #plot angles pred vs angles 
+        if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
+                        #get mean alpha difference
+            self.logger.info('ALPHA MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].mean(),3)))
+            self.logger.info('ALPHA ABSOLUTE MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].apply(abs).mean(),3)))
+            visualisations.comparison(self.dataset_name, self.output_path).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy())
 
         return 
