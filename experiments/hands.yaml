@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /home/scratch/allent/MultimodalMedicalPredictions/data/partition_0.7_0.15_0.15_randomallocation.json
+  PARTITION: /home/scratch/allent/MultimodalMedicalPredictions/data/partition_0.7_0.15_0.15_test.json
   IMAGES: /experiments/datasets-in-use/xray-hand-child-land/DigitalHandAtlas/DigitalHandAtlas/JPEGimages
   LABELS: /experiments/datasets-in-use/xray-hand-child-land/DigitalHandAtlas/DigitalHandAtlas/txt_fromcsv
   META_PATH: /experiments/datasets-in-use/xray-hand-child-land/DigitalHandAtlas/DigitalHandAtlas/DigitalHandAtlas_metadata.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
@@ -74,7 +74,7 @@ TEST:
     - landmark_metrics().get_eres
     - landmark_metrics().get_radial_errors
     # - fhc().get_fhc
-  SDR_THRESHOLD: [0.5, 1.0, 2.0, 4.0]
+  SDR_THRESHOLD: [1.0, 2.0, 4.0, 10.0]
   SDR_UNITS: 'mm' #'pixels'
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True

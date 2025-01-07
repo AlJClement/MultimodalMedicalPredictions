@@ -149,6 +149,7 @@ class test():
             orig_size = Variable(orig_size).to(self.device)
             
             pred = self.net(data, meta_data)
+            #predictions are heatmaps, points are taken as hottest point in each channel, which is scaled (multiplied by pixel size). 
             target_points,predicted_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
             #plot and caluclate values for each subject in the batch
@@ -192,8 +193,8 @@ class test():
                 #add to comparison df
                 id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
 
-                print('Alpha for', id[i])
-                id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
+                # print('Alpha for', id[i])
+                # id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
 
                 if comparison_df.empty == True:
                     comparison_df = id_metric_df
@@ -212,10 +213,11 @@ class test():
 
         #Get mean values from comparison summary ls, landmark metrics
         comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
-        self.logger.info("MEAN VALUES: {}".format(comparsion_summary_ls))
-        self.logger.info("MRE: {} +/- {} %".format(MRE[0], MRE[1]))
+        self.logger.info("MEAN VALUES (pix): {}".format(comparsion_summary_ls))
+        self.logger.info("MRE: {} +/- {} pix".format(MRE[0], MRE[1]))
+        self.logger.info("MRE: {} +/- {} mm".format(MRE[0]*self.pixel_size.detach().cpu().numpy()[0], MRE[1]*self.pixel_size.detach().cpu().numpy()[0]))
 
-                #plot angles pred vs angles 
+        #plot angles pred vs angles 
         if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
                 
             alpha_thresh_percentages,alpha_thresh_percentages_normalized=self.alpha_thresholds(comparison_df)

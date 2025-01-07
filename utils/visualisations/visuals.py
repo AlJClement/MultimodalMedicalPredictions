@@ -148,10 +148,10 @@ class visuals():
                     ax.imshow(image, cmap='Greys_r')
                     #add landmarks
                     print('adding landmarks')
-                    ax.scatter(target_points[:, 0]/self.pixelsize, target_points[:, 1]/self.pixelsize, color='lime', s=5)
-                    ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
+                    ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=5)
+                    ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
                 else:
-                    ax.scatter(predicted_points[:, 0]/self.pixelsize, predicted_points[:, 1]/self.pixelsize, color='red', s=5)
+                    ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
                     ax.imshow(image, cmap='Greys_r',alpha=0.4)
 
         # with open(self.save_path+'.txt', 'a') as output:

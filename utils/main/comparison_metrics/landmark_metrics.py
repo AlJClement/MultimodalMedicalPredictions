@@ -74,9 +74,9 @@ class landmark_overall_metrics():
             
         successful_detection_rates = []
         for threshold in thresholds:
-            if self.unit == 'pixels':
+            if self.unit == 'mm':
                 #convert radial erradial_errorsror to pixels
-                radial_errors = radial_errors/self.pixel_size
+                radial_errors = radial_errors*self.pixel_size[0]
                 filter = np.where(radial_errors < threshold, 1.0, 0.0)
             else:
                 filter = np.where(radial_errors < threshold, 1.0, 0.0)
@@ -88,8 +88,8 @@ class landmark_overall_metrics():
         i = 0
         for sdr_rate in successful_detection_rates:
             #print(thresholds[i],thresholds[i]/self.pixel_size[0], sdr_rate)
-            if self.unit == 'pixels':
-                txt += "{:.2f} mm [{:.2f}\t pixels]: {:.2f}%\t".format(thresholds[i], thresholds[i]/self.pixel_size, sdr_rate)
+            if self.unit == 'mm':
+                txt += "{:.2f} mm [{:.2f}\t pixels]: {:.2f}%\t".format(thresholds[i], thresholds[i]/self.pixel_size[0], sdr_rate)
             else:
                 txt += "{:.2f} pixels [{:.2f}\t mm]: {:.2f}%\t".format(thresholds[i], thresholds[i]*self.pixel_size[0], sdr_rate)
             

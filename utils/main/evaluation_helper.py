@@ -60,4 +60,4 @@ class evaluation_helper():
         target_points = self.get_hottest_points(target_points) #should be center of gaussian
         scaled_target_points = torch.multiply(target_points, pixels_sizes)
 
-        return  scaled_target_points, scaled_predicted_points
+        return  target_points, predicted_points
