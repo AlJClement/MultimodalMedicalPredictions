@@ -1,9 +1,14 @@
 INPUT_PATHS:
-  DATASET_NAME: ddh
+  DATASET_NAME: hands
   PARTITION: /data/coml-oxmedis/datasets-old/xray-hand-child-land/partition_0.7_0.15_0.15_randomallocation.json
   IMAGES: /data/coml-oxmedis/datasets-in-use/xray-hand-child-land/DigitalHandAtlas/DigitalHandAtlas/JPEGimages
   LABELS: /data/coml-oxmedis/datasets-old/xray-hand-child-land/txt_fromcsv
   META_PATH: /data/coml-oxmedis/datasets-old/xray-hand-child-land/DigitalHandAtlas_metadata.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+  # PARTITION: /home/scratch/allent/MultimodalMedicalPredictions/data/partition_0.7_0.15_0.15_test.json
+  # IMAGES: /experiments/datasets-in-use/xray-hand-child-land/DigitalHandAtlas/DigitalHandAtlas/JPEGimages
+  # LABELS: /experiments/datasets-in-use/xray-hand-child-land/DigitalHandAtlas/DigitalHandAtlas/txt_fromcsv
+  # META_PATH: /experiments/datasets-in-use/xray-hand-child-land/DigitalHandAtlas/DigitalHandAtlas/DigitalHandAtlas_metadata.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+
   #make the first col always the patient ID col
   ID_COL: Accession Number
   META_COLS: [Sex: hot, Age Days : continuous] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
@@ -74,7 +79,7 @@ TEST:
     - landmark_metrics().get_eres
     - landmark_metrics().get_radial_errors
     # - fhc().get_fhc
-  SDR_THRESHOLD: [0.5, 1.0, 2.0, 4.0]
+  SDR_THRESHOLD: [1.0, 2.0, 4.0, 10.0]
   SDR_UNITS: 'mm' #'pixels'
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True
