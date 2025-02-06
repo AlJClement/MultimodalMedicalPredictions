@@ -277,7 +277,7 @@ class validation():
         #Get mean values from comparison summary ls, landmark metrics
         comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
         self.logger.info("MEAN VALUES: {}".format(comparsion_summary_ls))
-        self.logger.info("MRE: {} +/- {} %".format(MRE[0], MRE[1]))
+        self.logger.info("MRE: {} +/- {}".format(MRE[0], MRE[1]))
 
         if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
             alpha_thresh_percentages=self.alpha_thresholds(comparison_df)

@@ -32,9 +32,13 @@ class graf_angle_calc():
         br = [float(i) for i in landmarks[2]]
         #lower limb point
         ll = [float(i) for i in landmarks[3]]
-        #labrum
-        l = [float(i) for i in landmarks[4]]
-        return i1,i2,br,ll,l
+
+        if len(landmarks)>4:
+            #labrum
+            l = [float(i) for i in landmarks[4]]
+            return i1,i2,br,ll,l
+        else:
+            return i1,i2,br,ll 
 
     def get_alpha_category(self, alpha:float):
         #print('alpha is', alpha)
@@ -100,11 +104,15 @@ class graf_angle_calc():
         return intersection
     
     def plot_landmarks(self, landmarks):
-        i1, i2, br, ll, l = landmarks
+        if len(landmarks)>4:
+            i1, i2, br, ll, l = landmarks
+            plt.scatter(l[0], l[1], c='b', s=20)
+        else:
+            i1, i2, br, ll = landmarks
+
         #plot landmarks
         plt.scatter(i1[0], i1[1],c='r', s=20)
         plt.scatter(i2[0], i2[1], c='r', s=20)
-        plt.scatter(l[0], l[1], c='b', s=20)
         plt.scatter(ll[0], ll[1], c='g', s=20)
         plt.scatter(br[0], br[1], c='y', s=20)
         return
@@ -117,8 +125,10 @@ class graf_angle_calc():
         v_bonyroof: vector along bony rim
         beta angle calculations commented out'''
         #get landmarks in this function will assume the first 5 are the order as above.
-        
-        i1, i2, br, ll, l = self.get_landmarks(landmarks, flip_axis = True)
+        if len(landmarks)>4:
+            i1, i2, br, ll, l = self.get_landmarks(landmarks, flip_axis = True)
+        else:
+            i1, i2, br, ll = self.get_landmarks(landmarks, flip_axis = True)
         #print(i1, i2, br, ll, l)
         #if i1 and i2 are predicted the same - move them one pixel apart in y.. we assume its vertical
      
