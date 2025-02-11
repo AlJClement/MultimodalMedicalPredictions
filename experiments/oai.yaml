@@ -1,0 +1,87 @@
+INPUT_PATHS:
+  DATASET_NAME: oai
+  PARTITION: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/partition_0.7_0.15_0.15_0.00000.json
+  IMAGES: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/imgs
+  LABELS: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/txt
+  META_PATH: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/dataset_metadata_2023-07-31_oai.csv
+
+  #make the first col always the patient ID col
+  ID_COL: ID
+  META_COLS: [P02HISP: hot, P02RACE: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
+
+MODEL: 
+  #NAME: unet_meta_lastlayer
+  #IN_CHANNELS: 1
+  OUT_CHANNELS: 6 #for 5 landmarks
+  #INIT_FEATURES: 4
+  #META_FEATURES: [100, 100, 100] 
+  # #how large to make the linear layer, if its ZERO no features added
+  DEVICE: cuda
+
+  #
+  META_FEATURES: [100,100,100] 
+  NAME: 'unet_plus_plus'
+  ENCODER_NAME: 'resnet34'
+  ENCODER_WEIGHTS: 'imagenet'
+  BATCH_NORM_DECODER: True
+  DECODER_CHANNELS:
+    - 256
+    - 256
+    - 256
+    - 128
+    - 64
+  IN_CHANNELS: 1
+  ATTENTION: scse
+
+
+DATASET:
+  IMAGE_EXT: ".jpg"
+  ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
+  NUM_LANDMARKS: 14
+  COMBINE_REVIEWERS: False 
+  SIGMA: 1 #if sigma is NONE no guassian applied
+  FLIP_AXIS: True
+  CACHED_IMAGE_SIZE: [256,1024]
+  PIXEL_SIZE: [1,1]
+
+  AUGMENTATION:
+  #all of the defined parameters allow for a range of the factors below
+    ROTATION_FACTOR: 1 #affine
+    INTENSITY_FACTOR: 0.01 #multiplicaiton factor
+    SF: 0.01 #affine scale factor
+    TRANSLATION_X: 0.01 #affine
+    TRANSLATION_Y: 0.01 #affine
+    ELASTIC_STRENGTH: 0 #elastic (pixel movement) - alpha, distance of pixelmovement
+    ELASTIC_SMOOTHNESS: 0 #elastic (pixel movement) - sigma, smoothness
+    SPECKLE_NOISE: 1
+
+    SOME_OF: None #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
+
+    APPLY: False
+
+
+OUTPUT_PATH: ./output_oai
+
+TRAIN:
+  BATCH_SIZE: 4
+  LR: 0.001
+  EPOCHS: 10
+  LOSS: nll_across_batch #_mse_walpha
+  GAMMA: 0.0
+  # COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6
+
+TEST:
+  NETWORK: /model:1/_model_run:1_idx.pth
+  COMPARISON_METRICS: 
+    # - graf_angle_calc().graf_class_comparison
+    - landmark_metrics().get_eres
+    - landmark_metrics().get_radial_errors
+    # - fhc().get_fhc
+  SDR_THRESHOLD: [1.0, 2.0, 4.0, 10.0]
+  SDR_UNITS: 'mm' #'pixels'
+  
+  SAVE_HEATMAPS_LANDMARKS_IMG: True
+  SAVE_IMG_LANG_PREDANDTRUE: True
+  SAVE_HEATMAPS_NP: True
+  SAVE_TXT: False
+  

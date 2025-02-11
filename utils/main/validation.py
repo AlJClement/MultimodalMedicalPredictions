@@ -25,6 +25,7 @@ class validation():
         self.max_epochs = cfg.TRAIN.EPOCHS
         self.img_extension = cfg.DATASET.IMAGE_EXT
         self.cfg=cfg
+        self.img_size =cfg.DATASET.CACHED_IMAGE_SIZE
 
         self.save_heatmap_asdcms=cfg.TRAIN.SAVE_VAL_DCM
 
@@ -84,7 +85,7 @@ class validation():
         self.comparison_metrics=cfg.TEST.COMPARISON_METRICS
         self.sdr_thresholds = cfg.TEST.SDR_THRESHOLD
         self.sdr_units = cfg.TEST.SDR_UNITS
-        
+        self.num_output_channels = cfg.MODEL.OUT_CHANNELS
     
     def _get_optimizer(self,net):
         optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
@@ -249,7 +250,7 @@ class validation():
                                 visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
 
                         if self.save_txt == True:
-                            visuals(validation_dir+'/'+'txt/'+id[i],self.pixel_size, self.cfg).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_size[i])
+                            visuals(validation_dir+'/'+'txt/'+id[i],self.pixel_size, self.cfg).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_imsize[i])
                     
                         if self.save_heatmap == True:
                             visuals(validation_dir+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
@@ -311,7 +312,7 @@ class validation():
         if self.dataset_type == 'LANDMARKS':
             #calculate SDR
             try:
-                for i in range(self.num_landmarks):
+                for i in range(self.num_output_channels):
                     col= 'landmark radial error p'+str(i+1)
                     sdr_stats, txt = landmark_overall_metrics(self.pixel_size, self.sdr_units).get_sdr_statistics(comparison_df[col], self.sdr_thresholds)
                     self.logger.info("{} for {}".format(txt, col))

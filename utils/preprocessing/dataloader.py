@@ -48,6 +48,8 @@ class dataloader(Dataset):
         if self.annotation_type == 'LANDMARKS':
             self.ann_extension = '.txt'
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
+        self.num_out_channels = cfg.MODEL.OUT_CHANNELS
+
         self.sigma=cfg.DATASET.SIGMA
         self.cfg_combine_reviewers=cfg.DATASET.COMBINE_REVIEWERS
         
@@ -71,6 +73,8 @@ class dataloader(Dataset):
             self.aug_path = self.cache_dir+'/augmentations'
             if not os.path.exists(self.aug_path):
                 os.makedirs(self.aug_path)
+
+        
         return
 
     
@@ -173,14 +177,13 @@ class dataloader(Dataset):
         # Augment landmark annotations
         kps = KeypointsOnImage.from_xy_array(kps_np_array, shape=image_shape)
         landmarks_arr = seq(keypoints=kps)
-        
 
         return landmarks_arr
 
     def add_sigma_channels(self, ann_points, img_shape, plot=False):
         '''create an array with channel for each landmark, with sigma applied for each'''
-        channels = np.zeros([self.num_landmarks, img_shape[0], img_shape[1]])
-        for i in range(self.num_landmarks):
+        channels = np.zeros([len(ann_points), img_shape[0], img_shape[1]])
+        for i in range(len(ann_points)):
             x, y = (ann_points[i]).astype(int)
             if 0 <= y < channels.shape[1] and 0 <= x < channels.shape[2]:
                 channels[i, y, x] = 1.0
@@ -254,6 +257,13 @@ class dataloader(Dataset):
             ##LOAD ANNOTATIONS##
             _annotation_arr, annotation_points, folder_ls = self.get_ann(annotation_files[self.set][i], seq, _im_arr.shape, orig_shape)
 
+            if self.num_out_channels != self.num_landmarks:
+                ### assume OAI drop only until 3
+                if self.dataset_name == 'oai':
+                    print('Num Landmarks does not match Num Channels')
+                    _annotation_arr = [_annotation_arr[0][[0,2,5,7,9,13],:,:]]
+                    annotation_points = [annotation_points[0][[0,2,5,7,9,13],:]]
+
             # _annotation_arr = _annotation_arr[:5]
             # annotation_points= annotation_points[:5]
             print(len(_annotation_arr))
@@ -265,7 +275,11 @@ class dataloader(Dataset):
                     _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id_rnoh)
                     
                 except:
-                    raise ValueError('no meta data found for: ', pat_id)
+                    try:
+                        pat_id_oai = pat_id.split('-')[0]
+                        _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id_oai)
+                    except:
+                        raise ValueError('no meta data found for: ', pat_id)
 
             cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
 
@@ -301,7 +315,7 @@ class dataloader(Dataset):
                     plt.imshow(_a)
                     plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
                     plt.close()
-
+            
             if meta_arr.empty:
                 accessionid_arr = np.array([pat_id])
                 id_arr = np.array([pat_id])
@@ -309,7 +323,7 @@ class dataloader(Dataset):
                 im_arr = np.expand_dims(_im_arr,axis=0)
                 orig_shape_arr = np.expand_dims(orig_shape,axis=0)
                 annotation_arr =np.expand_dims(_annotation_arr,axis=0)
-                landmark_arr = np.array([annotation_points])
+                landmark_arr = np.array([annotation_points]) 
             else:
                 accessionid_arr = np.concatenate((accessionid_arr,np.array([pat_id])),0)
                 id_arr = np.concatenate((id_arr,np.array([pat_id])),0)
@@ -318,6 +332,8 @@ class dataloader(Dataset):
                 meta_arr=pd.concat([meta_arr,_meta_arr])
                 orig_shape_arr=np.concatenate((orig_shape_arr,np.array([orig_shape])),0)
                 landmark_arr = np.concatenate((landmark_arr,np.array([annotation_points])),0)
+
+
 
         if save_cache==True:                      
             #save meta dictionary, with ids
@@ -329,6 +345,8 @@ class dataloader(Dataset):
         meta_arr=meta_arr.drop(self.pat_id_col,axis=1)
 
         #expand numpy arr and make values as torch
+        ### if landmarks dont == chanels its oai
+
         im_arr = np.expand_dims(im_arr,axis=1)
         im_torch = torch.from_numpy(im_arr).float()
 
@@ -339,6 +357,7 @@ class dataloader(Dataset):
         annotation_torch = torch.from_numpy(annotation_arr).float()
         if len(annotation_torch.shape)==5:
             annotation_torch=torch.squeeze(annotation_torch,dim=1)
+
 
         #encoed meta/id data for network in cfg
         meta_data_restructured = self.meta_feat_structure(np.array(meta_arr))
@@ -385,7 +404,7 @@ class dataloader(Dataset):
                 kps = KeypointsOnImage.from_xy_array(_kps[0], shape=images.shape)
                 aug_image, _aug_kps = aug_seq(images=images,keypoints=kps)
                 
-                aug_kps=_aug_kps.to_xy_array().reshape(self.num_landmarks, 2)
+                aug_kps=_aug_kps.to_xy_array().reshape(self.num_out_channels, 2)
                 aug_ann_array = self.add_sigma_channels(aug_kps, aug_image.shape)
 
             #convert back to torch friendly   
