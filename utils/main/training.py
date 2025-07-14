@@ -7,6 +7,7 @@ from .loss import *
 torch.cuda.empty_cache() 
 from .comparison_metrics import graf_angle_calc
 from .evaluation_helper import evaluation_helper
+from .comparison_metrics import fhc
 
 class training():
     def __init__(self, cfg, logger, l2_reg=True):
@@ -31,11 +32,19 @@ class training():
         if (cfg.TRAIN.LOSS).split('_')[-1]=='walpha':
             self.add_alpha_loss = True
             self.gamma = cfg.TRAIN.GAMMA
-
         else:
             self.add_alpha_loss = False
 
+        
+
+        if (cfg.TRAIN.LOSS).split('_')[-1]=='walphafhc':
+            self.add_alphafhc_loss = True
+            self.gamma = cfg.TRAIN.GAMMA
+        else:
+            self.add_alphafhc_loss = False
+
         self.class_calculation = graf_angle_calc()
+        self.fhc_calc = fhc()
 
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
@@ -62,6 +71,7 @@ class training():
 
         for batch_idx, (data, target, landmarks, meta, id, orig_imsize) in enumerate(dataloader):
             print(batch_idx)
+            print(id)
             self.optimizer.zero_grad()
 
             #data shape: (B, 1, W, H)
@@ -80,7 +90,8 @@ class training():
                         tar_im = tar[0][c]
     
                 plt.imshow(tar_im)
-                plt.imshow(d)
+                plt.imshow(d, cmap='gray')
+                plt.savefig('tmp')
 
             batches += 1
             t_s= datetime.datetime.now()
@@ -88,13 +99,17 @@ class training():
             #target shape: (B, C, W, H) - where C is #landmarks
             pred = self.net(data, meta_data)
 
-            if self.add_class_loss==True or self.add_alpha_loss == True:
+            if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
                 pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
 
-            
+                if self.add_alphafhc_loss==True:
+                    pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
+
             if self.l2_reg==True:
                 if self.add_class_loss==True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,pred_classes, target_classes,self.gamma)
+                elif self.add_alphafhc_loss== True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc, self.gamma)
                 elif self.add_alpha_loss== True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
                 else:

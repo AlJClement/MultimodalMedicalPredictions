@@ -75,6 +75,20 @@ def nll_across_batch_mse_walpha(output, target, alpha_output, alpha_target, gamm
 
     return nll_img*(1-gamma)+mse_alpha*gamma
 
+def nll_across_batch_mse_walphafhc(output, target, alpha_output, alpha_target, fhc_out, fhc_target, gamma):
+    nll = target * torch.log(output.double())
+    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+        
+    mse_alpha = torch.pow(torch.FloatTensor(alpha_target )- torch.FloatTensor(alpha_output).double(), 2)
+    mse_alpha=torch.mean(torch.sum(mse_alpha))
+    mse_fhc = torch.pow(torch.FloatTensor(fhc_target )- torch.FloatTensor(fhc_out).double(), 2)
+    mse_fhc=torch.mean(torch.sum(mse_fhc))
+
+    g= gamma/2
+
+    return nll_img*(1-gamma)+mse_alpha*g+mse_fhc*g
+
+
 def nll_across_batch(output, target):
     nll = target * torch.log(output.double())
     return -torch.mean(torch.sum(nll, dim=(2, 3)))
@@ -108,12 +122,14 @@ class L2RegLoss(nn.Module):
 
         if main_loss_str.split('_')[-1]=='walpha':
             self.addclass='walpha'
+        elif main_loss_str.split('_')[-1]=='walphafhc':
+            self.addclass='walphafhc'
         elif main_loss_str.split('_')[-1]== 'wclass':
             self.addclass='wclass'
         else:
             self.addclass=False
 
-    def forward(self, x, target, model,  pred_alphas=None, target_alphas=None, class_output=None,class_target=None,gamma=0.0):
+    def forward(self, x, target, model,  pred_alphas=None, target_alphas=None,class_output=None,class_target=None,pred_fhc=None,  target_fhc=None,gamma=0.0):
         #abs(p) for l1
         l2 = [p.pow(2).sum() for p in model.parameters()]
         l2 = sum(l2)
@@ -126,6 +142,12 @@ class L2RegLoss(nn.Module):
             print('pred:',class_output)
             print('target:',class_target)
             loss = self.main_loss(x, target,pred_alphas,target_alphas,class_output,class_target,gamma) + self.lam*l2
+        elif self.addclass=='walphafhc':
+            print('pred a:',pred_alphas)
+            print('target a:',target_alphas)
+            print('pred fhc:',pred_fhc)
+            print('target fhc:',target_fhc)
+            loss = self.main_loss(x, target,pred_alphas,target_alphas,pred_fhc, target_fhc,gamma) + self.lam*l2
         else:
             loss = self.main_loss(x, target) + self.lam*l2
 

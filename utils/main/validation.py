@@ -4,6 +4,7 @@ from torch.autograd import Variable
 import datetime
 from .model_init import model_init
 from .loss import *
+from .evaluation_helper import evaluation_helper
 from .evaluation_helper import *
 import sys
 import os
@@ -15,6 +16,7 @@ from visualisations import visuals
 from .evaluation_helper import evaluation_helper
 import pandas as pd
 from .comparison_metrics import *
+from .comparison_metrics import fhc
 
 class validation():
     def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
@@ -56,6 +58,12 @@ class validation():
         else:
             self.add_class_loss = False
 
+        if (cfg.TRAIN.LOSS).split('_')[-1]=='walphafhc':
+            self.add_alphafhc_loss = True
+            self.gamma = cfg.TRAIN.GAMMA
+        else:
+            self.add_alphafhc_loss = False
+
         if (cfg.TRAIN.LOSS).split('_')[-1]=='walpha':
             self.add_alpha_loss = True
             self.gamma = cfg.TRAIN.GAMMA
@@ -74,7 +82,7 @@ class validation():
         self.device = torch.device(cfg.MODEL.DEVICE)
         self.combine_graf_fhc=cfg.TRAIN.COMBINE_GRAF_FHC
 
-        self.evaluation = evaluation_helper()
+        self.evaluation = evaluation_helper
         self.save_img = save_img
 
         self.outputpath=cfg.OUTPUT_PATH
@@ -86,6 +94,9 @@ class validation():
         self.sdr_thresholds = cfg.TEST.SDR_THRESHOLD
         self.sdr_units = cfg.TEST.SDR_UNITS
         self.num_output_channels = cfg.MODEL.OUT_CHANNELS
+
+        self.fhc_calc = fhc()
+
     
     def _get_optimizer(self,net):
         optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
@@ -199,13 +210,17 @@ class validation():
                 print('pred',pred.shape)
                 print('targ',target.shape)
 
-                if self.add_class_loss==True or self.add_alpha_loss == True:
+                if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
                     pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
 
-                
+                    if self.add_alphafhc_loss==True:
+                        pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
+
                 if self.l2_reg==True:
                     if self.add_class_loss==True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas, pred_classes, target_classes,self.gamma)
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,pred_classes, target_classes,self.gamma)
+                    elif self.add_alphafhc_loss== True:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc, self.gamma)
                     elif self.add_alpha_loss== True:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
                     else:
@@ -220,7 +235,7 @@ class validation():
 
                 total_loss += loss
                 
-                target_points, predicted_points = evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
+                target_points, predicted_points = evaluation_helper.evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
                 # save figures only on last epoch
                 if epoch == self.max_epochs:
@@ -322,7 +337,8 @@ class validation():
 
         #plot angles pred vs angles 
         if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
-            visualisations.comparison(self.dataset_name,self.outputpath).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
+            visualisations.comparison(self.dataset_name,self.outputpath,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
+            visualisations.comparison(self.dataset_name,self.outputpath,'fhc').true_vs_pred_scatter(comparison_df['fhc pred'].to_numpy(),comparison_df['fhc true'].to_numpy(),loc='validation')
 
 
         return av_loss

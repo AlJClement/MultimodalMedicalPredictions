@@ -5,13 +5,17 @@ from sklearn.manifold import TSNE
 import pandas as pd
 import scipy
 class comparison():
-    def __init__(self,dataset_name, output_path):
+    def __init__(self,dataset_name, output_path, calc_name):
         self.dataset_name = dataset_name
         self.output_path = output_path
 
-        if self.dataset_name == 'ddh':
+        self.calculation_type = calc_name
+
+        if self.calculation_type == 'graf':
             #threshold for classes at 60 and 43
             self.threshold_list = [60, 43]
+        elif self.calculation_type == 'fhc':
+            self.threshold_list = [50]
         else:
             return ValueError('must set the threshold_dic dicitonary')
         pass        
@@ -66,7 +70,7 @@ class comparison():
         plt.text(0.1, 0.99, 'r='+str(round(r_value,3)), horizontalalignment='left',verticalalignment='top', transform=ax.transAxes)
 
         #ax.set_aspect('equal', adjustable='box')
-        plt.savefig(self.output_path+'/'+loc+'/true_vs_pred.png')
+        plt.savefig(self.output_path+'/'+loc+'/'+self.calculation_type+'_true_vs_pred.png')
         #sort to plot so we can see thresholds        #plot true and pred
 
         plt.clf()
@@ -83,7 +87,7 @@ class comparison():
         for thresh in self.threshold_list:
             plt.axhline(y=thresh, color='b', linestyle='--')
 
-        plt.savefig(self.output_path+'/'+loc+'/true_vs_pred_bypatient.png')
+        plt.savefig(self.output_path+'/'+loc+'/'+self.calculation_type+'true_vs_pred_bypatient.png')
 
         return
     
