@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: oai
-  PARTITION: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/partition_0.7_0.15_0.15_0.00000.json
+  PARTITION: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/partition_0.7_0.15_0.json
   IMAGES: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/imgs
   LABELS: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/txt
   META_PATH: /experiments/datasets-in-use/xray-longlegs-land/longlegs/annotations_for_model/dataset_metadata_2023-07-31_oai.csv
@@ -41,7 +41,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
-  CACHED_IMAGE_SIZE: [256,1024]
+  CACHED_IMAGE_SIZE: [128, 512] #[256,1024]
   PIXEL_SIZE: [1,1]
 
   AUGMENTATION:
@@ -53,7 +53,7 @@ DATASET:
     TRANSLATION_Y: 0.01 #affine
     ELASTIC_STRENGTH: 0 #elastic (pixel movement) - alpha, distance of pixelmovement
     ELASTIC_SMOOTHNESS: 0 #elastic (pixel movement) - sigma, smoothness
-    SPECKLE_NOISE: 1
+    SPECKLE_NOISE: 2
 
     SOME_OF: None #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
@@ -63,9 +63,9 @@ DATASET:
 OUTPUT_PATH: ./output_oai
 
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 3
   LR: 0.001
-  EPOCHS: 10
+  EPOCHS: 100
   LOSS: nll_across_batch #_mse_walpha
   GAMMA: 0.0
   # COMBINE_GRAF_FHC: True #this will just combine the results of the output                                                                                                                                                                                                     .6
