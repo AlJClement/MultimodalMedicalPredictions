@@ -19,18 +19,26 @@ class fhc():
         inter_x = (fh_1[x]+fh_2[x])/2
         inter_y = (il_1[y]+il_2[y])/2
 
-        inter_dist = math.dist(fh_2, [inter_y, inter_x])
+        inter_dist = math.dist(fh_1, [inter_y, inter_x])
 
         try:
             FHC = inter_dist/fhc_dist
         except:
             FHC = 0
 
+        if FHC<=0: FHC=0
+        if FHC>=1: FHC=1
+
+
         return FHC
     
     def get_fhc(self, pred, pred_map, true, true_map, pixelsize):
         fhc_pred = self.fhc(pred)
+        print('pred fhc:',fhc_pred)
+
         fhc_true = self.fhc(true)
+        print('true fhc:',fhc_true)
+
         ls_values = [['fhc pred', fhc_pred],
                     ['fhc true', fhc_true]]
         return ls_values 
@@ -43,7 +51,6 @@ class fhc():
             #calculate alpha and class for each pred and target in the batch
             t_fhc= self.fhc(target_points[i])
             p_fhc= self.fhc(predicted_points[i])
-            
             ##add to output arr
             pred_fhc.append(p_fhc)
             target_fhc.append(t_fhc)

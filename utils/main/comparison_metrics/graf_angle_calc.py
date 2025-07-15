@@ -177,11 +177,11 @@ class graf_angle_calc():
 
         alpha_pred = self.calculate_alpha(pred)
         class_pred = self.get_alpha_class(alpha_pred)
-        print('pred:', alpha_pred)
+        print('pred alpha:', alpha_pred)
 
         alpha_true = self.calculate_alpha(true)
         class_true = self.get_alpha_class(alpha_true)
-        print('true:',alpha_true)
+        print('true alpha:',alpha_true)
         
         alpha_diff = alpha_pred-alpha_true
 
