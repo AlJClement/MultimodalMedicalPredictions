@@ -5,8 +5,16 @@ import numpy as np
 class fhc():
     def __init__(self) -> None:
         pass
-    def fhc(self,tensor_landmarks):
-        labeltxts=tensor_landmarks.tolist()
+    def fhc(self,landmarks, flip = False):
+        if flip == True:
+            try:
+                #handle for tensor
+                labeltxts=landmarks.fliplr().tolist()
+            except:
+                labeltxts=np.flip(landmarks)
+        else:
+            labeltxts=landmarks.tolist()
+
         il_1 = labeltxts[0]
         il_2 = labeltxts[1]
         fh_1 = labeltxts[5]
@@ -17,10 +25,25 @@ class fhc():
         x=1
         y=0
 
-        inter_x = (fh_1[x]+fh_2[x])/2
-        inter_y = (il_1[y]+il_2[y])/2
+        if il_2[1]-il_1[1] == 0:
+            il_1[1]=il_1[1]+0.0001
+        m1 = (il_2[0]-il_1[0])/(il_2[1]-il_1[1])
+        b1 = il_2[0]-m1*(il_2[1])
 
-        d = math.dist(fh_1, [inter_y, inter_x])
+        if fh_2[1]-fh_1[1] == 0:
+            fh_1[1]=fh_1[1]+0.0001
+        m2 = (fh_2[0]-fh_1[0])/(fh_2[1]-fh_1[1])
+        b2 = fh_2[0]-m2*(fh_2[1])
+
+
+        ## Distance d 
+        try:
+            xi = (b1 - b2) / (m2 - m1)
+        except: 
+            xi =0
+        yi = m1 * xi + b1
+
+        d = math.dist(fh_2, [yi, xi])
 
         try:
             FHC = (d/D)
