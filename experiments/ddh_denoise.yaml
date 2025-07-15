@@ -76,7 +76,7 @@ OUTPUT_PATH: ./output_denoise_sigma1_10epochLR005_7landmarks_fhcalphaloss
 TRAIN:
   BATCH_SIZE: 2
   LR: 0.005
-  EPOCHS: 10
+  EPOCHS: 5
   LOSS: nll_across_batch_mse_walphafhc #_mse_walpha
   GAMMA: 0.2
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 

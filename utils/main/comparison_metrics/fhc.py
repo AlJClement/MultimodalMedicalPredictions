@@ -1,5 +1,6 @@
 import math
 from .. import evaluation_helper
+import numpy as np
 
 class fhc():
     def __init__(self) -> None:
@@ -11,7 +12,7 @@ class fhc():
         fh_1 = labeltxts[5]
         fh_2 = labeltxts[6]
 
-        fhc_dist = math.dist(fh_1, fh_2)
+        D = math.dist(fh_1, fh_2)
 
         x=1
         y=0
@@ -19,12 +20,15 @@ class fhc():
         inter_x = (fh_1[x]+fh_2[x])/2
         inter_y = (il_1[y]+il_2[y])/2
 
-        inter_dist = math.dist(fh_2, [inter_y, inter_x])
+        d = math.dist(fh_1, [inter_y, inter_x])
 
         try:
-            FHC = inter_dist/fhc_dist
+            FHC = (d/D)
         except:
             FHC = 0
+
+        if FHC<=0: FHC=0
+        if FHC>=1: FHC=1
 
         return FHC
     
