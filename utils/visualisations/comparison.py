@@ -50,6 +50,7 @@ class comparison():
         fig = plt.figure()
         ax = fig.add_subplot()
         ax.set_aspect('equal', adjustable='box')
+
         x, y =dataset['true'], dataset['pred']
 
         if self.calculation_type == 'fhc':
@@ -58,16 +59,18 @@ class comparison():
 
         plt.scatter(x, y, c='b', alpha=1)
         plt.axis('equal')
+        x, y =np.asarray(dataset['true']), np.asarray(dataset['pred'])
+
         #add line of best fit
         coef = np.polyfit(x,y,1)
         poly1d_fn = np.poly1d(coef) 
         m, b = np.polyfit(x, y, 1)
 
         plt.plot(x,y, 'yo', x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker 
-        
+
         if self.calculation_type == 'fhc':
-            plt.xlabel('True FHC')
-            plt.ylabel('Predicted FHC')   
+            plt.xlabel('True FHC %')
+            plt.ylabel('Predicted FHC %')
         else:
             plt.xlabel('True Graf Angle')
             plt.ylabel('Predicted Graf Angle')
@@ -89,7 +92,7 @@ class comparison():
         dataset = dataset.sort_values('true')
         dataset.reset_index(drop=True)
         patient = range(len(dataset))
-        x, y =dataset['true'], dataset['pred']
+        x, y =np.asarray(dataset['true']), np.asarray(dataset['pred'])
 
         if self.calculation_type == 'fhc':
             x=x*100
@@ -104,6 +107,8 @@ class comparison():
             plt.ylabel('Angle')
 
         plt.xlabel('Patient')
+        plt.scatter(patient,x, c='g', alpha=1)
+        plt.scatter(patient,y, c='r', alpha=0.5)
 
         for thresh in self.threshold_list:
             plt.axhline(y=thresh, color='b', linestyle='--')

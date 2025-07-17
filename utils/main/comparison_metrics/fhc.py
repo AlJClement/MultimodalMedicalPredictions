@@ -79,9 +79,14 @@ class fhc():
 
             return FHC
     
+    
     def get_fhc(self, pred, pred_map, true, true_map, pixelsize):
         fhc_pred = self.fhc(pred)
+        print('pred fhc:',fhc_pred)
+
         fhc_true = self.fhc(true)
+        print('true fhc:',fhc_true)
+
         ls_values = [['fhc pred', fhc_pred],
                     ['fhc true', fhc_true]]
         return ls_values 
@@ -94,7 +99,6 @@ class fhc():
             #calculate alpha and class for each pred and target in the batch
             t_fhc= self.fhc(target_points[i])
             p_fhc= self.fhc(predicted_points[i])
-            
             ##add to output arr
             pred_fhc.append(p_fhc)
             target_fhc.append(t_fhc)
