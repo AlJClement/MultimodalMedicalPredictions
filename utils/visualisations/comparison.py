@@ -51,7 +51,13 @@ class comparison():
         ax = fig.add_subplot()
         ax.set_aspect('equal', adjustable='box')
 
-        plt.scatter(dataset['true'], dataset['pred'], c='b', alpha=1)
+        x, y =dataset['true'], dataset['pred']
+
+        if self.calculation_type == 'fhc':
+            x=x*100
+            y=y*100
+
+        plt.scatter(x, y, c='b', alpha=1)
         plt.axis('equal')
         x, y =np.asarray(dataset['true']), np.asarray(dataset['pred'])
 
@@ -59,7 +65,9 @@ class comparison():
         coef = np.polyfit(x,y,1)
         poly1d_fn = np.poly1d(coef) 
         m, b = np.polyfit(x, y, 1)
+
         plt.plot(x,y, 'yo', x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker 
+
         if self.calculation_type == 'fhc':
             plt.xlabel('True FHC %')
             plt.ylabel('Predicted FHC %')
@@ -84,14 +92,23 @@ class comparison():
         dataset = dataset.sort_values('true')
         dataset.reset_index(drop=True)
         patient = range(len(dataset))
-        plt.scatter(patient,x, c='g', alpha=1)
-        plt.scatter(patient,y, c='r', alpha=0.5)
-        plt.xlabel('Patient')
+        x, y =np.asarray(dataset['true']), np.asarray(dataset['pred'])
 
         if self.calculation_type == 'fhc':
-            plt.ylabel('FHC Percentage')
+            x=x*100
+            y=y*100
+
+        plt.scatter(patient,x, c='g', alpha=1)
+        plt.scatter(patient,y, c='r', alpha=0.5)
+
+        if self.calculation_type == 'fhc':
+            plt.ylabel('FHC %')
         else:
             plt.ylabel('Angle')
+
+        plt.xlabel('Patient')
+        plt.scatter(patient,x, c='g', alpha=1)
+        plt.scatter(patient,y, c='r', alpha=0.5)
 
         for thresh in self.threshold_list:
             plt.axhline(y=thresh, color='b', linestyle='--')
