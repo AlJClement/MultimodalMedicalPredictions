@@ -50,17 +50,27 @@ class comparison():
         fig = plt.figure()
         ax = fig.add_subplot()
         ax.set_aspect('equal', adjustable='box')
-
-        plt.scatter(dataset['true'], dataset['pred'], c='b', alpha=1)
-        plt.axis('equal')
         x, y =dataset['true'], dataset['pred']
+
+        if self.calculation_type == 'fhc':
+            x=x*100
+            y=y*100
+
+        plt.scatter(x, y, c='b', alpha=1)
+        plt.axis('equal')
         #add line of best fit
         coef = np.polyfit(x,y,1)
         poly1d_fn = np.poly1d(coef) 
         m, b = np.polyfit(x, y, 1)
+
         plt.plot(x,y, 'yo', x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker 
-        plt.xlabel('True Graf Angle')
-        plt.ylabel('Predicted Graf Angle')
+        
+        if self.calculation_type == 'fhc':
+            plt.xlabel('True FHC')
+            plt.ylabel('Predicted FHC')   
+        else:
+            plt.xlabel('True Graf Angle')
+            plt.ylabel('Predicted Graf Angle')
         txt = 'y = '+str(round(m,3))+'x+'+str(round(b,3))
         plt.text(0.99, 0.1, txt, horizontalalignment='right',verticalalignment='top', transform=ax.transAxes)
         
@@ -79,15 +89,26 @@ class comparison():
         dataset = dataset.sort_values('true')
         dataset.reset_index(drop=True)
         patient = range(len(dataset))
-        plt.scatter(patient,dataset['true'], c='g', alpha=1)
-        plt.scatter(patient,dataset['pred'], c='r', alpha=0.5)
+        x, y =dataset['true'], dataset['pred']
+
+        if self.calculation_type == 'fhc':
+            x=x*100
+            y=y*100
+
+        plt.scatter(patient,x, c='g', alpha=1)
+        plt.scatter(patient,y, c='r', alpha=0.5)
+
+        if self.calculation_type == 'fhc':
+            plt.ylabel('FHC %')
+        else:
+            plt.ylabel('Angle')
+
         plt.xlabel('Patient')
-        plt.ylabel('Angle')
 
         for thresh in self.threshold_list:
             plt.axhline(y=thresh, color='b', linestyle='--')
 
-        plt.savefig(self.output_path+'/'+loc+'/'+self.calculation_type+'true_vs_pred_bypatient.png')
+        plt.savefig(self.output_path+'/'+loc+'/'+self.calculation_type+'_true_vs_pred_bypatient.png')
 
         return
     

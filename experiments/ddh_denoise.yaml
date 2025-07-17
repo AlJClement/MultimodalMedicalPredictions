@@ -7,7 +7,7 @@ INPUT_PATHS:
   # META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
   # # # DATASET_NAME: ddh
 
-  PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_test.json   #test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt

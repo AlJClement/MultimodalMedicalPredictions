@@ -5,6 +5,25 @@ import numpy as np
 class fhc():
     def __init__(self) -> None:
         pass
+    def points_same_side(self, A, B, P1, P2):
+        x1, y1 = A
+        x2, y2 = B
+        a = y2 - y1
+        b = -(x2 - x1)
+        c = a * x1 + b * y1
+
+        def side(P):
+            x, y = P
+            val = a * x + b * y - c
+            return 0 if val == 0 else (1 if val > 0 else -1)
+
+        s1 = side(P1)
+        s2 = side(P2)
+
+        if s1 == 0 or s2 == 0:
+            return False  # One (or both) point is exactly on the line
+        return s1 == s2  # True if same side, False otherwise
+
     def fhc(self,landmarks, flip = False):
         if flip == True:
             try:
@@ -19,41 +38,46 @@ class fhc():
         il_2 = labeltxts[1]
         fh_1 = labeltxts[5]
         fh_2 = labeltxts[6]
-
-        D = math.dist(fh_1, fh_2)
-
-        x=1
-        y=0
-
-        if il_2[1]-il_1[1] == 0:
-            il_1[1]=il_1[1]+0.0001
-        m1 = (il_2[0]-il_1[0])/(il_2[1]-il_1[1])
-        b1 = il_2[0]-m1*(il_2[1])
-
-        if fh_2[1]-fh_1[1] == 0:
-            fh_1[1]=fh_1[1]+0.0001
-        m2 = (fh_2[0]-fh_1[0])/(fh_2[1]-fh_1[1])
-        b2 = fh_2[0]-m2*(fh_2[1])
-
-
-        ## Distance d 
-        try:
-            xi = (b1 - b2) / (m2 - m1)
-        except: 
-            xi =0
-        yi = m1 * xi + b1
-
-        d = math.dist(fh_2, [yi, xi])
-
-        try:
-            FHC = (d/D)
-        except:
+        
+        if self.points_same_side(il_1, il_2, fh_1, fh_2) == True:
             FHC = 0
+            return FHC
+        
+        else:
+            D = math.dist(fh_1, fh_2)
 
-        if FHC<=0: FHC=0
-        if FHC>=1: FHC=1
+            x=1
+            y=0
 
-        return FHC
+            if il_2[1]-il_1[1] == 0:
+                il_1[1]=il_1[1]+0.0001
+            m1 = (il_2[0]-il_1[0])/(il_2[1]-il_1[1])
+            b1 = il_2[0]-m1*(il_2[1])
+
+            if fh_2[1]-fh_1[1] == 0:
+                fh_1[1]=fh_1[1]+0.0001
+            m2 = (fh_2[0]-fh_1[0])/(fh_2[1]-fh_1[1])
+            b2 = fh_2[0]-m2*(fh_2[1])
+
+
+            ## Distance d 
+            try:
+                xi = (b1 - b2) / (m2 - m1)
+            except: 
+                xi =0
+            yi = m1 * xi + b1
+
+            d = math.dist(fh_2, [yi, xi])
+
+            try:
+                FHC = (d/D)
+            except:
+                FHC = 0
+
+            if FHC<=0: FHC=0
+            if FHC>=1: FHC=1
+
+            return FHC
     
     def get_fhc(self, pred, pred_map, true, true_map, pixelsize):
         fhc_pred = self.fhc(pred)
