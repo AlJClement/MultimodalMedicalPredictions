@@ -71,14 +71,13 @@ DATASET:
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
-OUTPUT_PATH: ./output_denoise_sigma1_10epochLR005_7landmarks_fhcalphaloss
-
+OUTPUT_PATH: ./output_denoise_sigma1_10epochLR005_7landmarks
 TRAIN:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 6
   LR: 0.005
-  EPOCHS: 5
-  LOSS: nll_across_batch_mse_walphafhc #_mse_walpha
-  GAMMA: 0.2
+  EPOCHS: 10
+  LOSS: nll_across_batch #_walphafhc #_mse_walpha
+  GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
 
 TEST:

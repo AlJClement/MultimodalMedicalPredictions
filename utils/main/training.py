@@ -49,6 +49,7 @@ class training():
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
         self.momentum = 0.99
+        self.momentum_0 = 0.90
         self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
         if cfg.MODEL.DEVICE == 'cuda':
@@ -61,7 +62,9 @@ class training():
         return self.net
     
     def _get_optimizer(self,net):
-        optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
+        #optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
+        optim = torch.optim.Adam(net.parameters(), lr=self.lr, betas=(self.momentum_0, self.momentum))
+
         return optim
     
     def train_meta(self, dataloader, epoch):
