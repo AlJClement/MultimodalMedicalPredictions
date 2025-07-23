@@ -25,6 +25,12 @@ class dataloader(Dataset):
     def __init__(self, cfg, set) -> None:
         #paths
         self.cfg=cfg
+
+        if cfg.MODEL.NAME=='hrnet':
+            self.rgb = True
+        else:
+            self.rgb = False
+        
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         self.partition_file_path = cfg.INPUT_PATHS.PARTITION
         self.img_dir = cfg.INPUT_PATHS.IMAGES
@@ -73,8 +79,6 @@ class dataloader(Dataset):
             self.aug_path = self.cache_dir+'/augmentations'
             if not os.path.exists(self.aug_path):
                 os.makedirs(self.aug_path)
-
-        
         return
 
     
@@ -315,19 +319,28 @@ class dataloader(Dataset):
                     plt.imshow(_a)
                     plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
                     plt.close()
+
             
             if meta_arr.empty:
                 accessionid_arr = np.array([pat_id])
                 id_arr = np.array([pat_id])
                 meta_arr = _meta_arr
                 im_arr = np.expand_dims(_im_arr,axis=0)
+                # if self.rgb ==True:
+                #     im_arr=im_arr.repeat(3, axis=0)
                 orig_shape_arr = np.expand_dims(orig_shape,axis=0)
                 annotation_arr =np.expand_dims(_annotation_arr,axis=0)
                 landmark_arr = np.array([annotation_points]) 
             else:
                 accessionid_arr = np.concatenate((accessionid_arr,np.array([pat_id])),0)
                 id_arr = np.concatenate((id_arr,np.array([pat_id])),0)
+                
+                # if self.rgb==True:
+                #     _im_arr=np.expand_dims(_im_arr,axis=0).repeat(3, axis=0)
+                #     im_arr = np.concatenate((im_arr, _im_arr),0)
+                # else:
                 im_arr = np.concatenate((im_arr, np.expand_dims(_im_arr,axis=0)),0)
+
                 annotation_arr = np.concatenate((annotation_arr,np.expand_dims(_annotation_arr,axis=0)),0)
                 meta_arr=pd.concat([meta_arr,_meta_arr])
                 orig_shape_arr=np.concatenate((orig_shape_arr,np.array([orig_shape])),0)
@@ -380,8 +393,10 @@ class dataloader(Dataset):
         return im_torch, annotation_torch, landmark_torch, meta_torch, id_arr, orig_shape_arr 
 
     def __getitem__(self, index):
+
         x = self.data[index]
         y = self.target[index]
+
         landmarks = self.landmarks[index]
         id = self.ids[index][0]
 
@@ -424,6 +439,12 @@ class dataloader(Dataset):
             meta = self.meta
 
         orig_size = self.orig_img_shape[index][0]
+
+        if self.rgb == True:
+            x = x.repeat(3,1,1)
+        else:
+            pass
+
         return x, y, landmarks, meta, id, orig_size
 
     def __len__(self):
