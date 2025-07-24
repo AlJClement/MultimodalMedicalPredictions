@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_0.01674.json   #test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_0.01674.json   # /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -36,7 +36,7 @@ MODEL:
 
   #
   META_FEATURES: [100,100,100] 
-  NAME: 'unet_plus_plus'
+  NAME: 'hrnet'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
@@ -46,7 +46,7 @@ MODEL:
     - 256
     - 128
     - 64
-  IN_CHANNELS: 1
+  IN_CHANNELS: 3
   ATTENTION: scse
 
 DATASET:
@@ -71,13 +71,14 @@ DATASET:
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
-OUTPUT_PATH: ./output_denoise_sigma1_10epochLR005_7landmarks
+OUTPUT_PATH: ./output_denoise_HRNET_sigma1_10epochLR005_7landmarks_walphafhc0.2
+
 TRAIN:
   BATCH_SIZE: 4
-  LR: 0.005
+  LR: 0.001
   EPOCHS: 10
-  LOSS: nll_across_batch #_walphafhc #_mse_walpha
-  GAMMA: 0.0
+  LOSS: nll_across_batch_mse_walphafhc #_mse_walpha
+  GAMMA: 0.2
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
 
 TEST:

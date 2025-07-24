@@ -38,7 +38,8 @@ class model_init():
         
         #no bs for torch summary
         #net_summary_torchsummary= summary(net,[tuple(input_im_size.detach().numpy()), tuple(input_meta_shape.detach().numpy())])
-        net_summary= summary(net,[tuple(input_im_size.detach().numpy()), tuple(input_meta_shape.detach().numpy())])
+        #net_summary= summary(net,[tuple(input_im_size.detach().numpy()), tuple(input_meta_shape.detach().numpy())])
+        net_summary = print(net)
 
         return  net_summary
             

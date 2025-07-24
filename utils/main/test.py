@@ -150,7 +150,8 @@ class test():
             
             pred = self.net(data, meta_data)
             #predictions are heatmaps, points are taken as hottest point in each channel, which is scaled (multiplied by pixel size). 
-            target_points,predicted_points=evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
+            EH=evaluation_helper.evaluation_helper()
+            target_points,predicted_points=EH.get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
             #plot and caluclate values for each subject in the batch
             for i in range(self.bs):
@@ -186,7 +187,8 @@ class test():
 
                 save_img=True
                 if save_img ==True:
-                    plt.imshow(np.squeeze(data[i].detach().cpu().numpy()), cmap='Greys_r')
+
+                    plt.imshow(np.squeeze(data[i][0].detach().cpu().numpy()), cmap='Greys_r')
                     plt.axis('off')
                     plt.savefig(self.save_img_path+'/'+id[i]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)
                     
@@ -284,6 +286,11 @@ class test():
                         #get mean alpha difference
             self.logger.info('ALPHA MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].mean(),3)))
             self.logger.info('ALPHA ABSOLUTE MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].apply(abs).mean(),3)))
-            visualisations.comparison(self.dataset_name, self.output_path).true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy())
+            #plot angles pred vs angles 
+            if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
+                visualisations.comparison(self.dataset_name,self.output_path,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='test')
+                visualisations.comparison(self.dataset_name,self.output_path,'fhc').true_vs_pred_scatter(comparison_df['fhc pred'].to_numpy(),comparison_df['fhc true'].to_numpy(),loc='test')
+            else:
+                visualisations.comparison(self.dataset_name, self.output_path,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='test')
 
         return 

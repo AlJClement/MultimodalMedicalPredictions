@@ -84,3 +84,6 @@ class MetadataImport():
 
     def unet_plus_plus_meta(self, meta_data_arr):
         return self.unet_meta_lastlayer(meta_data_arr)
+    
+    def hrnet(self, meta_data_arr):
+        return self.unet_meta_lastlayer(meta_data_arr)
