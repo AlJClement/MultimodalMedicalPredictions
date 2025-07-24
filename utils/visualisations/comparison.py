@@ -107,13 +107,11 @@ class comparison():
             plt.ylabel('Angle')
 
         plt.xlabel('Patient')
-        plt.scatter(patient,x, c='g', alpha=1)
-        plt.scatter(patient,y, c='r', alpha=0.5)
-
         for thresh in self.threshold_list:
             plt.axhline(y=thresh, color='b', linestyle='--')
 
         plt.savefig(self.output_path+'/'+loc+'/'+self.calculation_type+'_true_vs_pred_bypatient.png')
+        plt.close()
 
         return
     

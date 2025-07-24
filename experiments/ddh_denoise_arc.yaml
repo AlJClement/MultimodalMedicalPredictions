@@ -73,7 +73,11 @@ DATASET:
 OUTPUT_PATH: ./output_denoise_sigma1_10epochLR005_7landmarks_fhcalphaloss_g0.2
 
 TRAIN:
+<<<<<<< HEAD
   BATCH_SIZE: 6
+=======
+  BATCH_SIZE: 4
+>>>>>>> 7ce0b88642472197dbb2309c63c6bfa2b83b284b
   LR: 0.005
   EPOCHS: 10
   LOSS: nll_across_batch_mse_walphafhc #_mse_walpha
