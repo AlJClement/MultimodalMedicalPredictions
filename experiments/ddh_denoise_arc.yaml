@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_test.json #0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -55,7 +55,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
-  CACHED_IMAGE_SIZE: [512,352]
+  CACHED_IMAGE_SIZE: [512,512]
   PIXEL_SIZE: [0.0700711,0.0700711]
   # PIXEL_SIZE: [1.0,1.0]
 
@@ -70,13 +70,13 @@ DATASET:
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
-OUTPUT_PATH: ./output_denoise_sigma1_10epochLR005_7landmarks_fhcalphaloss
+OUTPUT_PATH: ./output_denoise_adam_sigma1_10epochLR005_7landmarks
 
 TRAIN:
-  BATCH_SIZE: 4
-  LR: 0.005
+  BATCH_SIZE: 6
+  LR: 0.001
   EPOCHS: 10
-  LOSS: nll_across_batch_mse_walphafhc #_mse_walpha
+  LOSS: nll_across_batch #_mse_walphafhc #_mse_walpha
   GAMMA: 0.2
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
 
