@@ -88,6 +88,43 @@ def nll_across_batch_mse_walphafhc(output, target, alpha_output, alpha_target, f
 
     return nll_img*(1-gamma)+mse_alpha*g+mse_fhc*g
 
+def get_normalized_vectors(P1, P2):
+    vectors = []
+    for p1, p2 in zip(P1, P2):
+        v = p2 - p1  # torch subtraction
+        if torch.all(v == 0):
+            v = torch.tensor([0.0, 0.1], device=p1.device, dtype=p1.dtype)
+        norm = torch.linalg.norm(v)
+        v_normalized = v / (norm + 1e-8)
+        vectors.append(v_normalized)
+    return torch.stack(vectors)
+
+def nll_across_batch_cosinelandmarkvector(output, target, gamma):
+    nll = target * torch.log(output.double())
+    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+
+    pixelsize=1
+    from . import evaluation_helper
+    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize)            
+    # Normalize vectors
+    ## vectors between ilium 1, bony ridge 2, fhc 3
+    vec1 = get_normalized_vectors(predicted_points[:,0,:].float(), predicted_points[:,1,:].float())
+    vec2 = get_normalized_vectors(predicted_points[:,2,:].float(), predicted_points[:,3,:].float())
+    vec3 = get_normalized_vectors(predicted_points[:,5,:].float(), predicted_points[:,6,:].float())
+    vec1_t = get_normalized_vectors(target_points[:,0,:].float(), target_points[:,1,:].float())
+    vec2_t = get_normalized_vectors(target_points[:,2,:].float(), target_points[:,3,:].float())
+    vec3_t = get_normalized_vectors(target_points[:,5,:].float(), target_points[:,6,:].float())
+
+    # Cosine similarity
+    cosine_sim_il = torch.mean(torch.sum(vec1 * vec1_t, dim=1))
+    cosine_sim_br = torch.mean(torch.sum(vec2 * vec2_t, dim=1))
+    cosine_sim_fhc = torch.mean(torch.sum(vec3 * vec3_t, dim=1))
+
+    g= gamma/2
+    g_a = g/2
+
+    return nll_img*(1-gamma)+(cosine_sim_il*g_a)+(cosine_sim_br*g_a)+cosine_sim_fhc*g
+
 
 def nll_across_batch(output, target):
     nll = target * torch.log(output.double())
@@ -126,10 +163,12 @@ class L2RegLoss(nn.Module):
             self.addclass='walphafhc'
         elif main_loss_str.split('_')[-1]== 'wclass':
             self.addclass='wclass'
+        elif main_loss_str.split('_')[-1]== 'cosinelandmarkvector':
+            self.addclass='cosinelandmarkvector'
         else:
             self.addclass=False
 
-    def forward(self, x, target, model,  pred_alphas=None, target_alphas=None,class_output=None,class_target=None,pred_fhc=None,  target_fhc=None,gamma=0.0):
+    def forward(self, x, target, model,gamma, pred_alphas=None, target_alphas=None,class_output=None,class_target=None,pred_fhc=None,  target_fhc=None):
         #abs(p) for l1
         l2 = [p.pow(2).sum() for p in model.parameters()]
         l2 = sum(l2)
@@ -148,6 +187,12 @@ class L2RegLoss(nn.Module):
             print('pred fhc:',pred_fhc)
             print('target fhc:',target_fhc)
             loss = self.main_loss(x, target,pred_alphas,target_alphas,pred_fhc, target_fhc,gamma) + self.lam*l2
+        elif self.addclass=='cosinelandmarkvector':
+            print('pred a:',pred_alphas)
+            print('target a:',target_alphas)
+            print('pred fhc:',pred_fhc)
+            print('target fhc:',target_fhc)
+            loss = self.main_loss(x, target,gamma) + self.lam*l2
         else:
             loss = self.main_loss(x, target) + self.lam*l2
 

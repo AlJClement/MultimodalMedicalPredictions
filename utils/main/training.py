@@ -35,6 +35,11 @@ class training():
         else:
             self.add_alpha_loss = False
 
+        if (cfg.TRAIN.LOSS).split('_')[-1]=='cosinelandmarkvector':
+            self.add_landmark_loss = True
+            self.gamma = cfg.TRAIN.GAMMA
+        else:
+            self.add_landmark_loss = False
         
 
         if (cfg.TRAIN.LOSS).split('_')[-1]=='walphafhc':
@@ -110,11 +115,13 @@ class training():
 
             if self.l2_reg==True:
                 if self.add_class_loss==True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,pred_classes, target_classes,self.gamma)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,self.gamma, pred_alphas, target_alphas,pred_classes, target_classes)
                 elif self.add_alphafhc_loss== True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc, self.gamma)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
+                elif self.add_landmark_loss== True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
                 elif self.add_alpha_loss== True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
                 else:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
             else:

@@ -70,6 +70,12 @@ class validation():
         else:
             self.add_alpha_loss = False
 
+        if (cfg.TRAIN.LOSS).split('_')[-1]=='cosinelandmarkvector':
+            self.add_landmark_loss = True
+            self.gamma = cfg.TRAIN.GAMMA
+        else:
+            self.add_landmark_loss = False        
+
         self.class_calculation = graf_angle_calc()
 
         self.bs = cfg.TRAIN.BATCH_SIZE
@@ -223,6 +229,8 @@ class validation():
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc, self.gamma)
                     elif self.add_alpha_loss== True:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
+                    elif self.add_landmark_loss== True:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
                     else:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
                 else:
