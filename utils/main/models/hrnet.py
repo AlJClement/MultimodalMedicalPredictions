@@ -6,7 +6,7 @@ import sys
 import os
 import importlib
 
-hrnet_lib_path = '/home/scratch/allent/HigherHRNet-Human-Pose-Estimation/lib'
+hrnet_lib_path = '../HigherHRNet-Human-Pose-Estimation/lib'
 pose_hrnet_path = os.path.join(hrnet_lib_path, 'models', 'pose_higher_hrnet.py')
 
 spec = importlib.util.spec_from_file_location("hrnet_pose_hrnet", pose_hrnet_path)
@@ -24,8 +24,8 @@ class hrnet(nn.Module):
     def __init__(self, cfg):
         super(hrnet, self).__init__()
         self.num_landmarks = cfg.MODEL.OUT_CHANNELS
-        self.preload_weigths_path = '/home/scratch/allent/MultimodalMedicalPredictions/utils/main/models/weights/hrnet_w32-36af842e.pth'
 
+        self.preload_weigths_path = '/home/scratch/allent/MultimodalMedicalPredictions/utils/main/models/weights/hrnet_w32-36af842e.pth'
         self.hrnet_cfg=self.get_hrnet_w32_config()
 
         self.backbone = self.get_hrnet_backbone(pretrained=True)
@@ -122,7 +122,12 @@ class hrnet(nn.Module):
         if pretrained:
             # Load pretrained weights
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            pretrained = torch.load(self.preload_weigths_path, map_location=device)
+            try:
+                pretrained = torch.load(self.preload_weigths_path, map_location=device)
+            except:
+                preload_weigths_path = '/data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/utils/main/models/weights/hrnet_w32-36af842e.pth'
+                pretrained = torch.load(preload_weigths_path, map_location=device)
+
             model.load_state_dict(pretrained, strict=False)
             model.to(device)
             print("Loaded pretrained ImageNet weights")
