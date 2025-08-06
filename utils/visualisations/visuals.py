@@ -18,6 +18,7 @@ import sys
 sys.path.append("..")
 from main.comparison_metrics import fhc, graf_angle_calc
 
+from scipy.ndimage import zoom
 
 class visuals():
     def __init__(self, save_path=None, pixelsize=None, cfg=None, orig_size=None,img_ext='.jpg') -> None:
@@ -53,21 +54,33 @@ class visuals():
         ds.save_as(save_dcm_path)
         return
     
-    def upsample(self, w=1024, h=768):
-        #default is ddh
-                # Define how to downsample and pad images
-        preprocessing_steps = [
-            # iaa.Crop(px=1),
-            # iaa.PadToAspectRatio(w/h, position='right-bottom', pad_mode='edge'),
-            iaa.Resize({"width": w, "height": h}),
-        ]
+    # def upsample(self, w=1024, h=768):
+    #     #default is ddh
+    #             # Define how to downsample and pad images
+    #     preprocessing_steps = [
+    #         # iaa.Crop(px=1),
+    #         # iaa.PadToAspectRatio(w/h, position='right-bottom', pad_mode='edge'),
+    #         iaa.Resize({"width": w, "height": h}),
+    #     ]
 
-        return iaa.Sequential(preprocessing_steps)
+    #     return iaa.Sequential(preprocessing_steps)
 
     def save_np(self, prediction):
-        prediction = prediction.detach().cpu().numpy()
+        try:
+            prediction = prediction.detach().cpu().numpy()
+        except:
+            pass
         print(prediction.shape)
         np.save(self.save_path, prediction)
+
+        # #orig size
+        # zoom_factors = (1, self.orig_size[0][0] / prediction.shape[1], self.orig_size[0][1] / prediction.shape[2])
+
+        # # Resize
+        # orig_size_pred = zoom(prediction, zoom=zoom_factors, order=1)  # bilinear interpolation
+
+        # np.save(self.save_path+'_origsize', orig_size_pred)
+
         return
 
     def save_astxt(self, img, predicted_points, img_size, orig_size):
@@ -103,8 +116,11 @@ class visuals():
         fig, ax = plt.subplots(1, 1)
         
         try:
-            image = image.detach().cpu().numpy()
             output = output.detach().cpu().numpy()
+        except:
+            pass
+        try:
+            image = image.detach().cpu().numpy()
         except:
             pass
 
@@ -113,25 +129,19 @@ class visuals():
         else:
             predicted_points = predicted_points.detach().cpu().numpy()
             target_points = target_points.cpu().detach().numpy()
-        
-        if resize_to_orig == False:
-            predicted_points[:, 1] *= (image.shape[0]/self.orig_size[0][1])
-            predicted_points[:, 0] *= (image.shape[1]/self.orig_size[0][0])
-            target_points[:, 1] *= (image.shape[0]/self.orig_size[0][1])
-            target_points[:, 0] *= (image.shape[1]/self.orig_size[0][0])
-            image = Augmentation(self.cfg).upsample(self.orig_size, image)
-            output = Augmentation(self.cfg).upsample(self.orig_size, output)
-
+    
 
         #print(self.pixelsize)
         #comment out if you want 5 landmarks plotted#
-            if all_landmarks==True:
-                pass
-            else:
-                output = output[:4]
-                predicted_points = predicted_points[:4]
-                target_points=target_points[:4]
-
+        if all_landmarks==True:
+            pass
+        else:
+            output = output[:4]
+            predicted_points = predicted_points[:4]
+            target_points=target_points[:4]
+        
+        if len(output.shape)==4:
+            output = output.squeeze(0)
         _output = self.channels_thresholded(output)
         ax.imshow(_output, cmap='inferno', alpha = 1)
         ax.axis('off')
@@ -157,6 +167,8 @@ class visuals():
                     fhc_pred, fhc_true = fhc.fhc().get_fhc(predicted_points,output,target_points,image,self.pixelsize)
                     fhc_pred, fhc_true = fhc_pred[1]*100, fhc_true[1]*100
                     alpha_true, alpha_pred = round(graf_angle_calc().calculate_alpha(target_points),1), round(graf_angle_calc().calculate_alpha(predicted_points),1)
+                    print('pred alpha: ', alpha_pred)
+                    print('true alpha: ', alpha_true)
 
                     ax.text(0.02, 0.98,f"FHC = {fhc_true:.1f}%\n α = {alpha_true:.1f}°", 
                                 transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))

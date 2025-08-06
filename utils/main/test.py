@@ -19,6 +19,9 @@ from .comparison_metrics import *
 import torch
 torch.cuda.empty_cache() 
 from .validation import validation
+import torch.nn.functional as F
+from preprocessing.augmentation import Augmentation
+
 
 class test():
     def __init__(self, cfg, logger):
@@ -76,7 +79,8 @@ class test():
         model.eval()
         return model
     
-    def compare_metrics(self, id, pred, pred_map, true, true_map, pixelsize):
+    def compare_metrics(self, id, pred, pred_map, true, true_map, pixelsize, orig_size):
+
         df = pd.DataFrame({"ID": [id]})
         for metric in self.comparison_metrics:
             func = eval(metric)
@@ -98,10 +102,15 @@ class test():
             except:
                 pass
 
+        index_to_remove = 4  # remove element at index 2 (value 30)
+        arr_mre_nolab = np.delete(arr_mre,index_to_remove)
+
         MRE = np.mean(arr_mre).round(2)
         MRE_std = np.std(arr_mre).round(2)
+        MRE_nolabrum= np.mean(arr_mre_nolab).round(2)
+        MRE_nolabrum_std = np.std(arr_mre_nolab).round(2)
 
-        return summary_ls, [MRE, MRE_std]
+        return summary_ls, [MRE, MRE_std, MRE_nolabrum, MRE_nolabrum_std]
     
     def alpha_thresholds(self, df, thresholds=[1,2,5,10]):
         #this function calculates the different percentages of angle difference that lays in these thresholds
@@ -138,11 +147,20 @@ class test():
     
         return txt, txt_norm 
     
+    def resize_backto_original(self, pred_map, target_map, orig_size):
+        #resize images
+        orig_size = orig_size.to('cpu').numpy()
+        pred = pred_map.detach().cpu().numpy()
+        target = target_map.detach().cpu().numpy()
+        augmenter = Augmentation(self.cfg)
+        target = augmenter.reverse_downsample_and_pad(orig_size, target)
+        pred = augmenter.reverse_downsample_and_pad(orig_size, pred)
+
+        return pred, target
+    
     def run(self, dataloader):
         comparison_df = pd.DataFrame([])
-        for batch_idx, (data, target, landmarks, meta, id, orig_size) in enumerate(dataloader):
-            
-            print(batch_idx)
+        for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(dataloader):
 
             data, target = Variable(data).to(self.device), Variable(target).to(self.device)
             meta_data = Variable(meta).to(self.device)
@@ -151,17 +169,23 @@ class test():
             pred = self.net(data, meta_data)
             #predictions are heatmaps, points are taken as hottest point in each channel, which is scaled (multiplied by pixel size). 
             EH=evaluation_helper.evaluation_helper()
-            target_points,predicted_points=EH.get_landmarks(pred, target, pixels_sizes=self.pixel_size)
 
             #plot and caluclate values for each subject in the batch
             for i in range(self.bs):
                 print('Test Image:', id[i])
+
+                ### resize back to original for
+                _data = orig_img[i].numpy()
+                _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
+
+                _target_points,_predicted_points=EH.get_landmarks(_pred, _target, pixels_sizes=self.pixel_size.to('cpu'))
+                _target_points,_predicted_points= _target_points.squeeze(0),_predicted_points.squeeze(0)
                 
                 if self.save_img_landmarks_predandtrue == True:
-                    visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
+                    visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points)
 
                 if self.save_heatmap_land_img == True:
-                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks)
+                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks)
 
                 if self.save_asdcms == True:
 
@@ -172,31 +196,29 @@ class test():
                     dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
 
                     if self.save_img_landmarks_predandtrue == True:
-                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+
                     if self.save_heatmap_land_img == True:
-                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points,w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
                 
                 if self.save_txt == True:
-                    visuals(self.output_path+'/'+'txt/'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_size[i])
+                    visuals(self.output_path+'/txt/'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_astxt(_data,_predicted_points,self.img_size,orig_size[i])
                 
                 if self.save_heatmap == True:
-                    visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
+                    visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
 
                 if self.save_heatmap_as_np == True:
-                    visuals(self.output_path+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
+                    visuals(self.output_path+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(_pred.squeeze(0))
+                    # image also resizes here check**
+                    visuals(self.output_path+'/np/numpy_heatmaps_uniformSize_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
 
                 save_img=True
                 if save_img ==True:
-
-                    plt.imshow(np.squeeze(data[i][0].detach().cpu().numpy()), cmap='Greys_r')
+                    plt.imshow(np.squeeze(_data), cmap='Greys_r')
                     plt.axis('off')
-                    plt.savefig(self.save_img_path+'/'+id[i]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)
-                    
-                #add to comparison df
-                id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i],self.pixel_size)
+                    plt.savefig(self.save_img_path+'/'+id[i]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)       
 
-                # print('Alpha for', id[i])
-                # id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
+                id_metric_df = self.compare_metrics(id[i], _predicted_points, _pred, _target_points, _target,self.pixel_size, orig_size[i])
 
                 if comparison_df.empty == True:
                     comparison_df = id_metric_df
@@ -217,7 +239,7 @@ class test():
         comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
         self.logger.info("MEAN VALUES (pix): {}".format(comparsion_summary_ls))
         self.logger.info("MRE: {} +/- {} pix".format(MRE[0], MRE[1]))
-        self.logger.info("MRE: {} +/- {} mm".format(MRE[0]*self.pixel_size.detach().cpu().numpy()[0], MRE[1]*self.pixel_size.detach().cpu().numpy()[0]))
+        self.logger.info("MRE no labrum: {} +/- {} pix".format(MRE[2], MRE[3]))
 
         #plot angles pred vs angles 
         if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
@@ -255,6 +277,9 @@ class test():
             self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
+            
+            comparison_df.to_csv(self.output_path+'/test/comparison_metrics.csv')
+            print('Saving Results to comparison_metrics.csv')
 
         sdr_summary = ""
         if self.dataset_type == 'LANDMARKS':
@@ -271,10 +296,15 @@ class test():
                     except:
                         sdr_summary = np.array([sdr_stats])
                 
+                sdr_summary_nolab = np.delete(sdr_summary, 4, axis=0)
+                sdr_summary_nolab = sdr_summary_nolab.T.mean(axis=1)
+
                 sdr_summary = sdr_summary.T.mean(axis=1)
 
                 #get mean
                 self.logger.info("SDR all landmarks: {},{},{},{}".format(round(sdr_summary[0],2),round(sdr_summary[1],2),round(sdr_summary[2],2),round(sdr_summary[3],2)))
+                self.logger.info("SDR all landmarks (no labrum): {},{},{},{}".format(round(sdr_summary_nolab[0],2),round(sdr_summary_nolab[1],2),round(sdr_summary_nolab[2],2),round(sdr_summary_nolab[3],2)))
+
 
             except:
                 raise ValueError('Check Landmark radial errors are calcuated')

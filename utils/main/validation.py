@@ -17,7 +17,8 @@ from .evaluation_helper import evaluation_helper
 import pandas as pd
 from .comparison_metrics import *
 from .comparison_metrics import fhc
-
+import torch.nn.functional as F
+from preprocessing.augmentation import Augmentation
 class validation():
     def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
@@ -109,7 +110,7 @@ class validation():
         return optim
     
     
-    def compare_metrics(self, id, pred, pred_map, true, true_map, pixelsize):
+    def compare_metrics(self, id, pred, pred_map, true, true_map, pixelsize, orig_size):
         df = pd.DataFrame({"ID": [id]})
         for metric in self.comparison_metrics:
             func = eval(metric)
@@ -130,11 +131,17 @@ class validation():
                     arr_mre = np.append(arr_mre,mean_val)
             except:
                 pass
+        
+        index_to_remove = 4  # remove element at index 2 (value 30)
+        arr_mre_nolab = np.delete(arr_mre,index_to_remove)
 
         MRE = np.mean(arr_mre).round(2)
         MRE_std = np.std(arr_mre).round(2)
+        MRE_nolabrum= np.mean(arr_mre_nolab).round(2)
+        MRE_nolabrum_std = np.std(arr_mre_nolab).round(2)
 
-        return summary_ls, [MRE, MRE_std]
+        return summary_ls, [MRE, MRE_std, MRE_nolabrum, MRE_nolabrum_std]
+    
     
     def alpha_thresholds(self, df, thresholds=[1,2,5,10]):
         #this function calculates the different percentages of angle difference that lays in these thresholds
@@ -169,6 +176,17 @@ class validation():
     
         return txt 
     
+    def resize_backto_original(self, pred_map, target_map, orig_size):
+        #resize images
+        orig_size = orig_size.to('cpu').numpy()
+        pred = pred_map.detach().cpu().numpy()
+        target = target_map.detach().cpu().numpy()
+        augmenter = Augmentation(self.cfg)
+        target = augmenter.reverse_downsample_and_pad(orig_size, target)
+        pred = augmenter.reverse_downsample_and_pad(orig_size, pred)
+
+        return pred, target
+    
     def get_combined_agreement(self, df, name_pred, name_true, groups):
         #if they agree yes, if they dont make it the more conservative of the two
         # get classes as binary 
@@ -185,6 +203,7 @@ class validation():
                 df['graf class true']=df['class true'].apply(lambda x: new_class[a] if x in group else new_class[b])
             else:
                 pass
+
             i=i+1
 
         #check fhc == graf
@@ -202,19 +221,19 @@ class validation():
 
         with torch.no_grad():  # So no gradients accumulate#
             comparison_df = pd.DataFrame([])
+            EH=evaluation_helper.evaluation_helper()
 
-            for batch_idx, (data, target, landmarks, meta_data, id, orig_imsize) in enumerate(dataloader):
+
+            for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img)in enumerate(dataloader):
                 predicted_points = []
                 
                 batches += 1
                 data, target = Variable(data).to(self.device), Variable(target).to(self.device)
-                print(data.shape, target.shape)
-                meta_data = Variable(meta_data).to(self.device)
+                # print(data.shape, target.shape)
+                meta_data = Variable(meta).to(self.device)
                 
                 # get prediction
-                pred = self.net(data,meta_data)            
-                print('pred',pred.shape)
-                print('targ',target.shape)
+                pred = self.net(data,meta_data)      
 
                 if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
                     pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
@@ -226,7 +245,7 @@ class validation():
                     if self.add_class_loss==True:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,pred_classes, target_classes,self.gamma)
                     elif self.add_alphafhc_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc, self.gamma)
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
                     elif self.add_alpha_loss== True:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
                     elif self.add_landmark_loss== True:
@@ -242,17 +261,16 @@ class validation():
                         loss = self.loss_func(pred.to(self.device), target.to(self.device))
 
                 total_loss += loss
-                
-                target_points, predicted_points = evaluation_helper.evaluation_helper().get_landmarks(pred, target, pixels_sizes=self.pixel_size)
-
-                # save figures only on last epoch
-                if epoch == self.max_epochs:
-                    pass
-                    ##only save on max epoch
+            
                 if self.save_img == True:
                     for i in range(self.bs):
+                        _data = orig_img[i].numpy()
+                        _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
+
+                        _target_points,_predicted_points=EH.get_landmarks(_pred, _target, pixels_sizes=self.pixel_size.to('cpu'))
+                        _target_points,_predicted_points= _target_points.squeeze(0),_predicted_points.squeeze(0)
+
                         if self.save_img  == True:
-                            #
                             print('saving validation img:', id[i])
                             #print(self.pixel_size[0])
                             validation_dir=self.outputpath+'/validation'
@@ -260,8 +278,8 @@ class validation():
                                 os.mkdir(validation_dir)
 
 
-                            visuals(validation_dir+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i])
-                            visuals(validation_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False)
+                            visuals(validation_dir+'/'+id[i], self.pixel_size[0]).heatmaps(_data ,_pred,_target_points, _predicted_points)
+                            visuals(validation_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False)
 
                             if self.save_heatmap_asdcms == True:
                                 out_dcm_dir = self.outputpath+'/as_dcms' 
@@ -269,14 +287,14 @@ class validation():
                                     os.mkdir(out_dcm_dir)
 
                                 dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
-                                visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], as_dcm=True, dcm_loc=dcm_loc)
-                                visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i],w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
+                                visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0]).heatmaps(_data ,_pred,_target_points, _predicted_points, as_dcm=True, dcm_loc=dcm_loc)
+                                visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(_data ,_pred,_target_points, _predicted_points,w_landmarks=False, as_dcm=True, dcm_loc=dcm_loc)
 
                         if self.save_txt == True:
-                            visuals(validation_dir+'/'+'txt/'+id[i],self.pixel_size, self.cfg).save_astxt(data[i][0],predicted_points[i],self.img_size,orig_imsize[i])
+                            visuals(validation_dir+'/'+'txt/'+id[i],self.pixel_size, self.cfg).save_astxt(_data ,_pred,_target_points, _predicted_points,orig_size[i])
                     
                         if self.save_heatmap == True:
-                            visuals(validation_dir+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg).heatmaps(data[i][0], pred[i], target_points[i], predicted_points[i], w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
+                            visuals(validation_dir+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
 
                         if self.save_heatmap_as_np == True:
                             visuals(validation_dir+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg).save_np(pred[i])
@@ -284,7 +302,7 @@ class validation():
                 for i in range(self.bs):
                     #add to comparison df
                     print('Comparison metrics for', id[i])
-                    id_metric_df = self.compare_metrics(id[i], predicted_points[i], pred[i], target_points[i], target[i], self.pixel_size)
+                    id_metric_df = self.compare_metrics(id[i], _predicted_points, _pred, _target_points, _target,self.pixel_size, orig_size[i])
 
                     if comparison_df.empty == True:
                         comparison_df = id_metric_df
@@ -300,8 +318,9 @@ class validation():
 
         #Get mean values from comparison summary ls, landmark metrics
         comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
-        self.logger.info("MEAN VALUES: {}".format(comparsion_summary_ls))
-        self.logger.info("MRE: {} +/- {}".format(MRE[0], MRE[1]))
+        self.logger.info("MEAN VALUES (pix): {}".format(comparsion_summary_ls))
+        self.logger.info("MRE: {} +/- {} pix".format(MRE[0], MRE[1]))
+        self.logger.info("MRE no labrum: {} +/- {} pix".format(MRE[2], MRE[3]))
 
         if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
             alpha_thresh_percentages=self.alpha_thresholds(comparison_df)
@@ -331,14 +350,30 @@ class validation():
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', self.outputpath,  loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
 
-
+        sdr_summary = ""
         if self.dataset_type == 'LANDMARKS':
             #calculate SDR
             try:
-                for i in range(self.num_output_channels):
+                for i in range(self.num_landmarks):
                     col= 'landmark radial error p'+str(i+1)
                     sdr_stats, txt = landmark_overall_metrics(self.pixel_size, self.sdr_units).get_sdr_statistics(comparison_df[col], self.sdr_thresholds)
                     self.logger.info("{} for {}".format(txt, col))
+
+                    try:
+                        #print(sdr_summary)
+                        sdr_summary=np.concatenate((sdr_summary,np.array([sdr_stats])), axis=0)
+                    except:
+                        sdr_summary = np.array([sdr_stats])
+                
+                sdr_summary_nolab = np.delete(sdr_summary, 4, axis=0)
+                sdr_summary_nolab = sdr_summary_nolab.T.mean(axis=1)
+
+                sdr_summary = sdr_summary.T.mean(axis=1)
+
+                #get mean
+                self.logger.info("SDR all landmarks: {},{},{},{}".format(round(sdr_summary[0],2),round(sdr_summary[1],2),round(sdr_summary[2],2),round(sdr_summary[3],2)))
+                self.logger.info("SDR all landmarks (no labrum): {},{},{},{}".format(round(sdr_summary_nolab[0],2),round(sdr_summary_nolab[1],2),round(sdr_summary_nolab[2],2),round(sdr_summary_nolab[3],2)))
+
 
             except:
                 raise ValueError('Check Landmark radial errors are calcuated')

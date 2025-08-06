@@ -2,6 +2,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
+from . import evaluation_helper
+
 # dimensions are [B, C, W, H]
 # the log is done within this loss function whereas normally it would be a log softmax
 # why? - i think because think about log graph would be really steep
@@ -78,15 +80,21 @@ def nll_across_batch_mse_walpha(output, target, alpha_output, alpha_target, gamm
 def nll_across_batch_mse_walphafhc(output, target, alpha_output, alpha_target, fhc_out, fhc_target, gamma):
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
-        
-    mse_alpha = torch.pow(torch.FloatTensor(alpha_target )- torch.FloatTensor(alpha_output).double(), 2)
+    
+    mse_alpha = torch.pow(torch.FloatTensor(alpha_target)- torch.FloatTensor(alpha_output).double(), 2)
     mse_alpha=torch.mean(torch.sum(mse_alpha))
-    mse_fhc = torch.pow(torch.FloatTensor(fhc_target )- torch.FloatTensor(fhc_out).double(), 2)
+    mse_fhc = torch.pow(torch.FloatTensor(fhc_target)*100- torch.FloatTensor(fhc_out).double()*100, 2)
     mse_fhc=torch.mean(torch.sum(mse_fhc))
 
     g= gamma/2
 
-    return nll_img*(1-gamma)+mse_alpha*g+mse_fhc*g
+    ## first normalise so they all have equal input to decision
+    nll_img_norm = nll_img/(mse_alpha+mse_fhc+nll_img)
+    mse_alpha_norm = mse_alpha/(mse_alpha+mse_fhc+nll_img)
+    mse_fhc_norm = mse_fhc/(mse_alpha+mse_fhc+nll_img)
+
+
+    return nll_img_norm+mse_alpha_norm+mse_fhc_norm
 
 def get_normalized_vectors(P1, P2):
     vectors = []
@@ -104,7 +112,6 @@ def nll_across_batch_cosinelandmarkvector(output, target, gamma):
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
     pixelsize=1
-    from . import evaluation_helper
     target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize)            
     # Normalize vectors
     ## vectors between ilium 1, bony ridge 2, fhc 3
@@ -120,6 +127,10 @@ def nll_across_batch_cosinelandmarkvector(output, target, gamma):
     cosine_sim_br = torch.mean(torch.sum(vec2 * vec2_t, dim=1))
     cosine_sim_fhc = torch.mean(torch.sum(vec3 * vec3_t, dim=1))
 
+    # cosine_sim_il = torch.tensor(cosine_sim_il, requires_grad=True)
+    # cosine_sim_br = torch.tensor(cosine_sim_br, requires_grad=True)
+    # cosine_sim_fhc = torch.tensor(cosine_sim_fhc, requires_grad=True)
+    
     g= gamma/2
     g_a = g/2
 

@@ -22,9 +22,14 @@ from .augmentation import Augmentation
 from pathlib import Path
 
 class dataloader(Dataset):
-    def __init__(self, cfg, set) -> None:
+    def __init__(self, cfg, set, subset=None) -> None:
         #paths
         self.cfg=cfg
+
+        if subset != None:
+            self.subset=subset
+        else:
+            self.subset=subset
 
         if cfg.MODEL.NAME=='hrnet':
             self.rgb = True
@@ -67,7 +72,7 @@ class dataloader(Dataset):
         self.meta_feat_structure = self.model_init.get_modelspecific_feature_structure()
 
         self.set = set
-        self.data, self.target, self.landmarks, self.meta, self.ids, self.orig_img_shape = self.get_numpy_dataset() 
+        self.data, self.target, self.landmarks, self.meta, self.ids, self.orig_img_shape,  self.orig_im= self.get_numpy_dataset() 
 
         if self.set != 'training':
             self.perform_aug = False
@@ -156,7 +161,7 @@ class dataloader(Dataset):
         image_rescaled = (image_resized - np.min(image_resized)) / np.ptp(image_resized)
         image_as_255 = img_as_ubyte(image_rescaled)
         
-        return image_as_255, image.shape
+        return image_as_255, image.shape, image
     
     def get_landmarks(self, ann_path, seq, image_shape):
         # Get annotations
@@ -250,12 +255,18 @@ class dataloader(Dataset):
         meta_arr = pd.DataFrame([])
 
         print('loading:', self.set)
-        for i in tqdm(range(len(img_files[self.set]))):
+        if self.subset != None:
+            im_set=img_files[self.set][:self.subset]
+        else:
+            im_set=img_files[self.set]
+
+
+        for i in tqdm(range(len(im_set))):
             pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
 
             ##LOAD IMAGES##
             # print(img_files[self.set][i])
-            _im_arr, orig_shape = self.get_img(seq,img_files[self.set][i])
+            _im_arr, orig_shape, _im_orig = self.get_img(seq,img_files[self.set][i])
             print('orig_shape:',orig_shape)
             
             ##LOAD ANNOTATIONS##
@@ -326,6 +337,8 @@ class dataloader(Dataset):
                 id_arr = np.array([pat_id])
                 meta_arr = _meta_arr
                 im_arr = np.expand_dims(_im_arr,axis=0)
+                im_orig_arrs = [_im_orig]
+
                 # if self.rgb ==True:
                 #     im_arr=im_arr.repeat(3, axis=0)
                 orig_shape_arr = np.expand_dims(orig_shape,axis=0)
@@ -340,7 +353,8 @@ class dataloader(Dataset):
                 #     im_arr = np.concatenate((im_arr, _im_arr),0)
                 # else:
                 im_arr = np.concatenate((im_arr, np.expand_dims(_im_arr,axis=0)),0)
-
+                # im_orig_arrs = np.concatenate((im_orig_arrs,np.expand_dims(_im_orig,axis=0)),0)
+                im_orig_arrs.append(_im_orig)
                 annotation_arr = np.concatenate((annotation_arr,np.expand_dims(_annotation_arr,axis=0)),0)
                 meta_arr=pd.concat([meta_arr,_meta_arr])
                 orig_shape_arr=np.concatenate((orig_shape_arr,np.array([orig_shape])),0)
@@ -363,6 +377,9 @@ class dataloader(Dataset):
         im_arr = np.expand_dims(im_arr,axis=1)
         im_torch = torch.from_numpy(im_arr).float()
 
+        # im_orig_arrs =np.expand_dims(im_orig_arrs,axis=1)
+        # im_orig_torch = torch.from_numpy(im_orig_arrs).float() 
+
         #expand numpy arr and make values as torch
         orig_shape_arr = np.expand_dims(orig_shape_arr,axis=1)
         orig_shape_arr = torch.from_numpy(orig_shape_arr).float()
@@ -377,8 +394,6 @@ class dataloader(Dataset):
         meta_data_restructured = np.expand_dims(meta_data_restructured,axis=1)
         meta_torch = torch.from_numpy(meta_data_restructured).float()
 
-        id_arr = np.array(id_arr)
-        id_arr = np.expand_dims(id_arr,axis=1)
 
         orig_shape_arr = np.array(orig_shape_arr)
         orig_shape_arr = np.expand_dims(orig_shape_arr,axis=1)
@@ -390,15 +405,15 @@ class dataloader(Dataset):
         landmark_arr = np.expand_dims(landmark_arr,axis=1)
         landmark_torch = torch.from_numpy(landmark_arr).float()
 
-        return im_torch, annotation_torch, landmark_torch, meta_torch, id_arr, orig_shape_arr 
+        return im_torch, annotation_torch, landmark_torch, meta_torch, id_arr, orig_shape_arr, im_orig_arrs 
 
     def __getitem__(self, index):
 
         x = self.data[index]
         y = self.target[index]
-
+        orig_img = self.orig_im[index]
         landmarks = self.landmarks[index]
-        id = self.ids[index][0]
+        id = self.ids[index]
 
         if len(landmarks)==1: 
             pass
@@ -445,7 +460,7 @@ class dataloader(Dataset):
         else:
             pass
 
-        return x, y, landmarks, meta, id, orig_size
+        return x, y, landmarks, meta, id, orig_size, orig_img
 
     def __len__(self):
         return len(self.data)

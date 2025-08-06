@@ -77,7 +77,7 @@ class training():
         total_loss = 0
         batches = 0
 
-        for batch_idx, (data, target, landmarks, meta, id, orig_imsize) in enumerate(dataloader):
+        for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img)  in enumerate(dataloader):
             print(batch_idx)
             print(id)
             self.optimizer.zero_grad()

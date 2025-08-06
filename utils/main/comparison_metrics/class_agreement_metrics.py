@@ -57,15 +57,17 @@ class class_agreement_metrics():
             if np.all(pred_class_arr == gt_class_arr) == True:
                 #then all classes are the same, confusion matrix will give back one value
                 #if only one value figure out if its true neg or true positive
-                x = confusion_matrix(gt_class_arr, pred_class_arr).ravel()
+                tp = float(len(pred_class_arr))
+                tn, fp, fn = 0.0,0.0,0.0
+                # tn, fp, fn, tp  = confusion_matrix(gt_class_arr, pred_class_arr).ravel()
 
-                #get one value from gt_class_arr and figure out if its the first or second class. if its the first in the list its tp if second tn
-                if gt_class_arr[0]==groups[0]:
-                    tn = float(x[0])
-                    fp, fn, tp = 0.0,0.0,0.0
-                else:
-                    tp = float(x[0])
-                    tn, fp, fn = 0.0,0.0,0.0
+                # #get one value from gt_class_arr and figure out if its the first or second class. if its the first in the list its tp if second tn
+                # if gt_class_arr[0]==groups[0]:
+                #     tn = float(x[0])
+                #     fp, fn, tp = 0.0,0.0,0.0
+                # else:
+                #     tp = float(x[0])
+                #     tn, fp, fn = 0.0,0.0,0.0
             else:
                 #only one class for classification problem
                 tn, fp, fn, tp = confusion_matrix(gt_class_arr, pred_class_arr).ravel()

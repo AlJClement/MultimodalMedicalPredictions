@@ -33,10 +33,12 @@ class landmark_metrics():
         # if pred output is dim x,y add channel for threshold to work
         if len(pred.shape) == 2:
             pred = pred.unsqueeze(dim=0)
+        if len(pred_map.shape) == 2:
             pred_map = pred_map.unsqueeze(dim=0)
         pred_thresholded = evaluation_helper().get_thresholded_heatmap(pred_map, pred)
         
         eres_per_image = []
+
         for pred_thresholded, predicted_points, pixel_size in zip(pred_thresholded, pred, pixelsize):
             ere_per_heatmap = []
             for pred_thresh, predicted_point in zip(pred_thresholded, predicted_points):
@@ -45,7 +47,7 @@ class landmark_metrics():
                 pred_flattened = torch.flatten(pred_thresh)
                 flattened_indices = torch.nonzero(pred_flattened)
                 significant_values = pred_flattened[flattened_indices]
-                scaled_indices = torch.multiply(indices, pixel_size.float())
+                scaled_indices = torch.multiply(indices, pixel_size.to('cpu').float())
 
                 displacement_vectors = torch.sub(scaled_indices, predicted_point)
                 distances = torch.norm(displacement_vectors, dim=1)

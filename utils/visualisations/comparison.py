@@ -59,14 +59,14 @@ class comparison():
 
         plt.scatter(x, y, c='b', alpha=1)
         plt.axis('equal')
-        x, y =np.asarray(dataset['true']), np.asarray(dataset['pred'])
+        # x, y =np.asarray(dataset['true']), np.asarray(dataset['pred'])
 
         #add line of best fit
         coef = np.polyfit(x,y,1)
         poly1d_fn = np.poly1d(coef) 
         m, b = np.polyfit(x, y, 1)
 
-        plt.plot(x,y, 'yo', x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker 
+        plt.plot( x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker 
 
         if self.calculation_type == 'fhc':
             plt.xlabel('True FHC %')
