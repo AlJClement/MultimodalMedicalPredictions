@@ -1,11 +1,11 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  # PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  # IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  # DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  # LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  # META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
- # DATASET_NAME: ddh
+  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+#  # DATASET_NAME: ddh
 
   # PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
@@ -13,10 +13,10 @@ INPUT_PATHS:
   # LABELS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   # META_PATH: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
   # # DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/partition_stanmore_test.json
-  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
-  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
-  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
+  # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/partition_stanmore_test.json
+  # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
+  # LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
+  # META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/partition_0_0_1_1.00000.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   # LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -69,16 +69,17 @@ DATASET:
     TRANSLATION_Y: 0.2 #affine
     SPECKLE_NOISE: 2
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
+    COARSE_SALTANDPEPPER: 0.20 #percent of all pixels that will be dropped
 
 
-OUTPUT_PATH: ./output_denoise_HRNET_sigma1_10epochLR005_7landmarks_walphafhc0.8
+OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_walphafhc
 
 TRAIN:
-  BATCH_SIZE: 6
-  LR: 0.001
+  BATCH_SIZE: 8
+  LR: 0.005
   EPOCHS: 10
-  LOSS: nll_across_batch_mse_walphafhc #_mse_walpha
-  GAMMA: 0.8
+  LOSS: nll_across_batch_mse_walphafhc
+  GAMMA: 0.2
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
 
 TEST:
