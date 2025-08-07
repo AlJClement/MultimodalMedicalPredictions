@@ -78,7 +78,7 @@ class validation():
             self.add_landmark_loss = False        
 
         self.class_calculation = graf_angle_calc()
-
+        self.gamma = cfg.TRAIN.GAMMA
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
         self.momentum = 0.99
@@ -224,48 +224,44 @@ class validation():
             EH=evaluation_helper.evaluation_helper()
 
 
-            for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img)in enumerate(dataloader):
-                predicted_points = []
-                
+            for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img)in enumerate(dataloader):                
                 batches += 1
                 data, target = Variable(data).to(self.device), Variable(target).to(self.device)
-                # print(data.shape, target.shape)
                 meta_data = Variable(meta).to(self.device)
                 
                 # get prediction
                 pred = self.net(data,meta_data)      
 
+                ##get predicted values from prediction heatmap for loss if needed
                 if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
-                    pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
+                        pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
+                if self.add_alphafhc_loss==True:
+                    pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
 
-                    if self.add_alphafhc_loss==True:
-                        pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
-
+                ## calculate loss
                 if self.l2_reg==True:
                     if self.add_class_loss==True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,pred_classes, target_classes,self.gamma)
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,self.gamma, pred_alphas, target_alphas,pred_classes, target_classes)
                     elif self.add_alphafhc_loss== True:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
-                    elif self.add_alpha_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
                     elif self.add_landmark_loss== True:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
-                    else:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
-                else:
-                    if self.add_class_loss==True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,pred_alphas, target_alphas, pred_classes, target_classes,self.gamma)
                     elif self.add_alpha_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
                     else:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device))
-
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
+                else:
+                    raise ValueError('only implemented for l2 reg right now')
+                
+                ## Update loss
                 total_loss += loss
-            
+
+                ## Save images for validation
                 if self.save_img == True:
                     for i in range(self.bs):
+                        #get original image and resize predictions to image size
                         _data = orig_img[i].numpy()
-                        _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
+                        _pred, _target =self.resize_backto_original(pred[i], target[i], orig_size[i])
 
                         _target_points,_predicted_points=EH.get_landmarks(_pred, _target, pixels_sizes=self.pixel_size.to('cpu'))
                         _target_points,_predicted_points= _target_points.squeeze(0),_predicted_points.squeeze(0)
@@ -299,15 +295,14 @@ class validation():
                         if self.save_heatmap_as_np == True:
                             visuals(validation_dir+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg).save_np(pred[i])
                             
-                for i in range(self.bs):
-                    #add to comparison df
-                    print('Comparison metrics for', id[i])
-                    id_metric_df = self.compare_metrics(id[i], _predicted_points, _pred, _target_points, _target,self.pixel_size, orig_size[i])
+                        #add to comparison df
+                        print('Comparison metrics for', id[i])
+                        id_metric_df = self.compare_metrics(id[i], _predicted_points, _pred, _target_points, _target,self.pixel_size, orig_size[i])
 
-                    if comparison_df.empty == True:
-                        comparison_df = id_metric_df
-                    else:
-                        comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
+                        if comparison_df.empty == True:
+                            comparison_df = id_metric_df
+                        else:
+                            comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
 
             
         comparison_df.to_csv(self.outputpath+'/comparison_metrics.csv')

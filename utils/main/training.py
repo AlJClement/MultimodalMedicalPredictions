@@ -51,6 +51,8 @@ class training():
         self.class_calculation = graf_angle_calc()
         self.fhc_calc = fhc()
 
+        self.gamma = cfg.TRAIN.GAMMA
+
         self.bs = cfg.TRAIN.BATCH_SIZE
         self.lr = cfg.TRAIN.LR
         self.momentum = 0.99
@@ -107,12 +109,15 @@ class training():
             #target shape: (B, C, W, H) - where C is #landmarks
             pred = self.net(data, meta_data)
 
+            ##get variables if you need them for loss
             if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
                 pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
 
                 if self.add_alphafhc_loss==True:
                     pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
 
+            
+            ##calculate loss
             if self.l2_reg==True:
                 if self.add_class_loss==True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,self.gamma, pred_alphas, target_alphas,pred_classes, target_classes)
@@ -123,7 +128,7 @@ class training():
                 elif self.add_alpha_loss== True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
                 else:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
             else:
                 if self.add_class_loss==True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,pred_alphas, target_alphas, pred_classes, target_classes,self.gamma)
@@ -145,7 +150,7 @@ class training():
             torch.cuda.empty_cache()
 
         av_loss = total_loss / batches
-      #av_loss = av_loss.detach().cpu().numpy()
+        #av_loss = av_loss.detach().cpu().numpy()
         print('\nTraining Set Average loss: {:.4f}'.format(av_loss,  flush=True))
         
         t_e= datetime.datetime.now()

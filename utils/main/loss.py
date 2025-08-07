@@ -88,13 +88,13 @@ def nll_across_batch_mse_walphafhc(output, target, alpha_output, alpha_target, f
 
     g= gamma/2
 
-    ## first normalise so they all have equal input to decision
-    nll_img_norm = nll_img/(mse_alpha+mse_fhc+nll_img)
-    mse_alpha_norm = mse_alpha/(mse_alpha+mse_fhc+nll_img)
-    mse_fhc_norm = mse_fhc/(mse_alpha+mse_fhc+nll_img)
+    # ## first normalise so they all have equal input to decision
+    # nll_img_norm = nll_img/(mse_alpha+mse_fhc+nll_img)
+    # mse_alpha_norm = mse_alpha/(mse_alpha+mse_fhc+nll_img)
+    # mse_fhc_norm = mse_fhc/(mse_alpha+mse_fhc+nll_img)
 
 
-    return nll_img_norm+mse_alpha_norm+mse_fhc_norm
+    return nll_img(1-gamma)+mse_alpha*g+mse_fhc*g
 
 def get_normalized_vectors(P1, P2):
     vectors = []
@@ -178,6 +178,8 @@ class L2RegLoss(nn.Module):
             self.addclass='cosinelandmarkvector'
         else:
             self.addclass=False
+        
+        print('loss', self.addclass)
 
     def forward(self, x, target, model,gamma, pred_alphas=None, target_alphas=None,class_output=None,class_target=None,pred_fhc=None,  target_fhc=None):
         #abs(p) for l1
