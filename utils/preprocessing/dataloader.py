@@ -66,7 +66,7 @@ class dataloader(Dataset):
         
         self.pat_id_col = cfg.INPUT_PATHS.ID_COL
         self.metaimport = MetadataImport(cfg)
-        self.metadata_csv = self.metaimport.load_csv()
+        self.metadata_csv, self.metadata_csv_classes = self.metaimport.load_csv()
         self.model_init = model_init(cfg)
         #get specific models/feature loaders
         self.meta_feat_structure = self.model_init.get_modelspecific_feature_structure()
@@ -109,14 +109,20 @@ class dataloader(Dataset):
                         #get image file
                         #add annotation folders
                         ann_list = []
-                        if len(os.listdir(self.label_dir))<10:
-                            for label_folder in os.listdir(self.label_dir):
-                                img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))                                
-                                annotation_dic[i].append([os.path.join(self.label_dir, label_folder,id + label_folder + self.ann_extension)])
-                        else:    
+                        if self.label_dir=='':
+                            #no labels so this will only be used for comparison of class
                             img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))       
                             label_folder = ''                 
-                            annotation_dic[i].append([os.path.join(self.label_dir,id + self.ann_extension)])
+                            annotation_dic[i].append([None])
+                        else:
+                            if len(os.listdir(self.label_dir))<10:
+                                for label_folder in os.listdir(self.label_dir):
+                                    img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))                                
+                                    annotation_dic[i].append([os.path.join(self.label_dir, label_folder,id + label_folder + self.ann_extension)])
+                            else:    
+                                img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))       
+                                label_folder = ''                 
+                                annotation_dic[i].append([os.path.join(self.label_dir,id + self.ann_extension)])
 
                     else: 
                         #keeps each patient seperate
@@ -218,16 +224,22 @@ class dataloader(Dataset):
         ann_points, ann_array, folder_ls = [], [], []
         #print(ann_paths)
         for ann_path in ann_paths:
-            folder_name = ann_path.split("/")[-2]
-            if self.annotation_type=="LANDMARKS":
-                _ann_points = self.get_landmarks(ann_path, seq, orig_img_shape)
-                _np_ann_points=_ann_points.to_xy_array().reshape(-1, self.num_landmarks, 2)[0]
-                #get array of the points with guassian if applied
-                _ann_array = self.add_sigma_channels(_np_ann_points, img_shape)
-                #print(_np_ann_points)
+            if ann_path ==None:
+                _np_ann_points = [0.0]
+                _ann_array = [0.0]
+                folder_name = None
+                pass
             else:
-                ann_points = 'None'
-                raise ValueError('only capable for landmarks right now')
+                folder_name = ann_path.split("/")[-2]
+                if self.annotation_type=="LANDMARKS":
+                    _ann_points = self.get_landmarks(ann_path, seq, orig_img_shape)
+                    _np_ann_points=_ann_points.to_xy_array().reshape(-1, self.num_landmarks, 2)[0]
+                    #get array of the points with guassian if applied
+                    _ann_array = self.add_sigma_channels(_np_ann_points, img_shape)
+                    #print(_np_ann_points)
+                else:
+                    ann_points = 'None'
+                    raise ValueError('only capable for landmarks right now')
             
             #add annotations points and arrays to a list if multiple annotators exist
             ann_points.append(_np_ann_points)
@@ -260,10 +272,9 @@ class dataloader(Dataset):
         else:
             im_set=img_files[self.set]
 
-
         for i in tqdm(range(len(im_set))):
             pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
-
+            
             ##LOAD IMAGES##
             # print(img_files[self.set][i])
             _im_arr, orig_shape, _im_orig = self.get_img(seq,img_files[self.set][i])
@@ -279,22 +290,14 @@ class dataloader(Dataset):
                     _annotation_arr = [_annotation_arr[0][[0,2,5,7,9,13],:,:]]
                     annotation_points = [annotation_points[0][[0,2,5,7,9,13],:]]
 
-            # _annotation_arr = _annotation_arr[:5]
-            # annotation_points= annotation_points[:5]
-            print(len(_annotation_arr))
             ##LOAD META##
             _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id)
-            if _meta_arr.empty:
-                try:
-                    pat_id_rnoh=pat_id.split('_')[1]
-                    _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id_rnoh)
-                    
-                except:
-                    try:
-                        pat_id_oai = pat_id.split('-')[0]
-                        _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id_oai)
-                    except:
-                        raise ValueError('no meta data found for: ', pat_id)
+
+            ##### if annotations == 0 store the class from meta file
+            if _annotation_arr[0][0] == 0:
+                ## replace with class from config file metaclasses
+                _annotation_arr = self.metaimport._get_class_arr(self.metadata_csv_classes, pat_id)
+
 
             cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))
 
@@ -384,9 +387,12 @@ class dataloader(Dataset):
         orig_shape_arr = np.expand_dims(orig_shape_arr,axis=1)
         orig_shape_arr = torch.from_numpy(orig_shape_arr).float()
 
-        annotation_torch = torch.from_numpy(annotation_arr).float()
-        if len(annotation_torch.shape)==5:
-            annotation_torch=torch.squeeze(annotation_torch,dim=1)
+        try:
+            annotation_torch = torch.from_numpy(annotation_arr).float()
+            if len(annotation_torch.shape)==5:
+                annotation_torch=torch.squeeze(annotation_torch,dim=1)
+        except:
+            annotation_torch = annotation_arr
 
 
         #encoed meta/id data for network in cfg
@@ -411,6 +417,11 @@ class dataloader(Dataset):
 
         x = self.data[index]
         y = self.target[index]
+        #Check dtype if target is filled with classes
+        if isinstance(y, np.ndarray) and y.dtype == object:
+            # Convert to list of strings
+            y = y.flatten().tolist()
+
         orig_img = self.orig_im[index]
         landmarks = self.landmarks[index]
         id = self.ids[index]

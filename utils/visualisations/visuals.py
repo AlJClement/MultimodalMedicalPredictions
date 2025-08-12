@@ -128,7 +128,11 @@ class visuals():
             pass
         else:
             predicted_points = predicted_points.detach().cpu().numpy()
-            target_points = target_points.cpu().detach().numpy()
+            try:
+                target_points = target_points.cpu().detach().numpy()
+            except:
+                target_points = target_points
+
     
 
         #print(self.pixelsize)
@@ -153,8 +157,23 @@ class visuals():
         # except:
         #     tp_exist = True
             
-        if target_points is None:
+        if isinstance(target_points[0], tuple):
             ax.imshow(image, cmap='Greys_r',alpha=0.4)
+            ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
+                                                    
+            fhc_pred = fhc.fhc().get_fhc_pred(predicted_points,output, self.pixelsize)
+            fhc_pred = fhc_pred[1]*100
+            alpha_pred =round(graf_angle_calc().calculate_alpha(predicted_points),1)
+
+            ##for setup from retuve
+            fhc_true = target_points[3][0]
+            alpha_true =target_points[2][0]
+
+            ax.text(0.02, 0.98,f"FHC = {fhc_true}%\n α = {alpha_true}°", 
+                        transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
+            ax.text(0.02, 0.80,f"FHC = {fhc_pred:.1f}%\n α = {alpha_pred:.1f}°",
+                        transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
+
         else:
             if with_img == True:
                 if w_landmarks == True:
@@ -196,7 +215,7 @@ class visuals():
             plt.savefig(self.save_path,dpi=1200, bbox_inches='tight', pad_inches = 0)
             im = Image.open(self.save_path+'.png')
             rgb_im = im.convert('RGB')
-            rgb_im.save(self.save_path+'.jpg')
+            # rgb_im.save(self.save_path+'.jpg')
             plt.close()
 
         plt.close()

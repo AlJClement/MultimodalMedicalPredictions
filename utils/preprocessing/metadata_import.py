@@ -5,10 +5,15 @@ class MetadataImport():
     def __init__(self, cfg) -> None:
         self.metapath = cfg.INPUT_PATHS.META_PATH
         self.cols_dict =  cfg.INPUT_PATHS.META_COLS        
+
         self.pat_col_name = cfg.INPUT_PATHS.ID_COL
+
+        cfg.INPUT_PATHS.META_COLS_CLASSES.append(self.pat_col_name)
+        self.class_ls = cfg.INPUT_PATHS.META_COLS_CLASSES
 
         self.model_name = cfg.MODEL.NAME
         self.model_features = cfg.MODEL.META_FEATURES
+     
         
     def load_csv(self):
         #metadata load from csv 
@@ -19,12 +24,39 @@ class MetadataImport():
             col_names.append(col_name)
 
         meta = pd.read_csv(self.metapath,dtype=object, usecols=col_names)
-        return meta
+        meta_class = pd.read_csv(self.metapath,dtype=object, usecols=self.class_ls)
+        return meta, meta_class
         
     def _get_array(self, meta_df, patid):
-        patid=patid.split('_')[0]
-        pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
+        pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid.split('_')[0]]
+        if pat_meta_arr.empty:
+            pat_id_rnoh=patid.split('_')[1]
+            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
+        if pat_meta_arr.empty:
+            pat_id_oai = patid.split('-')[0]
+            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_oai]
+        if pat_meta_arr.empty:
+            #retuve
+            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
+        if pat_meta_arr.empty:
+                raise ValueError('no meta data found for: ', patid)
         return pat_meta_arr
+    
+    def _get_class_arr(self, meta_df, patid):
+        pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid.split('_')[0]]
+        if pat_meta_arr.empty:
+            pat_id_rnoh=patid.split('_')[1]
+            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
+        if pat_meta_arr.empty:
+            pat_id_oai = patid.split('-')[0]
+            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_oai]
+        if pat_meta_arr.empty:
+            #retuve
+            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
+        if pat_meta_arr.empty:
+                raise ValueError('no meta data found for: ', patid)
+        return pat_meta_arr.values
+    
         
     def _duplicate_col(self, meta_data_col, num_cols):
         new_cols = meta_data_col.astype(float)*np.ones((num_cols,1))

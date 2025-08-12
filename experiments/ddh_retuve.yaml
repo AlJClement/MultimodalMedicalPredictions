@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1_1.00000.json #0.01674.json   #test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1_test.json #0.01674.json   #test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_retuve/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   # DCMS: /experiments/datasets-in-use/multimodal_datasets/ddh_retuve/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   # LABELS:  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -19,6 +19,7 @@ INPUT_PATHS:
  
   ID_COL: Accession Number
   META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
+  META_COLS_CLASSES: ['Type', 'alpha (degrees)', 'FHC (%)'] ## must have these to be considered in calculations
 
 MODEL: 
   #NAME: unet_meta_lastlayer
@@ -81,13 +82,8 @@ TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
   COMPARISON_METRICS: 
     - graf_angle_calc().graf_class_comparison
-    - landmark_metrics().get_eres
-    - landmark_metrics().get_radial_errors
-    - fhc().get_fhc
-  SDR_THRESHOLD: [0.5, 1.0, 2.0, 4.0]
-  SDR_UNITS: mm #pixels
+    - fhc().get_fhc_pred
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True
-  SAVE_IMG_LANG_PREDANDTRUE: True
   SAVE_HEATMAPS_NP: True
   

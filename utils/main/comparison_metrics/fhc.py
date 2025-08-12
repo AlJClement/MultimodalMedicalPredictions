@@ -91,6 +91,13 @@ class fhc():
                     ['fhc true', fhc_true]]
         return ls_values 
     
+    def get_fhc_pred(self, pred, pred_map, pixelsize):
+        fhc_pred = self.fhc(pred)
+        print('pred fhc:',fhc_pred)
+
+        ls_values = ['fhc pred', fhc_pred]
+        return ls_values 
+    
     def get_fhc_batches(self,pred,target,pixel_size):
         target_points, predicted_points = evaluation_helper.evaluation_helper().get_landmarks(pred, target, pixels_sizes=pixel_size)
         pred_fhc, target_fhc = [],[]
