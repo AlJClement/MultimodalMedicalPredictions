@@ -70,7 +70,7 @@ DATASET:
 OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_7landmarks
 
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 4
   LR: 0.005
   EPOCHS: 10
   LOSS: nll_across_batch #_mse_walpha
@@ -85,7 +85,7 @@ TEST:
     - landmark_metrics().get_radial_errors
     - fhc().get_fhc
   SDR_THRESHOLD: [0.5, 1.0, 2.0, 4.0]
-  SDR_UNITS: pixels
+  SDR_UNITS: mm
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True
   SAVE_IMG_LANG_PREDANDTRUE: True

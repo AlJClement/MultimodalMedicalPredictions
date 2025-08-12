@@ -61,3 +61,10 @@ class evaluation_helper():
         scaled_target_points = torch.multiply(target_points, pixels_sizes)
 
         return  target_points, predicted_points
+    
+    def get_landmarks_predonly(self, pred, pixels_sizes):
+        # Predicted points has shape (B, N, 2)
+        predicted_points = self.get_hottest_points(pred)
+        scaled_predicted_points = torch.multiply(predicted_points, pixels_sizes)
+
+        return  predicted_points

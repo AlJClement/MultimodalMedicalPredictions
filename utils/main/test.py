@@ -33,6 +33,7 @@ class test():
         self.logger = logger
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
+        self.label_dir = cfg.INPUT_PATHS.LABELS
 
         self.save_asdcms = cfg.TEST.SAVE_HEATMAPS_ASDCM
         self.save_txt=cfg.TEST.SAVE_TXT
@@ -47,6 +48,8 @@ class test():
         self.lr = cfg.TRAIN.LR
         self.momentum = cfg.TRAIN.MOMENTUM
         self.device = torch.device(cfg.MODEL.DEVICE)
+
+        self.class_cols = cfg.INPUT_PATHS.META_COLS_CLASSES
 
         if cfg.MODEL.DEVICE == 'cuda':
             torch.cuda.empty_cache()
@@ -84,7 +87,18 @@ class test():
         df = pd.DataFrame({"ID": [id]})
         for metric in self.comparison_metrics:
             func = eval(metric)
-            output = func(pred, pred_map, true, true_map, pixelsize)
+            if metric == 'fhc().get_fhc_pred':
+                fhc_val = true[self.class_cols.index('FHC (%)')+1][0]
+                if fhc_val == '>0.50':
+                    fhc_true = 0.51
+                elif fhc_val == '0.30-0.40':
+                    fhc_true = 0.35
+                else:
+                    fhc_true = float(fhc_val)
+
+                output = [func(pred, pred_map, pixelsize),['fhc true',fhc_true], ['fhc from adam',fhc_val]]
+            else:
+                output = func(pred, pred_map, true, true_map, pixelsize)
             for i in output:
                 df[i[0]]=[i[1]]
 
@@ -151,10 +165,16 @@ class test():
         #resize images
         orig_size = orig_size.to('cpu').numpy()
         pred = pred_map.detach().cpu().numpy()
-        target = target_map.detach().cpu().numpy()
+
         augmenter = Augmentation(self.cfg)
-        target = augmenter.reverse_downsample_and_pad(orig_size, target)
         pred = augmenter.reverse_downsample_and_pad(orig_size, pred)
+
+        if isinstance(target_map[0], str):
+            target = target_map[0]
+            pass
+        else:
+            target = target_map.detach().cpu().numpy()
+            target = augmenter.reverse_downsample_and_pad(orig_size, target)
 
         return pred, target
     
@@ -162,7 +182,12 @@ class test():
         comparison_df = pd.DataFrame([])
         for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(dataloader):
 
-            data, target = Variable(data).to(self.device), Variable(target).to(self.device)
+            data = Variable(data).to(self.device)
+            try:
+                target = Variable(target).to(self.device)
+            except:
+                target = target
+                print(target)
             meta_data = Variable(meta).to(self.device)
             orig_size = Variable(orig_size).to(self.device)
             
@@ -176,31 +201,47 @@ class test():
 
                 ### resize back to original for
                 _data = orig_img[i].numpy()
-                _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
 
-                _target_points,_predicted_points=EH.get_landmarks(_pred, _target, pixels_sizes=self.pixel_size.to('cpu'))
-                _target_points,_predicted_points= _target_points.squeeze(0),_predicted_points.squeeze(0)
+                if self.label_dir == '':
+                    _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
+                    _predicted_points=EH.get_landmarks_predonly(_pred, pixels_sizes=self.pixel_size.to('cpu'))
+                    _predicted_points=_predicted_points.squeeze(0)
+                    _target_points = target
+                else:
+                    _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
+                    _target_points,_predicted_points=EH.get_landmarks(_pred, _target, pixels_sizes=self.pixel_size.to('cpu'))
+                    _target_points,_predicted_points= _target_points.squeeze(0),_predicted_points.squeeze(0)
+
+                # if self.label_dir == '':
+                #     #class cols is order of columns
+                #     target_alpha = target[self.class_cols.index('Type')][0]
+                #     target_class = target[self.class_cols.index('alpha (degrees)')+1][0]
+                #     target_fhc = target[self.class_cols.index('FHC (%)')+1][0]
+
                 
-                if self.save_img_landmarks_predandtrue == True:
-                    visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points)
+                if self.label_dir == '':
+                    pass
+                else:    
+                    #### if the prediction does not have ground truth landmarks
+                    if self.save_img_landmarks_predandtrue == True:
+                        visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points)
 
+                    if self.save_asdcms == True:
+                        out_dcm_dir = self.save_img_path+'/as_dcms' 
+                        if os.path.exists(out_dcm_dir)==False:
+                            os.mkdir(out_dcm_dir)
+
+                        dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
+
+                        if self.save_img_landmarks_predandtrue == True:
+                            visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+
+                        if self.save_heatmap_land_img == True:
+                            visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points,w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+                
                 if self.save_heatmap_land_img == True:
                     visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks)
 
-                if self.save_asdcms == True:
-
-                    out_dcm_dir = self.save_img_path+'/as_dcms' 
-                    if os.path.exists(out_dcm_dir)==False:
-                        os.mkdir(out_dcm_dir)
-
-                    dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
-
-                    if self.save_img_landmarks_predandtrue == True:
-                        visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
-
-                    if self.save_heatmap_land_img == True:
-                        visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points,w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
-                
                 if self.save_txt == True:
                     visuals(self.output_path+'/txt/'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_astxt(_data,_predicted_points,self.img_size,orig_size[i])
                 
@@ -212,12 +253,13 @@ class test():
                     # image also resizes here check**
                     visuals(self.output_path+'/np/numpy_heatmaps_uniformSize_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
 
-                save_img=True
+                save_img=False
                 if save_img ==True:
                     plt.imshow(np.squeeze(_data), cmap='Greys_r')
                     plt.axis('off')
                     plt.savefig(self.save_img_path+'/'+id[i]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)       
 
+                
                 id_metric_df = self.compare_metrics(id[i], _predicted_points, _pred, _target_points, _target,self.pixel_size, orig_size[i])
 
                 if comparison_df.empty == True:
@@ -233,18 +275,33 @@ class test():
         comparison_df.to_csv(self.output_path+'/test/comparison_metrics.csv')
         print('Saving Results to comparison_metrics.csv')
 
-        self.logger.info("---------TEST RESULTS--------")
+        #
+        #
+        #
+        #
+        #
 
-        #Get mean values from comparison summary ls, landmark metrics
-        comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
+        self.logger.info("---------TEST RESULTS--------")
+                         
+        if self.label_dir == '':
+            MRE = [None, None, None,None]
+            comparsion_summary_ls = None
+        else:
+            #Get mean values from comparison summary ls, landmark metrics
+            comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
+
         self.logger.info("MEAN VALUES (pix): {}".format(comparsion_summary_ls))
         self.logger.info("MRE: {} +/- {} pix".format(MRE[0], MRE[1]))
         self.logger.info("MRE no labrum: {} +/- {} pix".format(MRE[2], MRE[3]))
 
+
         #plot angles pred vs angles 
         if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
-                
-            alpha_thresh_percentages,alpha_thresh_percentages_normalized=self.alpha_thresholds(comparison_df)
+            if self.label_dir == '':   
+                alpha_thresh_percentages,alpha_thresh_percentages_normalized= None, None
+            else:
+                alpha_thresh_percentages,alpha_thresh_percentages_normalized=self.alpha_thresholds(comparison_df)
+
             self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
             self.logger.info("Alpha Thresholds Normalized: {}".format(alpha_thresh_percentages_normalized))
 
@@ -261,6 +318,7 @@ class test():
             self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[6]))
 
 
+
         if self.combine_graf_fhc==True:
         # #add fhc cols for normal and abnormal (n and a)
             comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
@@ -273,54 +331,59 @@ class test():
             ## Concensus of FHC and Graf
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', groups=[('i'),('ii','iii/iv')])
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
             
             comparison_df.to_csv(self.output_path+'/test/comparison_metrics.csv')
             print('Saving Results to comparison_metrics.csv')
-
+        
+        
         sdr_summary = ""
-        if self.dataset_type == 'LANDMARKS':
-            #calculate SDR
-            try:
-                for i in range(self.num_landmarks):
-                    col= 'landmark radial error p'+str(i+1)
-                    sdr_stats, txt = landmark_overall_metrics(self.pixel_size, self.sdr_units).get_sdr_statistics(comparison_df[col], self.sdr_thresholds)
-                    self.logger.info("{} for {}".format(txt, col))
 
-                    try:
-                        #print(sdr_summary)
-                        sdr_summary=np.concatenate((sdr_summary,np.array([sdr_stats])), axis=0)
-                    except:
-                        sdr_summary = np.array([sdr_stats])
-                
-                sdr_summary_nolab = np.delete(sdr_summary, 4, axis=0)
-                sdr_summary_nolab = sdr_summary_nolab.T.mean(axis=1)
+        if self.label_dir == '':
+            pass
+        else:
+            if self.dataset_type == 'LANDMARKS':
+                #calculate SDR
+                try:
+                    for i in range(self.num_landmarks):
+                        col= 'landmark radial error p'+str(i+1)
+                        sdr_stats, txt = landmark_overall_metrics(self.pixel_size, self.sdr_units).get_sdr_statistics(comparison_df[col], self.sdr_thresholds)
+                        self.logger.info("{} for {}".format(txt, col))
 
-                sdr_summary = sdr_summary.T.mean(axis=1)
+                        try:
+                            #print(sdr_summary)
+                            sdr_summary=np.concatenate((sdr_summary,np.array([sdr_stats])), axis=0)
+                        except:
+                            sdr_summary = np.array([sdr_stats])
+                    
+                    sdr_summary_nolab = np.delete(sdr_summary, 4, axis=0)
+                    sdr_summary_nolab = sdr_summary_nolab.T.mean(axis=1)
 
-                #get mean
-                self.logger.info("SDR all landmarks: {},{},{},{}".format(round(sdr_summary[0],2),round(sdr_summary[1],2),round(sdr_summary[2],2),round(sdr_summary[3],2)))
-                self.logger.info("SDR all landmarks (no labrum): {},{},{},{}".format(round(sdr_summary_nolab[0],2),round(sdr_summary_nolab[1],2),round(sdr_summary_nolab[2],2),round(sdr_summary_nolab[3],2)))
+                    sdr_summary = sdr_summary.T.mean(axis=1)
+
+                    #get mean
+                    self.logger.info("SDR all landmarks: {},{},{},{}".format(round(sdr_summary[0],2),round(sdr_summary[1],2),round(sdr_summary[2],2),round(sdr_summary[3],2)))
+                    self.logger.info("SDR all landmarks (no labrum): {},{},{},{}".format(round(sdr_summary_nolab[0],2),round(sdr_summary_nolab[1],2),round(sdr_summary_nolab[2],2),round(sdr_summary_nolab[3],2)))
+                   
+                   
+                    #plot angles pred vs angles 
+                    if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
+                                    #get mean alpha difference
+                        self.logger.info('ALPHA MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].mean(),3)))
+                        self.logger.info('ALPHA ABSOLUTE MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].apply(abs).mean(),3)))
+                        #plot angles pred vs angles 
+                        if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
+                            visualisations.comparison(self.dataset_name,self.output_path,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='test')
+                            visualisations.comparison(self.dataset_name,self.output_path,'fhc').true_vs_pred_scatter(comparison_df['fhc pred'].to_numpy(),comparison_df['fhc true'].to_numpy(),loc='test')
+                        else:
+                            visualisations.comparison(self.dataset_name, self.output_path,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='test')
 
 
-            except:
-                raise ValueError('Check Landmark radial errors are calcuated')
-                
-
-        #plot angles pred vs angles 
-                #plot angles pred vs angles 
-        if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
-                        #get mean alpha difference
-            self.logger.info('ALPHA MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].mean(),3)))
-            self.logger.info('ALPHA ABSOLUTE MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].apply(abs).mean(),3)))
-            #plot angles pred vs angles 
-            if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
-                visualisations.comparison(self.dataset_name,self.output_path,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='test')
-                visualisations.comparison(self.dataset_name,self.output_path,'fhc').true_vs_pred_scatter(comparison_df['fhc pred'].to_numpy(),comparison_df['fhc true'].to_numpy(),loc='test')
-            else:
-                visualisations.comparison(self.dataset_name, self.output_path,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='test')
+                except:
+                    raise ValueError('Check Landmark radial errors are calcuated')
+                    
 
         return 

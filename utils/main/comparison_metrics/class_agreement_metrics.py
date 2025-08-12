@@ -46,6 +46,7 @@ class class_agreement_metrics():
                         c=g[i]
                         pred_class_arr=[new_class_str if x=='new_class' else x for x in pred_class_arr]
                         gt_class_arr=[new_class_str if x=='new_class' else x for x in gt_class_arr]
+
         else:
             #use given pred and true cols with as many classes as exist                   pred_class_arr=list(map(lambda x: x.replace(list(g), new_class_str), _pred_class_arr))
 
@@ -60,16 +61,16 @@ class class_agreement_metrics():
                 tp = float(len(pred_class_arr))
                 tn, fp, fn = 0.0,0.0,0.0
                 # tn, fp, fn, tp  = confusion_matrix(gt_class_arr, pred_class_arr).ravel()
-
-                # #get one value from gt_class_arr and figure out if its the first or second class. if its the first in the list its tp if second tn
-                # if gt_class_arr[0]==groups[0]:
-                #     tn = float(x[0])
-                #     fp, fn, tp = 0.0,0.0,0.0
-                # else:
-                #     tp = float(x[0])
-                #     tn, fp, fn = 0.0,0.0,0.0
             else:
-                #only one class for classification problem
+                #only one class for classification 
+                ###set normal to 0, abnormal to 1
+                if len(groups[0]) == 1:
+                    pred_class_arr = np.where(np.array(pred_class_arr) == groups[0], 0, 1)
+                    gt_class_arr = np.where(np.array(gt_class_arr) == groups[0], 0, 1)
+                else:
+                    pred_class_arr = np.where(np.array(pred_class_arr) == groups[1], 1, 0)
+                    gt_class_arr = np.where(np.array(gt_class_arr) == groups[1], 1, 0)
+                
                 tn, fp, fn, tp = confusion_matrix(gt_class_arr, pred_class_arr).ravel()
 
             total = tn + fp + fn + tp
@@ -168,7 +169,7 @@ class class_agreement_metrics():
               ['accuracy', accuracy],
               ['sensitivity', sensitivity],
               ['specificity', specificity]]
-        print(ls)
+        # print(ls[:4])
         
         metric_str = ''
         for i in ls:

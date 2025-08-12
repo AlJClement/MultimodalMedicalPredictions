@@ -173,17 +173,22 @@ class graf_angle_calc():
     def graf_class_comparison(self, pred, pred_map, true, true_map, pixelsize):
         'pred and true are tensors, so convert to numpy'
         pred=pred.detach().cpu().numpy()
-        true=true.detach().cpu().numpy()
-
         alpha_pred = self.calculate_alpha(pred)
         class_pred = self.get_alpha_class(alpha_pred)
         print('pred alpha:', alpha_pred)
-
-        alpha_true = self.calculate_alpha(true)
-        class_true = self.get_alpha_class(alpha_true)
-        print('true alpha:',alpha_true)
         
-        alpha_diff = alpha_pred-alpha_true
+        try:
+            true=true.detach().cpu().numpy()
+            alpha_true = self.calculate_alpha(true)
+            class_true = self.get_alpha_class(alpha_true)
+            print('true alpha:',alpha_true)
+            alpha_diff = alpha_pred-alpha_true
+
+        except:
+            ###for retuve dataset
+            alpha_true = true[2][0]
+            class_true = [true[1][0].replace('iia','iia').replace('ia','i')]
+            alpha_diff = None
 
         ls_values = [['alpha pred', alpha_pred],
                     ['class pred', class_pred[0]],
