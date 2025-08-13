@@ -294,9 +294,12 @@ class dataloader(Dataset):
             _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id)
 
             ##### if annotations == 0 store the class from meta file
-            if _annotation_arr[0][0] == 0:
-                ## replace with class from config file metaclasses
-                _annotation_arr = self.metaimport._get_class_arr(self.metadata_csv_classes, pat_id)
+            try:
+                if _annotation_arr[0][0] == 0:
+                    ## replace with class from config file metaclasses
+                    _annotation_arr = self.metaimport._get_class_arr(self.metadata_csv_classes, pat_id)
+            except:
+                pass
 
 
             cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))

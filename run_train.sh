@@ -11,6 +11,6 @@ module load Anaconda3
 source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
 
 #run python code
-python ./utils/run_training.py --cfg ddh_denoise_journalpaper_arc_alphafhc
+python ./utils/run_training.py --cfg ddh_denoise_journalpaper_arc
 
 

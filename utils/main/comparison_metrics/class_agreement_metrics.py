@@ -53,7 +53,9 @@ class class_agreement_metrics():
 
             pass 
 
-        #check if multi class
+        # #check if multi class
+        # print(np.unique(gt_class_arr).size)
+        # print(gt_class_arr)
         if np.unique(gt_class_arr).size <= 2:
             if np.all(pred_class_arr == gt_class_arr) == True:
                 #then all classes are the same, confusion matrix will give back one value
