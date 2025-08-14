@@ -198,6 +198,8 @@ class test():
             #plot and caluclate values for each subject in the batch
             for i in range(self.bs):
                 print('Test Image:', id[i])
+                if id[i]=='0002':
+                    print('check')
 
                 ### resize back to original for
                 _data = orig_img[i].numpy()

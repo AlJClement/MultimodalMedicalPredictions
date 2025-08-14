@@ -145,7 +145,8 @@ class graf_angle_calc():
             alpha = math.degrees(a_rad)
             alpha = a_rad*180/np.pi
             if alpha > 90:
-                alpha = alpha - 90
+                alpha = 180-alpha
+                print(alpha)
         except:
             a_rad = 0.0
             alpha = 0.0

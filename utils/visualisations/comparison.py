@@ -65,8 +65,9 @@ class comparison():
         coef = np.polyfit(x,y,1)
         poly1d_fn = np.poly1d(coef) 
         m, b = np.polyfit(x, y, 1)
+        x = np.array(x) 
 
-        plt.plot( x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker 
+        plt.plot(x, poly1d_fn(x), '--k') #'--k'=black dashed line, 'yo' = yellow circle marker 
 
         if self.calculation_type == 'fhc':
             plt.xlabel('True FHC %')

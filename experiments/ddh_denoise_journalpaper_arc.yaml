@@ -5,14 +5,13 @@ INPUT_PATHS:
   # DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   # LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   # META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
-#  # DATASET_NAME: ddh
+ # DATASET_NAME: ddh
 
-  # PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  # IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  # DCMS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  # LABELS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  # META_PATH: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
-  # # DATASET_NAME: ddh
+
+  # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1.json  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/imgs 
+  # META_PATH:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/retuve_metadata.csv
+  
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/partition_stanmore_test.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
   # LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
@@ -24,6 +23,7 @@ INPUT_PATHS:
  
   ID_COL: Accession Number
   META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
+  # META_COLS_CLASSES: ['Type', 'alpha (degrees)', 'FHC (%)'] ## must have these to be considered in calculations
 
 MODEL: 
   #NAME: unet_meta_lastlayer
@@ -36,7 +36,7 @@ MODEL:
 
   #
   META_FEATURES: [100,100,100] 
-  NAME: 'hrnet'
+  NAME: 'unet_plus_plus'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
@@ -46,7 +46,7 @@ MODEL:
     - 256
     - 128
     - 64
-  IN_CHANNELS: 3
+  IN_CHANNELS: 1
   ATTENTION: scse
 
 DATASET:
@@ -68,17 +68,16 @@ DATASET:
     TRANSLATION_X: 0.2 #affine
     TRANSLATION_Y: 0.2 #affine
     SPECKLE_NOISE: 2
-    SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
     COARSE_SALTANDPEPPER: 0.20 #percent of all pixels that will be dropped
 
+    SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005
-
+OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.005
   EPOCHS: 10
-  LOSS: nll_across_batch
+  LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.2
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
 

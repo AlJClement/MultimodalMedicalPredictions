@@ -266,11 +266,15 @@ class dataloader(Dataset):
         img_files, annotation_files = self.get_partition()
         meta_arr = pd.DataFrame([])
 
+
         print('loading:', self.set)
         if self.subset != None:
             im_set=img_files[self.set][:self.subset]
         else:
             im_set=img_files[self.set]
+        
+        if self.set == 'testing':
+            im_set = sorted(im_set)
 
         for i in tqdm(range(len(im_set))):
             pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
@@ -294,9 +298,12 @@ class dataloader(Dataset):
             _meta_arr = self.metaimport._get_array(self.metadata_csv, pat_id)
 
             ##### if annotations == 0 store the class from meta file
-            if _annotation_arr[0][0] == 0:
-                ## replace with class from config file metaclasses
-                _annotation_arr = self.metaimport._get_class_arr(self.metadata_csv_classes, pat_id)
+            try:
+                if _annotation_arr[0][0] == 0:
+                    ## replace with class from config file metaclasses
+                    _annotation_arr = self.metaimport._get_class_arr(self.metadata_csv_classes, pat_id)
+            except:
+                pass
 
 
             cache_data_dir = os.path.join(self.cache_dir, "{}_{}".format(self.downsampled_image_width, self.downsampled_image_height))

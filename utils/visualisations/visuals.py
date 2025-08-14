@@ -212,10 +212,39 @@ class visuals():
             #put array into dcm version
             self.save_dcm_heatmap(_output, dcm_loc)
         else:
-            plt.savefig(self.save_path,dpi=1200, bbox_inches='tight', pad_inches = 0)
-            im = Image.open(self.save_path+'.png')
-            rgb_im = im.convert('RGB')
+            ## make subfolders for saving easier debugging
+            ##check if alpah or fhc do not match and make a copy in another folder
+            if 'fhc_true' in locals():
+                fhc_true = 'n' if fhc_true > 0.5 else 'a'
+                fhc_pred = 'n' if fhc_pred > 0.5 else 'a'
+                alpha_true = 'n' if alpha_true >= 60 else 'a'
+                alpha_pred = 'n' if alpha_pred >= 60 else 'a'
+
+                if fhc_true == fhc_pred and alpha_pred==alpha_true:
+                    ##save in main folder :)
+                    save_img_path =self.save_path.split('test')[-2]+ 'test/correct'
+                    pass
+                elif fhc_true != fhc_pred and alpha_pred==alpha_true:
+                    save_img_path =self.save_path.split('test')[-2]+ 'test/wrong_class_fhc'
+                elif fhc_true == fhc_pred and alpha_pred!=alpha_true:
+                    save_img_path = self.save_path.split('test')[-2]+ 'test/wrong_class_graf'
+                else:
+                    save_img_path = self.save_path.split('test')[-2]+ 'test/wrong_classes'
+                
+                os.makedirs(save_img_path, exist_ok=True)
+                plt.savefig(save_img_path+self.save_path.split('test')[-1]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)
+            
+            else:
+                save_img_path=self.save_path
+                plt.savefig(save_img_path+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)
+
+            #
+
+            # im = Image.open(self.save_path+'.png')
+            # rgb_im = im.convert('RGB')
             # rgb_im.save(self.save_path+'.jpg')
+
+
             plt.close()
 
         plt.close()
