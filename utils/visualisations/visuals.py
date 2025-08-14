@@ -31,7 +31,6 @@ class visuals():
             self.pixelsize = pixelsize
         if orig_size is not None:
             self.orig_size = orig_size.detach().cpu().numpy()
-        
         pass
     
     def channels_thresholded(self, output):
@@ -223,19 +222,21 @@ class visuals():
                 alpha_true = 'n' if alpha_true >= 60 else 'a'
                 alpha_pred = 'n' if alpha_pred >= 60 else 'a'
 
+                data_subset = self.save_path.split('/')[-2]
+
                 if fhc_true == fhc_pred and alpha_pred==alpha_true:
                     ##save in main folder :)
-                    save_img_path =self.save_path.split('test')[-2]+ 'test/correct'
+                    save_img_path =self.save_path.split(data_subset)[-2]+ data_subset+'/correct'
                     pass
                 elif fhc_true != fhc_pred and alpha_pred==alpha_true:
-                    save_img_path =self.save_path.split('test')[-2]+ 'test/wrong_class_fhc'
+                    save_img_path =self.save_path.split(data_subset)[-2]+ data_subset+'/wrong_class_fhc'
                 elif fhc_true == fhc_pred and alpha_pred!=alpha_true:
-                    save_img_path = self.save_path.split('test')[-2]+ 'test/wrong_class_graf'
+                    save_img_path = self.save_path.split(data_subset)[-2]+ data_subset+'/wrong_class_graf'
                 else:
-                    save_img_path = self.save_path.split('test')[-2]+ 'test/wrong_classes'
+                    save_img_path = self.save_path.split(data_subset)[-2]+ data_subset+'/wrong_classes'
                 
                 os.makedirs(save_img_path, exist_ok=True)
-                plt.savefig(save_img_path+self.save_path.split('test')[-1]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)
+                plt.savefig(save_img_path+self.save_path.split(data_subset)[-1]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)
             
             else:
                 save_img_path=self.save_path
