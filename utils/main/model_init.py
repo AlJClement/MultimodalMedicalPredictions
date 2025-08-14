@@ -23,6 +23,8 @@ class model_init():
         self.meta_func = eval("MetadataImport(cfg)." + cfg.MODEL.NAME)
         self.device = cfg.MODEL.DEVICE
 
+        self.freeze_layers = cfg.MODEL.FREEZE_LAYERS
+        self.model_name = cfg.MODEL.NAME
         return
     
     def get_net_parameters(self, net):
@@ -42,10 +44,28 @@ class model_init():
         net_summary = print(net)
 
         return  net_summary
+    
+    def _freeze_layers(self, net):
+        #Freeze first X layers defined by self.freeze_layers
+        if self.model_name =='unet_plus_plus':
+            for name, param in net.named_parameters():
+                if "encoder" in name and any(f"layer{i}" in name for i in range(self.freeze_layers)):
+                    param.requires_grad = False
+        elif self.model_name =='hrnet':
+            ##
+            print('todonext')
+        else: 
+            raise ValueError('Setup freeze encoder layers for the model you sepcified.')
+
+        return net
             
     def get_net_from_conf(self, get_net_info=True):
         net = self.net(self.cfg)
         net = net.to(self.device)
+
+        if self.freeze_layers != 0:
+            net = self._freeze_layers(net)
+
         net.train()
         if get_net_info == True:
             return net, self.get_net_info(net)

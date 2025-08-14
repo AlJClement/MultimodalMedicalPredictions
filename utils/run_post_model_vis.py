@@ -17,6 +17,7 @@ from main.comparison_metrics import fhc, graf_angle_calc
 from main.evaluation_helper import evaluation_helper
 
 from pytorch_grad_cam import GradCAM
+from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
 def channels_thresholded(output):
@@ -184,82 +185,90 @@ def run_plot_model_feats(cfg,dataloader, modeltype):
 
 
         c=0
-        for target_layer in _target_layers:
-            target_layer = _target_layers[c]
-            name = names[c]
-            for i in range(9):
-                #get prediction        
-                ax = axes[i // 3, i % 3]
+        for cam_TYPE in ['gradcam', 'gradcampluspls']:
+            for target_layer in _target_layers:
+                target_layer = _target_layers[c]
+                name = names[c]
+                for i in range(9):
+                    #get prediction        
+                    ax = axes[i // 3, i % 3]
 
-                if i == 0:
-                    if modeltype == 'hrnet':
-                        #only get 1 channel
-                        ax.imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray')
-                    else:
-                        #plot heatmap prediction
-                        ax.imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray')
+                    if i == 0:
+                        if modeltype == 'hrnet':
+                            #only get 1 channel
+                            ax.imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray')
+                        else:
+                            #plot heatmap prediction
+                            ax.imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray')
 
-                    ax.set_title(f'Heatmap Prediciton')
-                    _output = channels_thresholded(pred.detach().cpu().squeeze(0).numpy())
-                    ax.imshow(_output, cmap='inferno', alpha = 0.7)
-                    ax.axis('off')
-                
-                elif i == 1:
-                    predicted_points=evaluation_helper.get_hottest_points(data.squeeze(0).squeeze(0).cpu(),pred)
-                    predicted_points = predicted_points.detach().cpu().squeeze(0).numpy()
-                    # target_points = target_points.cpu().detach().numpy().cpu()
-                    #plot landmarks and ground truths
-                    ax.set_title(f'Landmark Prediciton')
-                    if modeltype == 'hrnet':
-                        #only get 1 channel
-                        ax.imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray')
-                    else:
-                        #plot heatmap prediction
-                        ax.imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray')
-                    #add landmarks
-                    # ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=5)
-                    ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=7)
-                    # fhc_pred, fhc_true = fhc.fhc().get_fhc(predicted_points,_output,target_points,target,pixelsize)
-                    # fhc_pred, fhc_true = fhc_pred[1]*100, fhc_true[1]*100
-                    # alpha_true, alpha_pred = round(graf_angle_calc().calculate_alpha(target_points),1), round(graf_angle_calc().calculate_alpha(predicted_points),1)
-
-                    # ax.text(0.02, 0.98,f"FHC = {fhc_true:.1f}%\n α = {alpha_true:.1f}°", 
-                    #             transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
-                    # ax.text(0.02, 0.80,f"FHC = {fhc_pred:.1f}%\n α = {alpha_pred:.1f}°",
-                    #             transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
-                else:
-                    landmark_index = i-2
-                    target = [LandmarkHeatmapTarget(landmark_index)]
-
-                    wrapped_model = ModelWrapper(net, meta_data).to(device)
-                    wrapped_model.eval()
-
-                                        
-                    cam = GradCAM(model=wrapped_model, target_layers=[target_layer])
-
-                    # input_tensor = torch.tensor(data).clone().float().to(device).requires_grad_() 
-                    input_tensor = data.clone().detach().to(device).requires_grad_()
-
-                    cam_out = cam(input_tensor=input_tensor, targets=target)[0]
-                    cam_norm = (cam_out - cam_out.min()) / (cam_out.max() - cam_out.min())
-
-                    if modeltype == 'hrnet':
-                        #only get 1 channel
-                        ax.imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray', alpha=0.5)
-                    else:
-                        #plot heatmap prediction
-                        ax.imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray', alpha=0.5)
+                        ax.set_title(f'Heatmap Prediciton')
+                        _output = channels_thresholded(pred.detach().cpu().squeeze(0).numpy())
+                        ax.imshow(_output, cmap='inferno', alpha = 0.7)
+                        ax.axis('off')
                     
-                    ax.imshow(cam_norm, cmap='jet', alpha=0.5)
-                    ax.axis('off')
-                    ax.set_title(f'GradCAM Landmark {landmark_index}')
-                    ax.scatter(predicted_points[i-2, 0], predicted_points[i-2, 1], color='red', s=7)
+                    elif i == 1:
+                        predicted_points=evaluation_helper.get_hottest_points(data.squeeze(0).squeeze(0).cpu(),pred)
+                        predicted_points = predicted_points.detach().cpu().squeeze(0).numpy()
+                        # target_points = target_points.cpu().detach().numpy().cpu()
+                        #plot landmarks and ground truths
+                        ax.set_title(f'Landmark Prediciton')
+                        if modeltype == 'hrnet':
+                            #only get 1 channel
+                            ax.imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray')
+                        else:
+                            #plot heatmap prediction
+                            ax.imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray')
+                        #add landmarks
+                        # ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=5)
+                        ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=7)
+                        # fhc_pred, fhc_true = fhc.fhc().get_fhc(predicted_points,_output,target_points,target,pixelsize)
+                        # fhc_pred, fhc_true = fhc_pred[1]*100, fhc_true[1]*100
+                        # alpha_true, alpha_pred = round(graf_angle_calc().calculate_alpha(target_points),1), round(graf_angle_calc().calculate_alpha(predicted_points),1)
+
+                        # ax.text(0.02, 0.98,f"FHC = {fhc_true:.1f}%\n α = {alpha_true:.1f}°", 
+                        #             transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
+                        # ax.text(0.02, 0.80,f"FHC = {fhc_pred:.1f}%\n α = {alpha_pred:.1f}°",
+                        #             transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
+                    else:
+                        landmark_index = i-2
+                        target = [LandmarkHeatmapTarget(landmark_index)]
+
+                        wrapped_model = ModelWrapper(net, meta_data).to(device)
+                        wrapped_model.eval()
+
+                    
+                        if cam_TYPE == 'gradcamplusplus':
+                            cam = GradCAMPlusPlus(model=wrapped_model, target_layers=[target_layer])
+                        else:
+                            cam = GradCAM(model=wrapped_model, target_layers=[target_layer])
+
+                        # input_tensor = torch.tensor(data).clone().float().to(device).requires_grad_() 
+                        input_tensor = data.clone().detach().to(device).requires_grad_()
+
+                        cam_out = cam(input_tensor=input_tensor, targets=target)[0]
+                        cam_norm = (cam_out - cam_out.min()) / (cam_out.max() - cam_out.min())
+
+
+
+                        if modeltype == 'hrnet':
+                            #only get 1 channel
+                            ax.imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray', alpha=0.5)
+                        else:
+                            #plot heatmap prediction
+                            ax.imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray', alpha=0.5)
+                        
+                        ax.imshow(cam_norm, cmap='jet', alpha=0.5)
+                        ax.axis('off')
+                        ax.set_title(f'GradCAM Landmark {landmark_index}')
+                        ax.scatter(predicted_points[i-2, 0], predicted_points[i-2, 1], color='red', s=7)
+
+                    
 
             plt.tight_layout()
             os.makedirs(f'./{output_folder}/', exist_ok=True)
-            plt.savefig(f'./{output_folder}/Gradcam_all_landmarks_{id[0]}_{name}.png', bbox_inches='tight', pad_inches=0)
+            plt.savefig(f'./{output_folder}/'+cam_TYPE+'_all_landmarks_{id[0]}_{name}.png', bbox_inches='tight', pad_inches=0)
             c=c+1
-        plt.close()
+            plt.close()
             
 
 def parse_args():

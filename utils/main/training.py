@@ -70,11 +70,27 @@ class training():
     
     def _get_optimizer(self,net):
         #optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
-        optim = torch.optim.Adam(net.parameters(), lr=self.lr, betas=(self.momentum_0, self.momentum))
+        # optim = torch.optim.Adam(net.parameters(), lr=self.lr, betas=(self.momentum_0, self.momentum))
 
-        return optim
+        ## updated for frozen models
+        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=self.lr, betas=(self.momentum_0, self.momentum))
+        return optimizer
+    
+    def _freeze_layers(self, net):
+        for layer in list(net.encoder.children())[:self.freeze]:
+            for param in layer.parameters():
+                param.requires_grad = False
+        return net
     
     def train_meta(self, dataloader, epoch):
+        total_params = sum(p.numel() for p in self.net.parameters())
+        trainable_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
+
+        print(f"Total params: {total_params}")
+        print(f"Trainable params: {trainable_params}")
+        print(f"Frozen params: {total_params - trainable_params}")
+
+
         self.net.train()  #Put the network in train mode
         total_loss = 0
         batches = 0
