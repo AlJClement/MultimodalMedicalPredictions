@@ -71,7 +71,7 @@ DATASET:
 
 OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks_freeze
 TRAIN:
-  BATCH_SIZE: 8
+  BATCH_SIZE: 2
   LR: 0.005
   EPOCHS: 10
   LOSS: nll_across_batch #_mse_walphafhc #_mse_walpha
