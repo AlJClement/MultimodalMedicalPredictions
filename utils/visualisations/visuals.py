@@ -156,47 +156,50 @@ class visuals():
         #         tp_exist = None
         # except:
         #     tp_exist = True
-            
-        if isinstance(target_points[0], tuple):
-            ax.imshow(image, cmap='Greys_r',alpha=0.4)
-            ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
-                                                    
-            fhc_pred = fhc.fhc().get_fhc_pred(predicted_points,output, self.pixelsize)
-            fhc_pred = fhc_pred[1]*100
-            alpha_pred =round(graf_angle_calc().calculate_alpha(predicted_points),1)
 
-            ##for setup from retuve
-            fhc_true = target_points[3][0]
-            alpha_true =target_points[2][0]
-
-            ax.text(0.02, 0.98,f"FHC = {fhc_true}%\n α = {alpha_true}°", 
-                        transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
-            ax.text(0.02, 0.80,f"FHC = {fhc_pred:.1f}%\n α = {alpha_pred:.1f}°",
-                        transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
-
+        if target_points is None:
+            pass
         else:
-            if with_img == True:
-                if w_landmarks == True:
-                    ax.imshow(image, cmap='Greys_r')
-                    #add landmarks
-                    print('adding landmarks')
-                    ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=5)
-                    ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
-                                        
-                    fhc_pred, fhc_true = fhc.fhc().get_fhc(predicted_points,output,target_points,image,self.pixelsize)
-                    fhc_pred, fhc_true = fhc_pred[1]*100, fhc_true[1]*100
-                    alpha_true, alpha_pred = round(graf_angle_calc().calculate_alpha(target_points),1), round(graf_angle_calc().calculate_alpha(predicted_points),1)
-                    print('pred alpha: ', alpha_pred)
-                    print('true alpha: ', alpha_true)
+            if isinstance(target_points[0], tuple):
+                ax.imshow(image, cmap='Greys_r',alpha=0.4)
+                ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
+                                                        
+                fhc_pred = fhc.fhc().get_fhc_pred(predicted_points,output, self.pixelsize)
+                fhc_pred = fhc_pred[1]*100
+                alpha_pred =round(graf_angle_calc().calculate_alpha(predicted_points),1)
 
-                    ax.text(0.02, 0.98,f"FHC = {fhc_true:.1f}%\n α = {alpha_true:.1f}°", 
-                                transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
-                    ax.text(0.02, 0.80,f"FHC = {fhc_pred:.1f}%\n α = {alpha_pred:.1f}°",
-                                transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
-                    
-                else:
-                    ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
-                    ax.imshow(image, cmap='Greys_r',alpha=0.4)
+                ##for setup from retuve
+                fhc_true = target_points[3][0]
+                alpha_true =target_points[2][0]
+
+                ax.text(0.02, 0.98,f"FHC = {fhc_true}%\n α = {alpha_true}°", 
+                            transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
+                ax.text(0.02, 0.80,f"FHC = {fhc_pred:.1f}%\n α = {alpha_pred:.1f}°",
+                            transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
+
+            else:
+                if with_img == True:
+                    if w_landmarks == True:
+                        ax.imshow(image, cmap='Greys_r')
+                        #add landmarks
+                        print('adding landmarks')
+                        ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=5)
+                        ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
+                                            
+                        fhc_pred, fhc_true = fhc.fhc().get_fhc(predicted_points,output,target_points,image,self.pixelsize)
+                        fhc_pred, fhc_true = fhc_pred[1]*100, fhc_true[1]*100
+                        alpha_true, alpha_pred = round(graf_angle_calc().calculate_alpha(target_points),1), round(graf_angle_calc().calculate_alpha(predicted_points),1)
+                        print('pred alpha: ', alpha_pred)
+                        print('true alpha: ', alpha_true)
+
+                        ax.text(0.02, 0.98,f"FHC = {fhc_true:.1f}%\n α = {alpha_true:.1f}°", 
+                                    transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
+                        ax.text(0.02, 0.80,f"FHC = {fhc_pred:.1f}%\n α = {alpha_pred:.1f}°",
+                                    transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
+                        
+                    else:
+                        ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
+                        ax.imshow(image, cmap='Greys_r',alpha=0.4)
 
         # with open(self.save_path+'.txt', 'a') as output:
         #     for i in range(len(predicted_points)):
