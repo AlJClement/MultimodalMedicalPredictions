@@ -1,0 +1,12 @@
+*.pth
+*.png
+*.txt
+*.out
+
+output/
+.vscode/
+cache/
+output_history/
+experiments/
+output_denoise/
+output*
