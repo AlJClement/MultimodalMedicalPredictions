@@ -215,8 +215,8 @@ class visuals():
             ## make subfolders for saving easier debugging
             ##check if alpah or fhc do not match and make a copy in another folder
             if 'fhc_true' in locals():
-                fhc_true = 'n' if fhc_true > 0.5 else 'a'
-                fhc_pred = 'n' if fhc_pred > 0.5 else 'a'
+                fhc_true = 'n' if fhc_true > 50 else 'a'
+                fhc_pred = 'n' if fhc_pred > 50 else 'a'
                 alpha_true = 'n' if alpha_true >= 60 else 'a'
                 alpha_pred = 'n' if alpha_pred >= 60 else 'a'
 
