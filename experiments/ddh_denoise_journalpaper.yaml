@@ -33,7 +33,7 @@ MODEL:
 
   #
   META_FEATURES: [100,100,100] 
-  NAME: 'unet_plus_plus'
+  NAME: 'hrnet'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True

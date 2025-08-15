@@ -47,11 +47,16 @@ class model_init():
     
     def _freeze_layers(self, net):
         #Freeze first X layers defined by self.freeze_layers
-        if self.model_name =='unet_plus_plus' or self.model_name =='hrnet':
+        if self.model_name =='unet_plus_plus':
             for name, param in net.named_parameters():
                 if "encoder" in name and any(f"layer{i}" in name for i in range(self.freeze_layers)):
                     param.requires_grad = False
+        elif self.model_name =='hrnet':
+            for name, param in net.named_parameters():
+                if "stage" in name and any(f"stage{i}" in name for i in range(self.freeze_layers)):
+                    param.requires_grad = False
         else: 
+
             raise ValueError('Setup freeze encoder layers for the model you sepcified.')
 
         return net
