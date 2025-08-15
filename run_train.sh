@@ -1,7 +1,7 @@
 #!/bin/sh
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=5:00:00
+#SBATCH --time=23:00:00
 #SBATCH --clusters=htc
 #SBATCH --partition=short,long,medium
 #SBATCH --mem-per-cpu=50G

@@ -52,6 +52,7 @@ class model_init():
                 if "encoder" in name and any(f"layer{i}" in name for i in range(self.freeze_layers)):
                     param.requires_grad = False
         elif self.model_name =='hrnet':
+            print('FREEZING: ',self.freeze_layers)
             for name, param in net.named_parameters():
                 if "stage" in name and any(f"stage{i}" in name for i in range(self.freeze_layers)):
                     param.requires_grad = False
