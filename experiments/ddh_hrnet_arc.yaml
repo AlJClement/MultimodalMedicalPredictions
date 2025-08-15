@@ -46,7 +46,7 @@ MODEL:
     - 256
     - 128
     - 64
-  IN_CHANNELS: 3
+  IN_CHANNELS: 1
   ATTENTION: scse
   FREEZE_LAYERS: 2
 
