@@ -73,7 +73,7 @@ class class_agreement_metrics():
                     pred_class_arr = np.where(np.array(pred_class_arr) == groups[1], 1, 0)
                     gt_class_arr = np.where(np.array(gt_class_arr) == groups[1], 1, 0)
                 
-                tn, fp, fn, tp = confusion_matrix(gt_class_arr, pred_class_arr).ravel()
+                tn, fp, fn, tp = confusion_matrix(gt_class_arr, pred_class_arr, labels=[0,1]).ravel()
 
             total = tn + fp + fn + tp
             if total == 0:

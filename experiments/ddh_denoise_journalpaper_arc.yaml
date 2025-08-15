@@ -49,6 +49,8 @@ MODEL:
   IN_CHANNELS: 1
   ATTENTION: scse
 
+  FREEZE_LAYERS: 2
+
 DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
@@ -80,7 +82,6 @@ TRAIN:
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.2
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
-  FREEZE_LAYERS: 2
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
