@@ -44,30 +44,36 @@ class fhc():
             return FHC
         
         else:
-            D = math.dist(fh_1, fh_2)
+            fhc_type='Vertical Distance'
+            if fhc_type=='EuclideanDistance':
+                D = math.dist(fh_1, fh_2)
 
-            x=1
-            y=0
+                x=1
+                y=0
 
-            if il_2[1]-il_1[1] == 0:
-                il_1[1]=il_1[1]+0.0001
-            m1 = (il_2[0]-il_1[0])/(il_2[1]-il_1[1])
-            b1 = il_2[0]-m1*(il_2[1])
+                if il_2[1]-il_1[1] == 0:
+                    il_1[1]=il_1[1]+0.0001
+                m1 = (il_2[0]-il_1[0])/(il_2[1]-il_1[1])
+                b1 = il_2[0]-m1*(il_2[1])
 
-            if fh_2[1]-fh_1[1] == 0:
-                fh_1[1]=fh_1[1]+0.0001
-            m2 = (fh_2[0]-fh_1[0])/(fh_2[1]-fh_1[1])
-            b2 = fh_2[0]-m2*(fh_2[1])
+                if fh_2[1]-fh_1[1] == 0:
+                    fh_1[1]=fh_1[1]+0.0001
+                m2 = (fh_2[0]-fh_1[0])/(fh_2[1]-fh_1[1])
+                b2 = fh_2[0]-m2*(fh_2[1])
 
 
-            ## Distance d 
-            try:
-                xi = (b1 - b2) / (m2 - m1)
-            except: 
-                xi =0
-            yi = m1 * xi + b1
+                ## Distance d 
+                try:
+                    xi = (b1 - b2) / (m2 - m1)
+                except: 
+                    xi =0
+                yi = m1 * xi + b1
 
-            d = math.dist(fh_2, [yi, xi])
+                d = math.dist(fh_2, [yi, xi])
+            else:
+                i = np.mean([il_1[0],il_2[0]])
+                D = fh_2[0]-fh_1[0]
+                d = fh_2[0]-i
 
             try:
                 FHC = (d/D)

@@ -51,14 +51,13 @@ class model_init():
             for name, param in net.named_parameters():
                 if "encoder" in name and any(f"layer{i}" in name for i in range(self.freeze_layers)):
                     param.requires_grad = False
+                    print('FREEZEING: ', name)
+
         elif self.model_name =='hrnet':
-            print('FREEZING: ',self.freeze_layers)
             for name, param in net.named_parameters():
-                print(name)
-                if "stage" in name and any(f"stage{i}" in name for i in range(self.freeze_layers)):
-                    print("stage{i}")
+                if "stage" in name and any(f"stage{i}" in name for i in range(self.freeze_layers+2)): ## adding two because stage starts at 2
                     param.requires_grad = False
-                    print('set false')
+                    print('FREEZEING: ', name)
         else: 
 
             raise ValueError('Setup freeze encoder layers for the model you sepcified.')

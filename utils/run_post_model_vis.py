@@ -19,6 +19,7 @@ from main.evaluation_helper import evaluation_helper
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam import GradCAMPlusPlus
 from pytorch_grad_cam.utils.image import show_cam_on_image
+import math
 
 def channels_thresholded(output):
     #theshold then add all channels together
@@ -69,15 +70,15 @@ def get_features_hook(name, feature_maps):
         feature_maps[name] = output.detach()
     return hook
 
-def run_plot_model_feats(cfg,dataloader, modeltype):
+def run_plot_model_feats(cfg,dataloader, modeltype,folder):
     #get weights 
     plt_gradcam=True
     device = 'cuda:0'
 
     if modeltype=='unet':
-        modelpath= '/home/scratch/allent/MultimodalMedicalPredictions/output_denoise/model:1/_model_run:1_idx.pth'
+        modelpath= '/home/scratch/allent/MultimodalMedicalPredictions/'+folder+'/model:1/_model_run:1_idx.pth'
     elif modeltype== 'hrnet':
-        modelpath = '/home/scratch/allent/MultimodalMedicalPredictions/output_denoise_HRNET_sigma1_10epochLR005_7landmarks_alphafhcloss0.2/model:1/_model_run:1_idx.pth'
+        modelpath = '/home/scratch/allent/MultimodalMedicalPredictions/'+folder+'/model:1/_model_run:1_idx.pth'
     else:
         raise ValueError('model type incorrect')
     # state_dict = torch.load(modelpath, map_location=torch.device(device))
@@ -111,7 +112,7 @@ def run_plot_model_feats(cfg,dataloader, modeltype):
 
 
     # Plot features from each data loader pred
-    for batch_idx, (data, target, landmarks, meta, id, orig_size) in enumerate(dataloader):
+    for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img)in enumerate(dataloader):
         
         data, target = Variable(data).to(device), Variable(target).to(device)
         meta_data = Variable(meta).to(device)
@@ -154,7 +155,7 @@ def run_plot_model_feats(cfg,dataloader, modeltype):
             
 
             # plt.show()
-            output_folder = 'feats_QC'+ f'{modeltype}'
+            output_folder = 'feats_QC'+ f'/{folder}'
             os.makedirs(f'./{output_folder}/', exist_ok=True)
             plt.savefig(f'./{output_folder}/'+f'{layer_name}_{id[0]}.png')
             plt.title('shape: '+ str(act.shape[0])+'_'+str(act.shape[0]))
@@ -164,9 +165,7 @@ def run_plot_model_feats(cfg,dataloader, modeltype):
             #make_dot(pred, params=dict(net.named_parameters())).render("unetpp", format="png")
 
                     
-            fig, axes = plt.subplots(3, 3, figsize=(15, 15))  # 3 rows, 3 cols grid
-
-
+        fig, axes = plt.subplots(3, 3, figsize=(15, 15))  # 3 rows, 3 cols grid
 
 
 
@@ -174,8 +173,8 @@ def run_plot_model_feats(cfg,dataloader, modeltype):
         #loop through layers
         if modeltype=='unet':
         #target_layer = net.unet.decoder.blocks.x_0_1.conv2
-            _target_layers = [net.unet.encoder.layer1, net.unet.encoder.layer2, net.unet.encoder.layer3 , net.unet.encoder.layer4, net.unet.decoder.blocks.x_0_0.conv2, net.unet.decoder.blocks.x_0_4.conv2]
-            names = ['layer1','layer2','layer3','layer4', 'decode_layer1','decode_layer4']
+            _target_layers = [net.unet.encoder.layer3, net.unet.encoder.layer2, net.unet.encoder.layer1 , net.unet.encoder.layer4, net.unet.decoder.blocks.x_0_0.conv2, net.unet.decoder.blocks.x_0_4.conv2]
+            names = ['layer3','layer2','layer1','layer4', 'decode_layer1','decode_layer4']
         # x_i_j  where:
         # - i = depth (usually corresponds to encoder level)
         # - j = stage in the decoder (number of decoding steps)
@@ -183,12 +182,16 @@ def run_plot_model_feats(cfg,dataloader, modeltype):
             _target_layers =  [net.backbone.stage2[0].branches[1][3].conv2, net.backbone.stage3[2].branches[2][3].conv2, net.backbone.stage4[2].branches[3][3].conv2, net.backbone.stage4[2].fuse_layers[0][3][0]]#, net.get_pose_net.fuse_layers[3][0][2][0]] #4th branch and 4th block
             names = ['stage2','stage3','stage4_deepestbranch','stage4_multiscalefusion']#,'finalstagefusion']
 
-
-        c=0
+        cam_norm_all = None
         for cam_TYPE in ['gradcam', 'gradcampluspls']:
-            for target_layer in _target_layers:
+
+            for c in range(len(_target_layers)):
+                fig, axes = plt.subplots(3, 3, figsize=(15, 15))  # 3 rows, 3 cols grid
+
+                print(c)
                 target_layer = _target_layers[c]
                 name = names[c]
+                print(name)
                 for i in range(9):
                     #get prediction        
                     ax = axes[i // 3, i % 3]
@@ -247,7 +250,19 @@ def run_plot_model_feats(cfg,dataloader, modeltype):
 
                         cam_out = cam(input_tensor=input_tensor, targets=target)[0]
                         cam_norm = (cam_out - cam_out.min()) / (cam_out.max() - cam_out.min())
+                        
 
+                        if any(math.isnan(x) for row in cam_norm for x in row):
+                            print('nan')
+                            pass
+                        else:
+                            try:    
+                                if cam_norm_all == None:
+                                    cam_norm_all = cam_norm
+                                else:
+                                    cam_norm_all = cam_norm_all+cam_norm
+                            except:
+                                cam_norm_all = cam_norm_all+cam_norm
 
 
                         if modeltype == 'hrnet':
@@ -261,14 +276,49 @@ def run_plot_model_feats(cfg,dataloader, modeltype):
                         ax.axis('off')
                         ax.set_title(f'GradCAM Landmark {landmark_index}')
                         ax.scatter(predicted_points[i-2, 0], predicted_points[i-2, 1], color='red', s=7)
+                        
 
-                    
+                plt.tight_layout()
+                os.makedirs(f'./{output_folder}/', exist_ok=True)
+                plt.savefig(f'./{output_folder}/'+cam_TYPE+f'_all_landmarks_{id[0]}_{name}.png', bbox_inches='tight', pad_inches=0)
+                plt.close()
+                
 
-            plt.tight_layout()
-            os.makedirs(f'./{output_folder}/', exist_ok=True)
-            plt.savefig(f'./{output_folder}/'+cam_TYPE+'_all_landmarks_{id[0]}_{name}.png', bbox_inches='tight', pad_inches=0)
-            c=c+1
-            plt.close()
+                fig, axes = plt.subplots(1, 3, figsize=(15, 5))  # 1 rows, 3 cols grid
+                if modeltype == 'hrnet':
+                    #only get 1 channel
+                    axes[0].imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray')
+                    axes[1].imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray')
+                    axes[2].imshow(data.squeeze(0).squeeze(0).cpu()[0], cmap='gray', alpha=0.5)
+                else:
+                    #plot heatmap prediction
+                    axes[0].imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray')
+                    axes[1].imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray')
+                    axes[2].imshow(data.squeeze(0).squeeze(0).cpu(), cmap='gray', alpha=0.5)
+                
+                axes[0].set_title(f'Heatmap Prediciton')
+                axes[0].imshow(_output, cmap='inferno', alpha = 0.7)
+                axes[0].axis('off')
+
+                axes[1].set_title(f'Landmark Prediciton')
+                axes[1].scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=7)    
+                axes[1].axis('off')
+
+                #add landmarks
+                if isinstance(cam_norm_all, np.ndarray):
+                    axes[2].imshow(cam_norm_all, cmap='jet', alpha=0.5)
+                    axes[2].axis('off')
+                    axes[2].set_title(f'GradCAM Landmark')
+
+                plt.tight_layout()
+                os.makedirs(f'./{output_folder}/', exist_ok=True)
+                plt.savefig(f'./{output_folder}/'+cam_TYPE+f'_gradcamALL_{id[0]}_{name}.png', bbox_inches='tight', pad_inches=0)
+                plt.close()
+
+                cam_norm_all = None
+        
+
+
             
 
 def parse_args():
@@ -284,22 +334,26 @@ def parse_args():
 
 def main():
     cfg_name = 'ddh_denoise_journalpaper'
-    #cfg_name = 'ddh_denoise_hrnet'
+    folder = 'output_sigma1_10epochLR005_7landmarks_freeze'
+    model_type = 'unet'
 
+    cfg_name = 'ddh_denoise_hrnet'
+    folder = 'output_HRNET_sigma1_10epochLR005_7landmarks_freeze'
+    model_type = 'hrnet'
 
     # print the arguments into the log
     help = helper(cfg_name, 'test')
     cfg = help._get_cfg()
 
     #preprocess data (put into a numpy array)
-    test_dataset=dataloader(cfg,'testing', subset=4)
+    test_dataset=dataloader(cfg,'testing', subset=5)
     help._dataset_shape(test_dataset)
 
     #load data into data loader (imports all data into a dataloader)
     test_dataloader = DataLoader(test_dataset, batch_size=cfg.TEST.BATCH_SIZE, shuffle=False, drop_last = True)
 
     #run_plot_model_feats(cfg,test_dataloader,'unet')
-    run_plot_model_feats(cfg,test_dataloader,'unet')
+    run_plot_model_feats(cfg,test_dataloader,model_type, folder)
 
 
 if __name__ == '__main__':
