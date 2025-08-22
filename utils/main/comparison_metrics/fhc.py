@@ -71,9 +71,9 @@ class fhc():
 
                 d = math.dist(fh_2, [yi, xi])
             else:
-                i = np.mean([il_1[0],il_2[0]])
-                D = fh_2[0]-fh_1[0]
-                d = fh_2[0]-i
+                i = np.mean([il_1[1],il_2[1]])
+                D = fh_2[1]-fh_1[1]
+                d = fh_2[1]-i
 
             try:
                 FHC = (d/D)

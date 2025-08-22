@@ -70,7 +70,7 @@ DATASET:
     COARSE_SALTANDPEPPER: 0.20 #percent of all pixels that will be dropped
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks_freeze_graffhc
+OUTPUT_PATH: ./output_sigma1_10epochLR005_testfhc
 TRAIN:
   BATCH_SIZE: 2
   LR: 0.005
