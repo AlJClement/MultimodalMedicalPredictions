@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1.json #0.01674.json   #test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1_test.json #0.01674.json   #test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_retuve/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   # DCMS: /experiments/datasets-in-use/multimodal_datasets/ddh_retuve/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   # LABELS:  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -69,7 +69,7 @@ DATASET:
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
 
-OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks_freeze_graffhc
+OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks_freeze_fhcvert
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.005

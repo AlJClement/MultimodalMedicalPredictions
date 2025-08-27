@@ -64,9 +64,9 @@ DATASET:
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,512]
-  #PIXEL_SIZE: [0.0700711,0.0700711]
+  PIXEL_SIZE: [0.0700711,0.0700711]
   #
-  PIXEL_SIZE: [1.0,1.0]
+  #PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
@@ -81,7 +81,7 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_7landmarks
+OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_freeze_fhcvert
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.005
@@ -94,8 +94,13 @@ TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
   COMPARISON_METRICS: 
     - graf_angle_calc().graf_class_comparison
-    - fhc().get_fhc_pred
+    - landmark_metrics().get_eres
+    - landmark_metrics().get_radial_errors
+    - fhc().get_fhc
+  SDR_THRESHOLD: [7,14,28]
+  SDR_UNITS: pixels
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True
+  SAVE_IMG_LANG_PREDANDTRUE: True
   SAVE_HEATMAPS_NP: True
   
