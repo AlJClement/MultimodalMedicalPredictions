@@ -1,26 +1,19 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  # PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  # IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  # DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  # LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  # META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
 #  # DATASET_NAME: ddh
-
-  # PARTITION: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  # IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  # DCMS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  # LABELS: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  # META_PATH: /experiments/datasets-in-use/multimodal_datasets/ddh_march24/final_selection_June5th/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
-  # # DATASET_NAME: ddh
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/partition_stanmore_test.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
   # LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
   # META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/partition_0_0_1_1.00000.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/CS_MKUHv3.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+  # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/partition_0_0_1_1.00000.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  # LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  # META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/CS_MKUHv3.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
  
   ID_COL: Accession Number
   META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
@@ -58,8 +51,8 @@ DATASET:
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,512]
-  #PIXEL_SIZE: [0.0700711,0.0700711]
-  PIXEL_SIZE: [1.0,1.0]
+  PIXEL_SIZE: [0.0700711,0.0700711]
+  #PIXEL_SIZE: [1.0,1.0]
 
 
   AUGMENTATION:
@@ -74,12 +67,12 @@ DATASET:
     COARSE_SALTANDPEPPER: 0.20 #percent of all pixels that will be dropped
 
 
-OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_FREEZE2
+OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_freeze_fhcvert
 
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.005
-  EPOCHS: 5
+  EPOCHS: 10
   LOSS: nll_across_batch
   GAMMA: 0.2
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
@@ -91,8 +84,8 @@ TEST:
     - landmark_metrics().get_eres
     - landmark_metrics().get_radial_errors
     - fhc().get_fhc
-  SDR_THRESHOLD: [0.5, 1.0, 2.0, 4.0]
-  SDR_UNITS: mm #pixels
+  SDR_THRESHOLD: [7, 14, 28] #[0.5, 1.0, 2.0, 4.0]
+  SDR_UNITS: pixels
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True
   SAVE_IMG_LANG_PREDANDTRUE: True

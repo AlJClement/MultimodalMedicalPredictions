@@ -59,8 +59,8 @@ DATASET:
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,512]
-  #PIXEL_SIZE: [0.0700711,0.0700711]
-  PIXEL_SIZE: [1.0,1.0]
+  PIXEL_SIZE: [0.0700711,0.0700711]
+  # PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
@@ -74,7 +74,7 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks_freeze
+OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks_freeze_fhcvert
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.005

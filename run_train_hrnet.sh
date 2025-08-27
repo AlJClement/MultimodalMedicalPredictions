@@ -5,11 +5,11 @@
 #SBATCH --clusters=htc
 #SBATCH --partition=long,medium
 #SBATCH --mem-per-cpu=50G
-#SBATCH --gres=gpu:v100:1  
-##rtx8000:1
+#SBATCH --gres=gpu:rtx8000:1
+
 
 module load Anaconda3
 source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
 
 #run python code
-python ./utils/run_training.py --cfg ddh_hrnet_arc_retuve
+python ./utils/run_training.py --cfg ddh_hrnet_arc
