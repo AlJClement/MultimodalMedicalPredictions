@@ -4,6 +4,7 @@ import numpy as np
 
 class fhc():
     def __init__(self) -> None:
+        self.fhc_type='Vertical Distance'
         pass
     def points_same_side(self, A, B, P1, P2):
         x1, y1 = A
@@ -44,8 +45,8 @@ class fhc():
             return FHC
         
         else:
-            fhc_type='Vertical Distance'
-            if fhc_type=='EuclideanDistance':
+            if self.fhc_type=='EuclideanDistance':
+                print('Euclidan Distance FHC')
                 D = math.dist(fh_1, fh_2)
 
                 x=1

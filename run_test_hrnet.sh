@@ -13,4 +13,4 @@ source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
 
 #run python code
 
-python ./utils/run_test.py --cfg ddh_hrnet_retuve
+python ./utils/run_test.py --cfg ddh_hrnet_arc
