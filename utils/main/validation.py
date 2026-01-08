@@ -131,17 +131,23 @@ class validation():
                     arr_mre = np.append(arr_mre,mean_val)
             except:
                 pass
-        
-        index_to_remove = 4  # remove element at index 2 (value 30)
-        arr_mre_nolab = np.delete(arr_mre,index_to_remove)
+
+
 
         MRE = np.mean(arr_mre).round(2)
         MRE_std = np.std(arr_mre).round(2)
-        MRE_nolabrum= np.mean(arr_mre_nolab).round(2)
-        MRE_nolabrum_std = np.std(arr_mre_nolab).round(2)
 
-        return summary_ls, [MRE, MRE_std, MRE_nolabrum, MRE_nolabrum_std]
-    
+        if self.dataset_name == 'ddh':
+            index_to_remove = 4  # remove element at index 2 (value 30)
+            arr_mre_nolab = np.delete(arr_mre,index_to_remove)
+            MRE_nolabrum= np.mean(arr_mre_nolab).round(2)
+            MRE_nolabrum_std = np.std(arr_mre_nolab).round(2)
+
+            return summary_ls, [MRE, MRE_std, MRE_nolabrum, MRE_nolabrum_std]   
+        else:
+            return summary_ls, [MRE, MRE_std]
+
+        
     
     def alpha_thresholds(self, df, thresholds=[1,2,5,10]):
         #this function calculates the different percentages of angle difference that lays in these thresholds
@@ -234,7 +240,7 @@ class validation():
 
                 ##get predicted values from prediction heatmap for loss if needed
                 if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
-                        pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
+                    pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
                 if self.add_alphafhc_loss==True:
                     pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
 
@@ -274,8 +280,8 @@ class validation():
                                 os.mkdir(validation_dir)
 
 
-                            visuals(validation_dir+'/'+id[i], self.pixel_size[0]).heatmaps(_data ,_pred,_target_points, _predicted_points)
-                            visuals(validation_dir+'/heatmap_'+id[i], self.pixel_size[0]).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False)
+                            visuals(validation_dir+'/'+id[i], self.pixel_size[0],self.cfg).heatmaps(_data ,_pred,_target_points, _predicted_points)
+                            visuals(validation_dir+'/heatmap_'+id[i], self.pixel_size[0],self.cfg).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False)
 
                             if self.save_heatmap_asdcms == True:
                                 out_dcm_dir = self.outputpath+'/as_dcms' 
@@ -315,7 +321,10 @@ class validation():
         comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
         self.logger.info("MEAN VALUES (pix): {}".format(comparsion_summary_ls))
         self.logger.info("MRE: {} +/- {} pix".format(MRE[0], MRE[1]))
-        self.logger.info("MRE no labrum: {} +/- {} pix".format(MRE[2], MRE[3]))
+        if self.dataset_name == 'ddh':
+            self.logger.info("MRE no labrum: {} +/- {} pix".format(MRE[2], MRE[3]))
+        else:
+            pass
 
         if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
             alpha_thresh_percentages=self.alpha_thresholds(comparison_df)

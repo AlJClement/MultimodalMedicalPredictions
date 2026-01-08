@@ -208,6 +208,5 @@ class L2RegLoss(nn.Module):
         else:
             loss = self.main_loss(x, target) + self.lam*l2
 
-            
         return loss
     

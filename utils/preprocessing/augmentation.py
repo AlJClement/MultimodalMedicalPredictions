@@ -8,6 +8,7 @@ import imgaug.augmenters.imgcorruptlike as ic
 
 class Augmentation():
     def __init__(self,cfg) -> None:
+        self.datasetname = cfg.INPUT_PATHS.DATASET_NAME
         
         self.downsampled_image_width = cfg.DATASET.CACHED_IMAGE_SIZE[0]
         self.downsampled_image_height = cfg.DATASET.CACHED_IMAGE_SIZE[1]
@@ -97,6 +98,7 @@ class Augmentation():
     
     def augmentation_fn(self,):
         ## check if you want some of or multiple
+
         if self.data_aug_some_of == None:
             try:
                 print('some of is NONE so all applied')
@@ -136,21 +138,40 @@ class Augmentation():
             # print('some augmentation: ', self.data_aug_some_of)
             try:
                 #try this for image but for keypoints do no speckle
-                aug =iaa.SomeOf((1, self.data_aug_some_of),[
-                iaa.Affine(translate_percent={"x": (-self.data_aug_params.TRANSLATION_X, self.data_aug_params.TRANSLATION_X),
-                                            "y": (-self.data_aug_params.TRANSLATION_Y, self.data_aug_params.TRANSLATION_Y)},
-                        scale=(1 - self.data_aug_params.SF, 1 + self.data_aug_params.SF),
-                        rotate=(-self.data_aug_params.ROTATION_FACTOR, self.data_aug_params.ROTATION_FACTOR),
-                        mode='edge'),
 
-                ic.SpeckleNoise(severity=np.random.randint(1,self.data_aug_params.SPECKLE_NOISE+1)),
-                iaa.CoarseSaltAndPepper(self.data_aug_params.COARSE_SALTANDPEPPER, size_px=(4, 16)),
-                iaa.Multiply(mul=(1 - self.data_aug_params.INTENSITY_FACTOR, 1 + self.data_aug_params.INTENSITY_FACTOR)),
-                iaa.ElasticTransformation(alpha=(0, self.data_aug_params.ELASTIC_STRENGTH),
-                                        sigma=self.data_aug_params.ELASTIC_SMOOTHNESS, order=3,
-                                        mode='nearest')],
-                random_order=True)
-                seq = iaa.Sequential(aug)
+                if self.datasetname == 'oai':
+                    ###cant really move off screen images are too small so do not do negative translation
+                    aug =iaa.SomeOf((1, self.data_aug_some_of),[
+                    iaa.Affine(translate_percent={"x": (0, self.data_aug_params.TRANSLATION_X),
+                                                "y": (-self.data_aug_params.TRANSLATION_Y,0)},
+                            scale=(1 - self.data_aug_params.SF, 1 + self.data_aug_params.SF),
+                            rotate=(0, self.data_aug_params.ROTATION_FACTOR),
+                            mode='edge'),
+
+                    ic.SpeckleNoise(severity=np.random.randint(1,self.data_aug_params.SPECKLE_NOISE+1)),
+                    iaa.CoarseSaltAndPepper(self.data_aug_params.COARSE_SALTANDPEPPER, size_px=(4, 16)),
+                    iaa.Multiply(mul=(1 - self.data_aug_params.INTENSITY_FACTOR, 1 + self.data_aug_params.INTENSITY_FACTOR)),
+                    iaa.ElasticTransformation(alpha=(0, self.data_aug_params.ELASTIC_STRENGTH),
+                                            sigma=self.data_aug_params.ELASTIC_SMOOTHNESS, order=3,
+                                            mode='nearest')],
+                    random_order=True)
+                    seq = iaa.Sequential(aug)
+                else:
+                    aug =iaa.SomeOf((1, self.data_aug_some_of),[
+                    iaa.Affine(translate_percent={"x": (-self.data_aug_params.TRANSLATION_X, self.data_aug_params.TRANSLATION_X),
+                                                "y": (-self.data_aug_params.TRANSLATION_Y, self.data_aug_params.TRANSLATION_Y)},
+                            scale=(1 - self.data_aug_params.SF, 1 + self.data_aug_params.SF),
+                            rotate=(-self.data_aug_params.ROTATION_FACTOR, self.data_aug_params.ROTATION_FACTOR),
+                            mode='edge'),
+
+                    ic.SpeckleNoise(severity=np.random.randint(1,self.data_aug_params.SPECKLE_NOISE+1)),
+                    iaa.CoarseSaltAndPepper(self.data_aug_params.COARSE_SALTANDPEPPER, size_px=(4, 16)),
+                    iaa.Multiply(mul=(1 - self.data_aug_params.INTENSITY_FACTOR, 1 + self.data_aug_params.INTENSITY_FACTOR)),
+                    iaa.ElasticTransformation(alpha=(0, self.data_aug_params.ELASTIC_STRENGTH),
+                                            sigma=self.data_aug_params.ELASTIC_SMOOTHNESS, order=3,
+                                            mode='nearest')],
+                    random_order=True)
+                    seq = iaa.Sequential(aug)
 
             except:
                 raise ValueError

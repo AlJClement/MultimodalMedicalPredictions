@@ -20,6 +20,8 @@ from visualisations import visuals
 from tqdm import tqdm
 from .augmentation import Augmentation
 from pathlib import Path
+import sys 
+sys.path = [str(p) if isinstance(p, Path) else p for p in sys.path]
 
 class dataloader(Dataset):
     def __init__(self, cfg, set, subset=None) -> None:
@@ -174,6 +176,14 @@ class dataloader(Dataset):
         print(ann_path)
         try:
             kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
+            if self.dataset_name == 'oai':
+                kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=14)
+                if self.num_out_channels == 6:
+                    selected_indices = [0, 2, 5, 7, 9, 12]
+                    kps_np_array = kps_np_array[selected_indices]
+
+
+
         except:
             ext = ann_path.split('/')[-2]+'.txt'
             ext = '.txt'

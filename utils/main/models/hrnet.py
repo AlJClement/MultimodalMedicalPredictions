@@ -93,7 +93,7 @@ class hrnet(nn.Module):
         #multi-person pose estimation methods like HigherHRNet or Associative Embedding.
         #estimate is false because this is all one joint
         cfg.MODEL.OUT_CHANNELS = self.num_landmarks 
-        cfg.MODEL.NUM_JOINTS = 7
+        cfg.MODEL.NUM_JOINTS = cfg.MODEL.OUT_CHANNELS
         cfg.MODEL.INPUT_CHANNELS = 1 
 
         cfg.MODEL.EXTRA.DECONV = CN()
