@@ -25,6 +25,7 @@ class visuals():
         self.cfg=cfg
         self.img_ext = img_ext
         self.save_path = save_path
+        self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         try:
             self.pixelsize = pixelsize.detach().cpu().numpy()
         except:
@@ -186,7 +187,10 @@ class visuals():
                         ax.imshow(image, cmap='Greys_r')
                         #add landmarks
                         print('adding landmarks')
-                        ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=5)
+                        if self.dataset_name == 'oai_nolandmarks':
+                            pass
+                        else:
+                            ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=5)
                         ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
 
                         ##
@@ -201,9 +205,23 @@ class visuals():
                                         transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
                             ax.text(0.02, 0.80,f"FHC = {fhc_pred:.1f}%\n α = {alpha_pred:.1f}°",
                                         transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
+                        
+                        elif self.cfg.INPUT_PATHS.DATASET_NAME == 'oai_nolandmarks':
+                            L_hka_true_1, R_hka_true_1 = target_points[0][1], target_points[0][0]
+                            L_hka_true_2, R_hka_true_2 = target_points[1][1], target_points[1][0]
+                            L_hka_pred, R_hka_pred = protractor_hka.protractor_hka().hka_angles(predicted_points,output,target_points,image,self.pixelsize, HKA_only = True)
+
+                            ax.text(-0.6, 0.98,f"L_hka_1 = {L_hka_true_1:.1f}°\n R_hka_1 = {R_hka_true_1:.1f}°", 
+                                        transform=ax.transAxes, fontsize=5, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
+                            ax.text(-0.6, 0.9,f"L_hka_2 = {L_hka_true_2:.1f}°\n R_hka_2 = {R_hka_true_2:.1f}°", 
+                                        transform=ax.transAxes, fontsize=5, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
+                           
+                            ax.text(-0.6, 0.82,f"L_hka = {L_hka_pred:.1f}°\n R_hka = {R_hka_pred:.1f}°",
+                                    transform=ax.transAxes, fontsize=5, verticalalignment='top',bbox=dict(facecolor='red', alpha=0.6, edgecolor='none'))
+                
                         elif self.cfg.INPUT_PATHS.DATASET_NAME == 'oai':
-                            L_hka_true, R_hka_true = protractor_hka.protractor_hka().hka_angles(predicted_points,output,target_points,image,self.pixelsize, HKA_only = True)
-                            L_hka_pred, R_hka_pred = protractor_hka.protractor_hka().hka_angles(target_points,image,predicted_points,output,self.pixelsize, HKA_only = True)
+                            L_hka_pred, R_hka_pred  = protractor_hka.protractor_hka().hka_angles(predicted_points,output,target_points,image,self.pixelsize, HKA_only = True)
+                            L_hka_true, R_hka_true  = protractor_hka.protractor_hka().hka_angles(target_points,image,predicted_points,output,self.pixelsize, HKA_only = True)
 
                             ax.text(0.02, 0.98,f"L_hka = {L_hka_true:.1f}°\n R_hka = {R_hka_true:.1f}°", 
                                         transform=ax.transAxes, fontsize=5, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))

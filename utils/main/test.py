@@ -25,6 +25,7 @@ from preprocessing.augmentation import Augmentation
 
 class test():
     def __init__(self, cfg, logger):
+        self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         self.combine_graf_fhc=cfg.TRAIN.COMBINE_GRAF_FHC
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
         self.validation = validation(cfg,logger,net=None)
@@ -178,8 +179,78 @@ class test():
 
         return pred, target
     
+    def plot_hka_comparisons(self, pred_l, pred_r, true_hkas, save_name="/hka_comparison.png"):
+        """
+        pred_l     : (N,) torch tensor or array
+        pred_r     : (N,) torch tensor or array
+        true_hkas  : (N, 2, 2) torch tensor or array
+                    [sample, clinician, (L, R)]
+        """
+
+        clin1_L = true_hkas[:, 0, 0]
+        clin1_R = true_hkas[:, 0, 1]
+        clin2_L = true_hkas[:, 1, 0]
+        clin2_R = true_hkas[:, 1, 1]
+
+        df = pd.DataFrame({
+            "pred_l": pred_l,
+            "pred_r": pred_r,
+            "clin1_L": clin1_L,
+            "clin1_R": clin1_R,
+            "clin2_L": clin2_L,
+            "clin2_R": clin2_R,
+        })
+
+        plots = [
+            ("pred_l", "clin1_L", "Pred L vs Clinician 1 (L)"),
+            ("pred_r", "clin1_R", "Pred R vs Clinician 1 (R)"),
+            ("pred_l", "clin2_L", "Pred L vs Clinician 2 (L)"),
+            ("pred_r", "clin2_R", "Pred R vs Clinician 2 (R)"),
+            ("clin1_L", "clin2_L", "Clinician 1 vs 2 (L)"),
+            ("clin1_R", "clin2_R", "Clinician 1 vs 2 (R)"),
+        ]
+
+        fig, axes = plt.subplots(3, 2, figsize=(12, 15))
+        axes = axes.flatten()
+
+        for ax, (xcol, ycol, title) in zip(axes, plots):
+            x = df[xcol].values
+            y = df[ycol].values
+            mask = ~np.isnan(x) & ~np.isnan(y)
+            x = x[mask]
+            y = y[mask]
+
+            ax.scatter(x, y)
+            ax.set_xlabel(xcol)
+            ax.set_ylabel(ycol)
+            ax.set_title(title)
+            ax.grid(True, linestyle=":", linewidth=0.5)
+
+            # identity line
+            if len(x) > 0:
+                mn = min(x.min(), y.min())
+                mx = max(x.max(), y.max())
+                if mn != mx:
+                    ax.plot([mn, mx], [mn, mx], linestyle="--")
+
+            if len(x) < 2:
+                ax.text(
+                    0.02, 0.95, "insufficient data",
+                    transform=ax.transAxes,
+                    va="top",
+                    bbox=dict(boxstyle="round", alpha=0.15),
+                )
+
+        plt.tight_layout()
+        plt.savefig(self.output_path+save_name, dpi=300)
+        plt.show()
+
+        return df
+
     def run(self, dataloader):
         comparison_df = pd.DataFrame([])
+        true_hkas = []
+
         for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(dataloader):
 
             data = Variable(data).to(self.device)
@@ -222,6 +293,11 @@ class test():
 
                 
                 if self.label_dir == '':
+                    if self.save_img_landmarks_predandtrue == True:
+                        ##
+                        visuals(self.output_path+'/test/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points[0], _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True)
+                        if self.dataset_name == 'oai_nolandmarks':
+                            true_hkas.append(_target_points[0].detach().cpu().numpy())
                     pass
                 else:    
                     #### if the prediction does not have ground truth landmarks
@@ -284,6 +360,14 @@ class test():
         #
 
         self.logger.info("---------TEST RESULTS--------")
+
+        ### if oai
+        if self.dataset_name == 'oai_nolandmarks':
+            ### plot a graph comparing the angles to each reviewer and the model
+            # (when there is nan drop the value)
+            pred_l, pred_r = comparison_df['L HKA'].to_numpy(), comparison_df['R HKA'].to_numpy()
+            true_hkas = np.stack(true_hkas, axis=0)
+            df = self.plot_hka_comparisons(pred_l,pred_r,true_hkas)
                          
         if self.label_dir == '':
             MRE = [None, None, None,None]
