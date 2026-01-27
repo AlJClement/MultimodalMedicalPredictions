@@ -85,6 +85,8 @@ C.TEST.SAVE_IMG_LANG_PREDANDTRUE = False
 C.TEST.SHOW_ALL_LANDMARKS = True
 C.TEST.SAVE_HEATMAPS_NP = False
 C.TEST.BATCH_SIZE = 1
+C.TEST.TEST_TIME_AUG = False
+C.TEST.TEST_TIME_AUG_NUM = 5
 
 def get_cfg_defaults():
     """Get a yacs CfgNode object with default values above."""

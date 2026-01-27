@@ -26,6 +26,7 @@ class visuals():
         self.img_ext = img_ext
         self.save_path = save_path
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
+    
         try:
             self.pixelsize = pixelsize.detach().cpu().numpy()
         except:
@@ -209,6 +210,7 @@ class visuals():
                         elif self.cfg.INPUT_PATHS.DATASET_NAME == 'oai_nolandmarks':
                             L_hka_true_1, R_hka_true_1 = target_points[0][1], target_points[0][0]
                             L_hka_true_2, R_hka_true_2 = target_points[1][1], target_points[1][0]
+
                             L_hka_pred, R_hka_pred = protractor_hka.protractor_hka().hka_angles(predicted_points,output,target_points,image,self.pixelsize, HKA_only = True)
 
                             ax.text(-0.6, 0.98,f"L_hka_1 = {L_hka_true_1:.1f}°\n R_hka_1 = {R_hka_true_1:.1f}°", 
@@ -281,6 +283,25 @@ class visuals():
             
             else:
                 save_img_path=self.save_path
+                ## if oai check
+                if self.cfg.INPUT_PATHS.DATASET_NAME == 'oai_nolandmarks':
+                    # check rows are in increasing order of landmark
+                    check_order = 0 
+                    if not np.all(np.diff(predicted_points[:3, 1]) > 0):
+                        check_order = 1
+                    if not np.all(np.diff(predicted_points[3:, 1]) > 0):
+                        check_order = 1
+                    if check_order == 1:
+                        save_img_path = save_img_path.replace('test', 'test/order_error')
+                        os.makedirs(save_img_path.rsplit("/", 1)[0], exist_ok=True)
+                    
+                    if ('L_hka_pred' in locals()) == False:
+                        L_hka_pred, R_hka_pred = protractor_hka.protractor_hka().hka_angles(predicted_points,output,target_points,image,self.pixelsize, HKA_only = True)
+
+                    if abs(L_hka_pred) > 15 or abs(R_hka_pred) > 15:
+                        save_img_path = save_img_path.replace('test', 'test/angle_outlier')
+                        os.makedirs(save_img_path.rsplit("/", 1)[0], exist_ok=True)
+
                 plt.savefig(save_img_path+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)
 
             #

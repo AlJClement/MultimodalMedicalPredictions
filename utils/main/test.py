@@ -186,6 +186,7 @@ class test():
         true_hkas  : (N, 2, 2) torch tensor or array
                     [sample, clinician, (L, R)]
         """
+        axis_val = 15
 
         clin1_L = true_hkas[:, 0, 0]
         clin1_R = true_hkas[:, 0, 1]
@@ -210,43 +211,272 @@ class test():
             ("clin1_R", "clin2_R", "Clinician 1 vs 2 (R)"),
         ]
 
-        fig, axes = plt.subplots(3, 2, figsize=(12, 15))
+        fig, axes = plt.subplots(3, 2, figsize=(12, 20))
         axes = axes.flatten()
 
         for ax, (xcol, ycol, title) in zip(axes, plots):
             x = df[xcol].values
             y = df[ycol].values
-            mask = ~np.isnan(x) & ~np.isnan(y)
-            x = x[mask]
-            y = y[mask]
 
-            ax.scatter(x, y)
+            # mask out NaNs AND restrict to range [-axis_val, axis_val]
+            good_mask = (~np.isnan(x)) & (~np.isnan(y)) & \
+                        (x >= -axis_val) & (x <= axis_val) & \
+                        (y >= -axis_val) & (y <= axis_val)
+
+            x_filt = x[good_mask]
+            y_filt = y[good_mask]
+
+            # Debug: how many points remain
+            print(f"{title}: {len(x_filt)} points after filtering")
+
+            # scatter the filtered points
+            ax.scatter(x_filt, y_filt)
             ax.set_xlabel(xcol)
             ax.set_ylabel(ycol)
             ax.set_title(title)
             ax.grid(True, linestyle=":", linewidth=0.5)
 
-            # identity line
-            if len(x) > 0:
-                mn = min(x.min(), y.min())
-                mx = max(x.max(), y.max())
-                if mn != mx:
-                    ax.plot([mn, mx], [mn, mx], linestyle="--")
+            # Calculate PCC only if we have >=2 points and non-constant arrays
+            pcc_text = "PCC = n/a"
+            if x_filt.size >= 2 and np.nanstd(x_filt) > 0 and np.nanstd(y_filt) > 0:
+                pcc = np.corrcoef(x_filt, y_filt)[0, 1]
+                pcc_text = f"PCC = {pcc:.2f}"
+            else:
+                # could be zero or one point, or constant which gives nan
+                pcc = np.nan
 
-            if len(x) < 2:
-                ax.text(
-                    0.02, 0.95, "insufficient data",
-                    transform=ax.transAxes,
-                    va="top",
-                    bbox=dict(boxstyle="round", alpha=0.15),
-                )
+            ax.text(
+                0.95, 0.05, pcc_text,
+                transform=ax.transAxes,
+                horizontalalignment="right",
+                verticalalignment="bottom",
+                fontsize=12,
+                color="orange",
+                bbox=dict(facecolor="white", alpha=0.7, edgecolor="orange")
+            )
+
+            # identity line based on filtered min/max (fallback to axis_val if nothing)
+            if x_filt.size > 0:
+                mn = min(x_filt.min(), y_filt.min())
+                mx = max(x_filt.max(), y_filt.max())
+                if mn != mx:
+                    ax.plot([mn, mx], [mn, mx], linestyle="--", color="orange")
+            else:
+                # no points — optional: draw identity across axis limits
+                ax.plot([-axis_val, axis_val], [-axis_val, axis_val], linestyle="--", color="orange")
+
+            ax.set_xlim(-axis_val, axis_val)
+            ax.set_ylim(-axis_val, axis_val)
+            ax.set_aspect("equal", adjustable="box")
 
         plt.tight_layout()
-        plt.savefig(self.output_path+save_name, dpi=300)
-        plt.show()
+        plt.savefig(self.output_path + save_name, dpi=300)
 
+        # --- Bland-Altman grid with consistent scales across subplots ---
+        # First pass: collect ranges to compute global limits
+        mean_mins = []
+        mean_maxs = []
+        diff_extremes = []  # will include diffs, and LoA bounds when available
+        counts = []
+
+        for (xcol, ycol, title) in plots:
+            x = df[xcol].values
+            y = df[ycol].values
+
+            good_mask = (~np.isnan(x)) & (~np.isnan(y)) & \
+                        (x >= -axis_val) & (x <= axis_val) & \
+                        (y >= -axis_val) & (y <= axis_val)
+
+            x_filt = x[good_mask]
+            y_filt = y[good_mask]
+
+            counts.append(len(x_filt))
+
+            if x_filt.size == 0:
+                # include a fallback range so empty plots don't break global limits
+                mean_mins.append(-axis_val)
+                mean_maxs.append(axis_val)
+                diff_extremes.extend([-axis_val, axis_val])
+                continue
+
+            mean_vals = (x_filt + y_filt) / 2.0
+            diff_vals = x_filt - y_filt
+
+            mean_mins.append(mean_vals.min())
+            mean_maxs.append(mean_vals.max())
+
+            diff_extremes.append(diff_vals.min())
+            diff_extremes.append(diff_vals.max())
+
+            if diff_vals.size >= 2:
+                sd = np.std(diff_vals, ddof=1)
+                md = np.mean(diff_vals)
+                upper = md + 1.96 * sd
+                lower = md - 1.96 * sd
+                diff_extremes.append(lower)
+                diff_extremes.append(upper)
+
+        # Compute global limits with padding (fallback to axis_val if degenerate)
+        if len(mean_mins) > 0:
+            global_mean_min = min(mean_mins)
+            global_mean_max = max(mean_maxs)
+        else:
+            global_mean_min, global_mean_max = -axis_val, axis_val
+
+        if global_mean_max > global_mean_min:
+            global_xpad = 0.05 * (global_mean_max - global_mean_min)
+        else:
+            global_xpad = 0.5
+
+        global_xmin = global_mean_min - global_xpad
+        global_xmax = global_mean_max + global_xpad
+
+        if len(diff_extremes) > 0:
+            global_diff_min = min(diff_extremes)
+            global_diff_max = max(diff_extremes)
+        else:
+            global_diff_min, global_diff_max = -axis_val, axis_val
+
+        if global_diff_max > global_diff_min:
+            global_ypad = 0.1 * (global_diff_max - global_diff_min)
+        else:
+            global_ypad = 0.5
+
+        global_ymin = global_diff_min - global_ypad
+        global_ymax = global_diff_max + global_ypad
+
+        # Second pass: plotting using the computed global limits
+        fig, axes = plt.subplots(3, 2, figsize=(12, 20))
+        axes = axes.flatten()
+
+        for ax, (xcol, ycol, title) in zip(axes, plots):
+            x = df[xcol].values
+            y = df[ycol].values
+
+            good_mask = (~np.isnan(x)) & (~np.isnan(y)) & \
+                        (x >= -axis_val) & (x <= axis_val) & \
+                        (y >= -axis_val) & (y <= axis_val)
+
+            x_filt = x[good_mask]
+            y_filt = y[good_mask]
+
+            # Debug: how many points remain
+            print(f"{title}: {len(x_filt)} points after filtering")
+
+            if x_filt.size == 0:
+                ax.text(0.5, 0.5, "No data after filtering", transform=ax.transAxes,
+                        ha="center", va="center")
+                ax.set_title(title)
+                ax.set_xlabel("mean")
+                ax.set_ylabel("difference (x - y)")
+                ax.grid(True, linestyle=":", linewidth=0.5)
+                # enforce global limits even for empty panels
+                ax.set_xlim(global_xmin, global_xmax)
+                ax.set_ylim(global_ymin, global_ymax)
+                continue
+
+            mean_vals = (x_filt + y_filt) / 2.0
+            diff_vals = x_filt - y_filt
+
+            if diff_vals.size >= 2:
+                md = np.mean(diff_vals)
+                sd = np.std(diff_vals, ddof=1)
+                loa = 1.96 * sd
+                upper = md + loa
+                lower = md - loa
+            else:
+                md = float(np.nan)
+                sd = float(np.nan)
+                loa = float("nan")
+                upper = float("nan")
+                lower = float("nan")
+
+            ax.scatter(mean_vals, diff_vals, s=20, alpha=0.8)
+            ax.set_xlabel("Mean of pair")
+            ax.set_ylabel(f"Difference ({xcol} - {ycol})")
+            ax.set_title(title)
+            ax.grid(True, linestyle=":", linewidth=0.5)
+
+            if not np.isnan(md):
+                ax.axhline(md, linestyle="--", linewidth=1.0, label="Mean bias")
+                ax.axhline(upper, linestyle="--", linewidth=1.0, label="Upper LoA")
+                ax.axhline(lower, linestyle="--", linewidth=1.0, label="Lower LoA")
+                ax.axhline(0, linestyle=":", linewidth=0.8, alpha=0.7)
+
+                stats_text = (
+                    f"n = {len(diff_vals)}\n"
+                    f"Mean diff = {md:.3f}\n"
+                    f"SD(diff) = {sd:.3f}\n"
+                    f"LoA = ±{loa:.3f}\n"
+                    f"Upper = {upper:.3f}\n"
+                    f"Lower = {lower:.3f}"
+                )
+            else:
+                stats_text = f"n = {len(diff_vals)}\nMean diff = n/a"
+
+            ax.text(
+                0.98, 0.02, stats_text,
+                transform=ax.transAxes,
+                horizontalalignment="right",
+                verticalalignment="bottom",
+                fontsize=10,
+                color="orange",
+                bbox=dict(facecolor="white", alpha=0.8, edgecolor="orange")
+            )
+
+            # enforce global limits for consistency across the grid
+            ax.set_xlim(global_xmin, global_xmax)
+            ax.set_ylim(global_ymin, global_ymax)
+
+            ax.set_aspect("auto")
+
+        plt.tight_layout()
+        plt.savefig(self.output_path + save_name.replace('hka','hka_BlandA_'), dpi=300)
         return df
 
+    def get_best_test_time_aug(self, data, meta_data):
+        '''loads data, gets N number of augs, predicts all and takes the best model which is the one with lowest ere'''
+        best_eres = 10000
+        for i in range(self.cfg.TEST.TEST_TIME_AUG_NUM+1):
+            if i == 10: 
+                ##do not augment
+                aug_data=data
+            else:
+                aug_seq = Augmentation(self.cfg)
+                
+                img_np = data.detach().cpu().numpy().squeeze(0)           # C,H,W
+                img_hwc = np.transpose(img_np, (1,2,0))      
+                pred_agg = aug_seq.tta_predict_with_config(self.net, img_hwc, meta_data, device=torch.device("cuda"))
+
+
+                # aug_image = aug_seq(images=aug_data.detach().cpu().numpy())
+                # #flip_back = det_aug.inverse(images=aug_image)
+                # tta_seq = Augmentation(self.cfg).augmentation_fn_testtime()
+
+                # # # Suppose aug_data is torch tensor (1, C, H, W), float in [0,1]
+                # img_np = data.detach().cpu().numpy().squeeze(0)           # C,H,W
+                # img_hwc = np.transpose(img_np, (1,2,0))                      # H,W,C
+                # if img_hwc.dtype in [np.float32, np.float64] and img_hwc.max() <= 1.0:
+                #     img_hwc = (img_hwc * 255).astype(np.uint8)
+
+                # det = tta_seq.to_deterministic()
+                # aug_img = det.augment_image(img_hwc) # H,W,C (uint8)
+                # ##check
+                # plt.imshow(img_np[0,:,:])
+                # plt.imshow(aug_img[:,:,0])
+        
+
+            # aug_image_t = torch.from_numpy(aug_img).permute(2, 0, 1).unsqueeze(0).to(device=self.device, dtype=torch.float32)
+            # pred = self.net(aug_image_t, meta_data)
+
+            pred_back = 'help'
+            _eres = 1
+            if _eres < best_eres:
+
+                best_pred = pred
+                ###reverse back to original image
+
+        return best_pred
     def run(self, dataloader):
         comparison_df = pd.DataFrame([])
         true_hkas = []
@@ -261,17 +491,17 @@ class test():
                 print(target)
             meta_data = Variable(meta).to(self.device)
             orig_size = Variable(orig_size).to(self.device)
-            
-            pred = self.net(data, meta_data)
+
+            ###if test time aug, run the model 5 times and select the one with the lowest eres.
+            if self.cfg.TEST.TEST_TIME_AUG == True:
+                pred = self.get_best_test_time_aug(data, meta_data)
+            else:
+                pred = self.net(data, meta_data)
             #predictions are heatmaps, points are taken as hottest point in each channel, which is scaled (multiplied by pixel size). 
             EH=evaluation_helper.evaluation_helper()
 
             #plot and caluclate values for each subject in the batch
             for i in range(self.bs):
-                print('Test Image:', id[i])
-                if id[i]=='0002':
-                    print('check')
-
                 ### resize back to original for
                 _data = orig_img[i].numpy()
 

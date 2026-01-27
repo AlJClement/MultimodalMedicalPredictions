@@ -487,13 +487,13 @@ class dataloader(Dataset):
                     #if its a list loop (*multiple annotators, kept seperate)
                     for aa in _annotation_arr:
                         i=0
-                        _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr)
+                        _a = visuals('',self.pixel_size[0],self.cfg).channels_thresholded(_annotation_arr)
                         plt.imshow(_a)
                         plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+folder_ls[i]+self.img_extension),_a)
                         plt.close()
                         i=i+1
                 else:
-                    _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr[0])
+                    _a = visuals('',self.pixel_size[0],self.cfg).channels_thresholded(_annotation_arr[0])
                     plt.imshow(_a)
                     plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
                     plt.close()
@@ -621,7 +621,7 @@ class dataloader(Dataset):
 
             landmarks = torch.from_numpy(np.expand_dims(aug_kps,axis=0)).float()
             if self.save_aug == True:
-                visuals(self.aug_path+'/'+id).heatmaps(aug_image, aug_ann_array)
+                visuals(self.aug_path+'/'+id,self.pixel_size[0], self.cfg).heatmaps(aug_image, aug_ann_array)
 
         try:
             meta = self.meta[index]
