@@ -207,12 +207,12 @@ def nll_across_batch_cosinelandmarkvectorOAI(output, target, gamma):
 
     return nll_img*(1-gamma)+(a1*g)+(a2*g)
 
-def nll_across_batch_OAIanglediff(output, target, gamma):
+def nll_across_batch_OAIanglediff(output, target, gamma, gumbel=True):
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
     pixelsize=1
-    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel=True)            
+    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel)            
     pred_L_arr = []
     pred_R_arr = []
     targ_L_arr = []
@@ -241,7 +241,7 @@ def nll_across_batch_OAIanglediff(output, target, gamma):
 
     return nll_img*(1-gamma)+(a1*g)+(a2*g)
 
-def nll_across_batch_OAImrediff(output, target, gamma, add_loss_after_iter=0):
+def nll_across_batch_OAImrediff(output, target, gamma, gumbel=True, add_loss_after_iter=0):
     nll_across_batch_OAImrediff.calls += 1
     #print('CALLS: ', nll_across_batch_OAImrediff.calls)
 
@@ -249,7 +249,7 @@ def nll_across_batch_OAImrediff(output, target, gamma, add_loss_after_iter=0):
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
     pixelsize=1
-    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, True, nll_across_batch_OAImrediff.calls)            
+    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel, nll_across_batch_OAImrediff.calls)            
 
     diff = predicted_points - target_points 
     # euc_per_point = torch.sqrt((diff ** 2).sum(dim=-1) + 1e-12)  
