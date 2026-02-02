@@ -11,4 +11,5 @@ module load Anaconda3
 source activate /data/coml-oxmedis/kebl7678/yenv
 
 #run python code
-python ./utils/run_training.py --cfg oai_arc_hrnet
+# python ./utils/run_training.py --cfg oai_arc_hrnet
+/data/coml-oxmedis/kebl7678/yenv/bin/python ./utils/run_training.py --cfg oai_arc_hrnet
