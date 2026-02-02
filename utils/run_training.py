@@ -9,6 +9,9 @@ import os
 import torch
 torch.cuda.empty_cache() 
 from main.loss import plot_all_loss
+import numpy as _np
+if not hasattr(_np, "bool"):
+    _np.bool = bool
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a network to detect landmarks')
