@@ -7,7 +7,7 @@
 #SBATCH --mem-per-cpu=50G
 #SBATCH --gres=gpu:rtx8000:1
 
-module load Anaconda3
+module load Anaconda3/2025.06-1
 source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
 
 #run python code
