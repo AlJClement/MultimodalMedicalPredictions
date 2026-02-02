@@ -255,7 +255,7 @@ class validation():
                     elif self.add_alpha_loss== True:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
                     else:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, False)
                 else:
                     raise ValueError('only implemented for l2 reg right now')
                 
