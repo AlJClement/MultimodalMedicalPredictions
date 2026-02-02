@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_test.json #0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -51,8 +51,8 @@ DATASET:
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,512]
-  PIXEL_SIZE: [0.0700711,0.0700711]
-  #PIXEL_SIZE: [1.0,1.0]
+  #PIXEL_SIZE: [0.0700711,0.0700711]
+  PIXEL_SIZE: [1.0,1.0]
 
 
   AUGMENTATION:
@@ -67,7 +67,7 @@ DATASET:
     COARSE_SALTANDPEPPER: 0.20 #percent of all pixels that will be dropped
 
 
-OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_freeze_fhcvert
+OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_freeze_alphafhc_fhcvert
 
 TRAIN:
   BATCH_SIZE: 8
@@ -84,7 +84,7 @@ TEST:
     - landmark_metrics().get_eres
     - landmark_metrics().get_radial_errors
     - fhc().get_fhc
-  SDR_THRESHOLD: [7, 14, 28] #[0.5, 1.0, 2.0, 4.0]
+  SDR_THRESHOLD: [7.1, 14.2, 28.45, 56.9] #[0.5, 1.0, 2.0, 4.0]
   SDR_UNITS: pixels
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True

@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_0.01674.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/partition_0.7_0.15_0.15_test.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/img #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions/june5th/txt_orig #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -74,7 +74,7 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks_freeze_fhcvert
+OUTPUT_PATH: ./output_sigma1_10epochLR005_7landmarks_alphafhc_FREEZE_fhcvert
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.005
@@ -90,8 +90,8 @@ TEST:
     - landmark_metrics().get_eres
     - landmark_metrics().get_radial_errors
     - fhc().get_fhc
-  SDR_THRESHOLD: [0.5, 1.0, 2.0, 4.0]
-  SDR_UNITS: mm #pixels
+  SDR_THRESHOLD: [7.1, 14.2, 28.45, 56.9]
+  SDR_UNITS: pixels
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True
   SAVE_IMG_LANG_PREDANDTRUE: True
