@@ -1,0 +1,73 @@
+INPUT_PATHS:
+  DATASET_NAME: oai
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.7_0.30_0.00000.json
+  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/txt
+  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+ 
+  ID_COL: id
+  META_COLS: [P02SEX: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
+
+MODEL: 
+  OUT_CHANNELS: 6
+  DEVICE: cuda
+
+  META_FEATURES: [100,100,100] 
+  NAME: 'hrnet'
+  ENCODER_NAME: 'resnet34'
+  ENCODER_WEIGHTS: 'imagenet'
+  BATCH_NORM_DECODER: True
+  DECODER_CHANNELS:
+    - 512
+    - 256
+    - 256
+    - 128
+    - 64
+  IN_CHANNELS: 3
+  ATTENTION: scse
+  FREEZE_LAYERS: 1
+
+DATASET:
+  IMAGE_EXT: ".jpg"
+  ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
+  NUM_LANDMARKS: 6 
+  COMBINE_REVIEWERS: False 
+  SIGMA: 2 #if sigma is NONE no guassian applied
+  FLIP_AXIS: False
+  CACHED_IMAGE_SIZE: [1024,1024]
+  PIXEL_SIZE: [1.0,1.0]
+
+  AUGMENTATION:
+  #all of the defined parameters allow for a range of the factors below
+    ROTATION_FACTOR: 1 #affine
+    INTENSITY_FACTOR: 2.0 #multiplicaiton factor
+    SF: 0.1 #affine scale factor
+    TRANSLATION_X: 0.1 #affine
+    TRANSLATION_Y: 0.1 #affine
+    SPECKLE_NOISE: 0
+    COARSE_SALTANDPEPPER: 0.0 #percent of all pixels that will be dropped
+    SOME_OF: 2 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
+    ##flip is also now on
+
+
+OUTPUT_PATH: ./output_OAI_hrnet_feb2_mre_sigma2
+TRAIN:
+  BATCH_SIZE: 4
+  LR: 0.0005
+  EPOCHS: 200
+  LOSS: nll_across_batch_OAImrediff
+  GAMMA: 1.0
+
+TEST:
+  NETWORK: /model:1/_model_run:1_idx.pth
+  COMPARISON_METRICS: 
+    - landmark_metrics().get_eres
+    - landmark_metrics().get_radial_errors
+    - protractor_hka().hka_angles
+  SDR_THRESHOLD: [10, 20, 40, 80]
+  SDR_UNITS: pixels
+  
+  SAVE_HEATMAPS_LANDMARKS_IMG: True
+  SAVE_IMG_LANG_PREDANDTRUE: True
+  SAVE_HEATMAPS_NP: True
+  
