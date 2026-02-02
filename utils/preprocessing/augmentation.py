@@ -6,6 +6,7 @@ import cv2
 import torch
 import imgaug.augmenters.imgcorruptlike as ic
 import matplotlib.pyplot as plt
+import random
 
 class Augmentation():
     def __init__(self,cfg) -> None:
@@ -380,84 +381,76 @@ class Augmentation():
         # Build candidate lists
         scales = [1.0]
         if include_center_scale:
-            scales = [1.1, 1.0 - sf, 1.0 + sf]
+            scales = np.arange(1.0 - sf*2, 1.0 + sf*2, 0.1)
 
         tx_list = [0.0]
         ty_list = [0.0]
         if include_translations:
-            tx_list = [0.0, tx_pct, 2*tx_pct]
-            ty_list = [0.0, ty_pct/4, ty_pct/2]
+            tx_list = np.arange(tx_pct, 2*tx_pct,0.1)
+            ty_list = np.arange(0.0, ty_pct/4, ty_pct/2)
 
         rot_list = [0.0]
         if include_rotations and rot != 0.0:
-            rot_list = [0.0, -rot, rot]
+            rot_arr = np.arange(-rot,rot, 0.1)
 
         # prepare storage for inverted preds
         inverted_preds = []
 
-        # iterate deterministic combinations (small grid)
-        for scale in scales:
-            for tx_frac in tx_list:
-                for ty_frac in ty_list:
-                    for angle in rot_list:
-                            # build affine params using percent (these are relative to the augmented image after resize)
-                            affine_params = {
-                                "angle_deg": float(angle),
-                                "scale": float(scale),
-                                "translate_percent": (float(tx_frac), float(ty_frac))
-                            }
+        # iterate deterministic combinations 
+        # for scale in scales:
+        #     for tx_frac in tx_list:
+        #         for ty_frac in ty_list:
+        #             for angle in rot_list:
+        
+        ### get random chocies
+        angle = np.random.choice(rot_arr)
+        scale =  np.random.choice(scales)
+        tx_frac =  np.random.choice(tx_list)
+        ty_frac = np.random.choice(ty_list)
+        
+        # build affine params using percent (these are relative to the augmented image after resize)
+        affine_params = {
+            "angle_deg": float(angle),
+            "scale": float(scale),
+            "translate_percent": (float(tx_frac), float(ty_frac))
+        }
 
-                            # 1) Apply deterministic aug (pad->resize->affine->flip)
-                            aug_img, record = self.apply_augmentations_cv2_local(
-                                img_hwc,
-                                pad_to=(net_H, net_W),      # pad to network input
-                                resize_to=(net_H, net_W),
-                                affine_params=affine_params,
-                            )
-
-                            fig, axes = plt.subplots(1, 2, figsize=(8, 5))
-
-                            axes[0].imshow(aug_img[:, :, 1], cmap="gray")
-                            axes[0].set_title("Augmented")
-                            axes[0].axis("off")
-
-                            axes[1].imshow(img_hwc[:, :, 1], cmap="gray")
-                            axes[1].set_title("Original")
-                            axes[1].axis("off")
-
-                            fig.text(0.5, 0.05, str(affine_params), 
-                                    ha="center", fontsize=11)                            
-                            plt.tight_layout()
-                            plt.show()
+        # 1) Apply deterministic aug (pad->resize->affine->flip)
+        aug_img, record = self.apply_augmentations_cv2_local(
+            img_hwc,
+            pad_to=(net_H, net_W),      # pad to network input
+            resize_to=(net_H, net_W),
+            affine_params=affine_params,
+        )
 
 
-                            # 2) prepare model input
-                            # convert aug_img to torch NCHW float32 (keep value range as model expects)
-                            aug_image_t = torch.from_numpy(aug_img).permute(2,0,1).unsqueeze(0).float().to(device) if device is not None else torch.from_numpy(aug_img).permute(2,0,1).unsqueeze(0).float()
-                            # If your model needs normalization do it here (same as training), e.g. aug_image_t = normalize(aug_image_t)
+        # 2) prepare model input
+        # convert aug_img to torch NCHW float32 (keep value range as model expects)
+        aug_image_t = torch.from_numpy(aug_img).permute(2,0,1).unsqueeze(0).float().to(device) if device is not None else torch.from_numpy(aug_img).permute(2,0,1).unsqueeze(0).float()
+        # If your model needs normalization do it here (same as training), e.g. aug_image_t = normalize(aug_image_t)
 
-                            # 3) forward
-                            with torch.no_grad():
-                                pred = model(aug_image_t, meta_data) if meta_data is not None else model(aug_image_t)
-                                # pred: (1, C_out, H_pred, W_pred)
+        # 3) forward
+        with torch.no_grad():
+            pred = model(aug_image_t, meta_data) if meta_data is not None else model(aug_image_t)
+            # pred: (1, C_out, H_pred, W_pred)
 
-                            # 4) make sure pred is resized to augmented image size if needed
-                            H_aug, W_aug = aug_img.shape[:2]
-                            H_pred = pred.shape[2]
-                            W_pred = pred.shape[3]
-                            if (H_pred != H_aug) or (W_pred != W_aug):
-                                # resize each channel to H_aug,W_aug using cv2 (convert to numpy)
-                                pred_np = pred.squeeze(0).permute(1,2,0).cpu().numpy()
-                                pred_resized = np.zeros((H_aug, W_aug, pred_np.shape[2]), dtype=np.float32)
-                                for ch in range(pred_np.shape[2]):
-                                    pred_resized[:,:,ch] = cv2.resize(pred_np[:,:,ch], dsize=(W_aug, H_aug), interpolation=cv2.INTER_LINEAR)
-                                pred_aug_t = torch.from_numpy(pred_resized).permute(2,0,1).unsqueeze(0).float()
-                            else:
-                                pred_aug_t = pred
+        # 4) make sure pred is resized to augmented image size if needed
+        H_aug, W_aug = aug_img.shape[:2]
+        H_pred = pred.shape[2]
+        W_pred = pred.shape[3]
+        if (H_pred != H_aug) or (W_pred != W_aug):
+            # resize each channel to H_aug,W_aug using cv2 (convert to numpy)
+            pred_np = pred.squeeze(0).permute(1,2,0).cpu().numpy()
+            pred_resized = np.zeros((H_aug, W_aug, pred_np.shape[2]), dtype=np.float32)
+            for ch in range(pred_np.shape[2]):
+                pred_resized[:,:,ch] = cv2.resize(pred_np[:,:,ch], dsize=(W_aug, H_aug), interpolation=cv2.INTER_LINEAR)
+            pred_aug_t = torch.from_numpy(pred_resized).permute(2,0,1).unsqueeze(0).float()
+        else:
+            pred_aug_t = pred
 
-                            # 5) invert using recorded transform
-                            pred_back_t = self.invert_prediction_cv2_local(pred_aug_t, record, output_size=(img_hwc.shape[0], img_hwc.shape[1]), interp=cv2.INTER_LINEAR, device=device)
-                            inverted_preds.append(pred_back_t.cpu())  # keep on cpu for aggregation
+        # 5) invert using recorded transform
+        pred_back_t = self.invert_prediction_cv2_local(pred_aug_t, record, output_size=(img_hwc.shape[0], img_hwc.shape[1]), interp=cv2.INTER_LINEAR, device=device)
+        inverted_preds.append(pred_back_t.cpu())  # keep on cpu for aggregation
 
         # Aggregate (mean)
         stacked = torch.stack(inverted_preds, dim=0)  # (N,1,C,H,W)
@@ -468,5 +461,11 @@ class Augmentation():
         if device is not None:
             agg = agg.to(device)
 
-        return agg
+        # ##plt check
+        # plt.imshow(img_hwc[:, :, 1], cmap="gray")
+        # agg_np = agg.cpu().numpy()
+        # combined = np.sum(agg_np, axis=1)
+        # plt.imshow(combined[0])
+
+        return agg, aug_img, affine_params
     

@@ -148,8 +148,8 @@ class evaluation_helper():
 
     #     return logits
     
-    def get_hottest_points(self, img, gumbel=False, tau=0.001, eps=1e-8,
-                        return_int=False, seed=None, hard=True):
+    def get_hottest_points(self, img, gumbel=False, increase_tau=False, tau=1.0, eps=1e-8,
+                        return_int=False, seed=None, hard=False):
         """
         img: tensor [B, C, W, H]  (e.g. [4, 6, 512, 512])
         Returns:
@@ -190,12 +190,24 @@ class evaluation_helper():
             ## u creates a tensor with the same shape as flattened
             # values are sampled independently from a Uniform(0, 1) distribution
             gumbel_noise = -torch.log(-torch.log(u + eps) + eps)
-            self.plot_gumbel_hist_per_channel(gumbel_noise)
+            # self.plot_gumbel_hist_per_channel(gumbel_noise)
             # masked_logits = flattened.clone()
             # masked_logits = masked_logits.masked_fill(~mask, -1e9)  # effectively -inf for softmax
 
-            logits = (flattened + gumbel_noise) / float(tau)
-            probs = F.softmax(logits, dim=2)  # (B, C, W*H)
+            if increase_tau == False:                    
+                logits = (flattened + gumbel_noise) / float(tau)
+                probs = F.softmax(logits, dim=2)
+            else:
+                if increase_tau > 10:
+                    tau = tau - 0.001 * increase_tau
+                    if tau <0.001:
+                        tau == 0.001
+                    print('tau has reduced to:', tau)
+                    logits = (flattened + gumbel_noise) / float(tau)
+                    probs = F.softmax(logits, dim=2)  
+                else:
+                    logits = (flattened + gumbel_noise) / float(tau)
+                    probs = F.softmax(logits, dim=2)    
 
             if hard:
                 # straight-through hard one-hot: forward discrete, backward through probs
@@ -258,7 +270,7 @@ class evaluation_helper():
 
         return thresholded_output
     
-    def get_landmarks(self, pred, target_points, pixels_sizes, gumbel=False):
+    def get_landmarks(self, pred, target_points, pixels_sizes, gumbel=False, increase_tau = False):
         # Predicted points has shape (B, N, 2)
 
         if not gumbel:
@@ -271,10 +283,10 @@ class evaluation_helper():
 
             return  target_points, predicted_points
         else:
-            predicted_points = self.get_hottest_points(pred, gumbel)
+            predicted_points = self.get_hottest_points(pred, gumbel,increase_tau)
 
-            # Get landmark center (B, N, 2)
-            target_points = self.get_hottest_points(target_points, gumbel) #should be center of gaussian
+            # Get landmark center (B, N, 2)m
+            target_points = self.get_hottest_points(target_points, gumbel,increase_tau) #should be center of gaussian
 
             return  target_points, predicted_points
     

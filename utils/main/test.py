@@ -69,6 +69,13 @@ class test():
     
         if not os.path.exists(self.save_img_path):
             os.mkdir(self.save_img_path)
+
+        if not os.path.exists(self.save_img_path+'-time-aug/'):
+            os.mkdir(self.save_img_path+'-time-aug/')
+
+        self.save_testtimeaug=self.save_img_path+'-time-aug/test-time-aug'
+        if not os.path.exists(self.save_testtimeaug):
+            os.mkdir(self.save_testtimeaug)
         
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
 
@@ -434,20 +441,25 @@ class test():
         plt.savefig(self.output_path + save_name.replace('hka','hka_BlandA_'), dpi=300)
         return df
 
-    def get_best_test_time_aug(self, data, meta_data):
+    def get_best_test_time_aug(self, data, meta_data, id):
         '''loads data, gets N number of augs, predicts all and takes the best model which is the one with lowest ere'''
-        best_eres = 10000
+        metric = 'ERE'
+        if metric == 'ERE':
+            best_metric = 10000
+        elif metric == 'angle_diff':
+            best_metric = 10000
+
         for i in range(self.cfg.TEST.TEST_TIME_AUG_NUM+1):
-            if i == 10: 
+            if i == 0: 
                 ##do not augment
-                aug_data=data
+                pred = self.net(data, meta_data)                
             else:
                 aug_seq = Augmentation(self.cfg)
-                
-                img_np = data.detach().cpu().numpy().squeeze(0)           # C,H,W
-                img_hwc = np.transpose(img_np, (1,2,0))      
-                pred_agg = aug_seq.tta_predict_with_config(self.net, img_hwc, meta_data, device=torch.device("cuda"))
-
+                img_np = data.detach().cpu().numpy().squeeze(0) # C, H, W
+                ## change orientation for getting augmentations
+                img_hwc = np.transpose(img_np, (1,2,0)) 
+                ### get augment and prediction with augment     
+                pred, aug_img, affine_params = aug_seq.tta_predict_with_config(self.net, img_hwc, meta_data, device=torch.device("cuda"))
 
                 # aug_image = aug_seq(images=aug_data.detach().cpu().numpy())
                 # #flip_back = det_aug.inverse(images=aug_image)
@@ -465,18 +477,70 @@ class test():
                 # plt.imshow(img_np[0,:,:])
                 # plt.imshow(aug_img[:,:,0])
         
+            ###Check eres
+            from .comparison_metrics.landmark_metrics import landmark_metrics
+            ## if metric = 
+            if metric == 'ERE':
+                EH=evaluation_helper.evaluation_helper()
+                _pred = pred.cpu()
+                pixels_sizes=self.pixel_size.to('cpu')
+                pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
+                ere_ls = landmark_metrics().get_eres(pred_landmarks, pred.cpu(), pixelsize=pixels_sizes)
+                total_metric = sum(value for _, value in ere_ls)
 
-            # aug_image_t = torch.from_numpy(aug_img).permute(2, 0, 1).unsqueeze(0).to(device=self.device, dtype=torch.float32)
-            # pred = self.net(aug_image_t, meta_data)
+            elif metric == 'angle_diff':
+                EH=evaluation_helper.evaluation_helper()
+                _pred = pred.cpu()
+                pixels_sizes=self.pixel_size.to('cpu')
+                pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
+                ## get angles, compare to angle
+            else:
+                raise ValueError('define metric for test time AU')
 
-            pred_back = 'help'
-            _eres = 1
-            if _eres < best_eres:
+            if total_metric < best_metric:
+                ##update best ere to beat
+                best_metric = total_metric 
 
+                ##update best prediction
                 best_pred = pred
-                ###reverse back to original image
+                try:
+                    best_aug_img = aug_img
+                    best_affine_params = affine_params
+                except:
+                    print('best is no aug')
+
+    
+        ##plot best heatmap over augmented or normal image
+        plt.ioff()
+        plt.imshow(img_hwc[:, :, 1], cmap="gray")
+        agg_np = pred.cpu().numpy()
+        combined = np.sum(agg_np, axis=1)
+        plt.imshow(combined[0])
+        plt.savefig(self.save_testtimeaug+'/'+id[0]+'.jpg')
+        plt.close()
+
+        ##plot best heatmap over augmented or normal image
+        fig, axes = plt.subplots(1, 2, figsize=(8, 5))
+        ## try
+        try:
+            axes[0].imshow(best_aug_img[:, :, 1], cmap="gray")
+            axes[0].set_title("Augmented")
+            axes[0].axis("off")
+
+            axes[1].imshow(img_hwc[:, :, 1], cmap="gray")
+            axes[1].set_title("Original")
+            axes[1].axis("off")
+
+            fig.text(0.5, 0.05, str(best_affine_params), 
+                    ha="center", fontsize=11)                            
+            plt.tight_layout()
+            plt.savefig(self.save_testtimeaug+'/'+id[0]+'_AUG.jpg')
+            plt.close()
+        except:
+            print('the best prediction was on the original image!')
 
         return best_pred
+
     def run(self, dataloader):
         comparison_df = pd.DataFrame([])
         true_hkas = []
@@ -492,9 +556,9 @@ class test():
             meta_data = Variable(meta).to(self.device)
             orig_size = Variable(orig_size).to(self.device)
 
-            ###if test time aug, run the model 5 times and select the one with the lowest eres.
             if self.cfg.TEST.TEST_TIME_AUG == True:
-                pred = self.get_best_test_time_aug(data, meta_data)
+                ###if test time aug, run the model 5 times and select the one with the lowest eres.
+                pred = self.get_best_test_time_aug(data, meta_data, id)
             else:
                 pred = self.net(data, meta_data)
             #predictions are heatmaps, points are taken as hottest point in each channel, which is scaled (multiplied by pixel size). 
