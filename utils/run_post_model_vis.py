@@ -179,8 +179,8 @@ def run_plot_model_feats(cfg,dataloader, modeltype,folder):
         # - i = depth (usually corresponds to encoder level)
         # - j = stage in the decoder (number of decoding steps)
         else:
-            _target_layers =  [net.backbone.stage2[0].branches[1][3].conv2, net.backbone.stage3[2].branches[2][3].conv2, net.backbone.stage4[2].branches[3][3].conv2, net.backbone.stage4[2].fuse_layers[0][3][0]]#, net.get_pose_net.fuse_layers[3][0][2][0]] #4th branch and 4th block
-            names = ['stage2','stage3','stage4_deepestbranch','stage4_multiscalefusion']#,'finalstagefusion']
+            _target_layers =  [net.backbone.stage2[0].branches[1][3].conv2, net.backbone.stage3[2].branches[2][3].conv2, net.backbone.stage4[2].branches[3][3].conv2] #net.backbone.stage4[2].fuse_layers[0][3][0]]#, net.get_pose_net.fuse_layers[3][0][2][0]] #4th branch and 4th block
+            names = ['stage2','stage3','stage4_deepestbranch']#,'stage4_multiscalefusion']#,'finalstagefusion']
 
         cam_norm_all = None
         for cam_TYPE in ['gradcam', 'gradcampluspls']:

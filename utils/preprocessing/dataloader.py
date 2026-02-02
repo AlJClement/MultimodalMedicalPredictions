@@ -20,6 +20,8 @@ from visualisations import visuals
 from tqdm import tqdm
 from .augmentation import Augmentation
 from pathlib import Path
+import sys 
+sys.path = [str(p) if isinstance(p, Path) else p for p in sys.path]
 
 class dataloader(Dataset):
     def __init__(self, cfg, set, subset=None) -> None:
@@ -40,6 +42,7 @@ class dataloader(Dataset):
         self.partition_file_path = cfg.INPUT_PATHS.PARTITION
         self.img_dir = cfg.INPUT_PATHS.IMAGES
         self.label_dir = cfg.INPUT_PATHS.LABELS
+        self.labels_dir_numbers = cfg.INPUT_PATHS.LABELS_NUMBERS
         self.metadata = cfg.INPUT_PATHS.META_PATH
         self.output_path = cfg.OUTPUT_PATH
         self.cache_dir = self.output_path+'/cache'
@@ -93,6 +96,49 @@ class dataloader(Dataset):
             partition_file = open(self.partition_file_path)
             partition_dict = json.load(partition_file)
 
+            if self.labels_dir_numbers == []:
+                pass
+            else:
+                if self.dataset_name != 'oai_nolandmarks':
+                    raise ValueError('only oai implemented for label numbers')
+                else:
+                    ## remove anything in partition that is not in the label numbers files
+                    # load label numbers file 1 and get all ids. drop anything that is not that id.
+                    # load txt as dict
+                    ids = []
+                    with open(self.labels_dir_numbers[0]) as f:
+                        header = f.readline().strip().split('|')
+                        id_idx = next(i for i, h in enumerate(header) if h.lower() == "id")
+
+                        for line in f:
+                            if line.strip():
+                                ids.append(line.strip().split('|')[id_idx])
+                    ##get unique ids
+                    unique_ids = [ids[0]] if ids else []
+                    for num in ids[1:]:
+                        if num != unique_ids[-1]:
+                            unique_ids.append(num)
+
+                    #partion dict items 
+                    partition_ids = []
+
+                    # loop through all partitions and extract first part before the dash
+                    for partition_name, ids in partition_dict.items():
+                        for full_id in ids:
+                            first_number = full_id.split('-')[0]  # split by dash and take first part
+                            partition_ids.append(first_number)
+                    
+                    filtered_unique_ids = [uid for uid in unique_ids if uid not in partition_ids]
+
+                    filtered_unique_ids = filtered_unique_ids[:100]
+                    
+                    # filtered_unique_ids is your final list after removing IDs in id_list
+                    partition_dict = {
+                        "testing": filtered_unique_ids
+                    }
+
+
+
             # get the file names of all images in the directory
             img_file_dic = {}
             annotation_dic = {}
@@ -110,10 +156,95 @@ class dataloader(Dataset):
                         #add annotation folders
                         ann_list = []
                         if self.label_dir=='':
-                            #no labels so this will only be used for comparison of class
-                            img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))       
-                            label_folder = ''                 
-                            annotation_dic[i].append([None])
+                            ## checl if labels
+                            if self.labels_dir_numbers == []:
+                                #no labels so this will only be used for comparison of class
+                                img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))       
+                                label_folder = ''                 
+                                annotation_dic[i].append([None])
+                            else:
+                                ## loop through labels files and get the values.
+                                if self.dataset_name == 'oai_nolandmarks':
+                                    for csv_file in self.labels_dir_numbers:
+                                        
+                                        if 'cooke' in csv_file.lower():
+                                            df = pd.read_csv(csv_file, sep="|")
+                                            df_pat = df.loc[df["ID"].astype(str) == id]
+
+                                            R_HKA = df_pat.loc[df_pat["SIDE"] == 1, "V01HKANGLE"].values
+                                            L_HKA = df_pat.loc[df_pat["SIDE"] == 2, "V01HKANGLE"].values
+
+                                        elif 'duryea' in csv_file.lower():
+                                            df = pd.read_csv(csv_file, sep="|")
+                                            df_pat = df.loc[df["ID"].astype(str) == id]
+
+                                            R_HKA = df_pat.loc[df_pat["SIDE"] == '1: Right', "V01HKANGJD"].values
+                                            L_HKA = df_pat.loc[df_pat["SIDE"] == '2: Left',  "V01HKANGJD"].values
+
+                                        else:
+                                            raise ValueError("dataset not implemented for label numbers")
+
+                                        try:
+                                            R_HKA = float(R_HKA[0])
+                                        except (IndexError, ValueError, TypeError):
+                                            R_HKA = np.nan
+
+                                        try:
+                                            L_HKA = float(L_HKA[0])
+                                        except (IndexError, ValueError, TypeError):
+                                            L_HKA = np.nan
+
+                                        ann_list.append([R_HKA, L_HKA])
+                                        
+                                    if self.dataset_name == 'oai_nolandmarks':
+                                        ## finds file within subdirectories
+                                        ##store in cache to avoid re searching 
+                                        cache = Path("./testing_path_cache.txt")
+
+                                        try:
+                                            paths = cache.read_text().splitlines()
+                                        except:
+                                            paths = []
+
+                                            
+                                        ## load file
+                                        img = [p for p in paths if id in p]
+
+                                        if img==[]:
+                                            ##find path
+                                            BASE = Path(self.img_dir)
+
+                                            for d in BASE.rglob(id):
+                                                if not d.is_dir():
+                                                    continue
+                                                for img in d.rglob("*_1x1.jpg"):
+                                                    with Image.open(img) as im:
+                                                        w, h = im.size
+                                                        print(im.size)
+                                                        if w == 440 and h == 535:
+                                                            print(f"{img} {w}x{h}")
+                                                            _img = img.as_posix() 
+                                                        if h > 2 * w:
+                                                            print(f"{img} {w}x{h}")
+                                                            _img = img.as_posix()
+                                            
+                                            img =_img
+                                                        
+                                            with cache.open("a") as f:
+                                                f.write(img + "\n")    
+     
+                                        print(f"loaded already, {img}")
+                                        if len(img) == 1:
+                                            img = img[0]
+                                        img_file_dic[i].append(img)
+
+                                    else:
+                                        img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))       
+                                    annotation_dic[i].append(ann_list)
+                                else:   
+                                    raise ValueError('only oai implemented for label numbers')
+
+
                         else:
                             if len(os.listdir(self.label_dir))<10:
                                 for label_folder in os.listdir(self.label_dir):
@@ -127,7 +258,10 @@ class dataloader(Dataset):
                     else: 
                         #keeps each patient seperate
                         #get image file
+
                         img_file_dic[i].append(os.path.join(self.img_dir, id + self.img_extension))
+
+                            
                         #add annotation folders
                         ann_list = []
                     
@@ -153,14 +287,19 @@ class dataloader(Dataset):
                 image = io.imread(img_path[:-4]+'.png', as_gray=True)
             except:
                 #add _ between L/R and series number
-                try:
+                if self.dataset_name== 'ddh':
                     new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
                     image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
-                except:
+                if self.dataset_name == 'hand':
                     #check if its in a subdirectory (Data Hand Atlas)
                     parent=Path(img_path[:-4]).parent
                     new_name = glob.glob(str(parent)+'/**/*/'+img_path.split('/')[-1])
                     image = io.imread(new_name[0], as_gray=True)
+
+                # if self.dataset_name == 'oai':
+                #     #check if its in a subdirectory (OAI)
+                #     pass
+                
 
         # Augment image
         image_resized = seq(image=image)
@@ -174,6 +313,14 @@ class dataloader(Dataset):
         print(ann_path)
         try:
             kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
+            if self.dataset_name == 'oai':
+                kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=14)
+                if self.num_out_channels == 6:
+                    selected_indices = [0, 2, 5, 7, 9, 12]
+                    kps_np_array = kps_np_array[selected_indices]
+
+
+
         except:
             ext = ann_path.split('/')[-2]+'.txt'
             ext = '.txt'
@@ -231,6 +378,7 @@ class dataloader(Dataset):
                 pass
             else:
                 folder_name = ann_path.split("/")[-2]
+                
                 if self.annotation_type=="LANDMARKS":
                     _ann_points = self.get_landmarks(ann_path, seq, orig_img_shape)
                     _np_ann_points=_ann_points.to_xy_array().reshape(-1, self.num_landmarks, 2)[0]
@@ -273,11 +421,14 @@ class dataloader(Dataset):
         else:
             im_set=img_files[self.set]
         
-        if self.set == 'testing':
-            im_set = sorted(im_set)
+        # if self.set == 'testing':
+        #     im_set = sorted(im_set)
 
         for i in tqdm(range(len(im_set))):
-            pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
+            if self.dataset_name == 'oai_nolandmarks':
+                pat_id = img_files[self.set][i].strip("/").split("/")[-3]
+            else:
+                pat_id = img_files[self.set][i].split('/')[-1].split('.')[0]
             
             ##LOAD IMAGES##
             # print(img_files[self.set][i])
@@ -285,7 +436,13 @@ class dataloader(Dataset):
             print('orig_shape:',orig_shape)
             
             ##LOAD ANNOTATIONS##
-            _annotation_arr, annotation_points, folder_ls = self.get_ann(annotation_files[self.set][i], seq, _im_arr.shape, orig_shape)
+            if self.dataset_name == 'oai_nolandmarks':
+                _annotation_arr = annotation_files[self.set][i]
+                annotation_points = [0.0]
+                folder_ls = [None]
+            else:
+                _annotation_arr, annotation_points, folder_ls = self.get_ann(annotation_files[self.set][i], seq, _im_arr.shape, orig_shape)
+            
 
             if self.num_out_channels != self.num_landmarks:
                 ### assume OAI drop only until 3
@@ -330,13 +487,13 @@ class dataloader(Dataset):
                     #if its a list loop (*multiple annotators, kept seperate)
                     for aa in _annotation_arr:
                         i=0
-                        _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr)
+                        _a = visuals('',self.pixel_size[0],self.cfg).channels_thresholded(_annotation_arr)
                         plt.imshow(_a)
                         plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+folder_ls[i]+self.img_extension),_a)
                         plt.close()
                         i=i+1
                 else:
-                    _a = visuals('',self.pixel_size[0]).channels_thresholded(_annotation_arr[0])
+                    _a = visuals('',self.pixel_size[0],self.cfg).channels_thresholded(_annotation_arr[0])
                     plt.imshow(_a)
                     plt.imsave(os.path.join(cache_data_dir,pat_id+'_gt_map'+self.img_extension),_a)
                     plt.close()
@@ -424,6 +581,7 @@ class dataloader(Dataset):
 
         x = self.data[index]
         y = self.target[index]
+        
         #Check dtype if target is filled with classes
         if isinstance(y, np.ndarray) and y.dtype == object:
             # Convert to list of strings
@@ -463,7 +621,7 @@ class dataloader(Dataset):
 
             landmarks = torch.from_numpy(np.expand_dims(aug_kps,axis=0)).float()
             if self.save_aug == True:
-                visuals(self.aug_path+'/'+id).heatmaps(aug_image, aug_ann_array)
+                visuals(self.aug_path+'/'+id,self.pixel_size[0], self.cfg).heatmaps(aug_image, aug_ann_array)
 
         try:
             meta = self.meta[index]
