@@ -13,7 +13,7 @@ MODEL:
   DEVICE: cuda
 
   META_FEATURES: [100,100,100] 
-  NAME: 'unet'
+  NAME: 'unet_plus_plus'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
