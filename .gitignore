@@ -1,9 +1,10 @@
 *.pth
+*.pyc
 *.png
 *.txt
 *.out
 *.swp
-/__pycache__/
+__pycache__/
 output/
 .vscode/
 june5th
