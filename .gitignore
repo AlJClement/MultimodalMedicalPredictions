@@ -2,7 +2,8 @@
 *.png
 *.txt
 *.out
-
+*.swp
+/__pycache__/
 output/
 .vscode/
 june5th
@@ -10,3 +11,4 @@ cache/
 output_history/
 output_denoise/
 output*
+experiments/
