@@ -18,8 +18,8 @@ MODEL:
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
+    - 1024
     - 512
-    - 256
     - 256
     - 128
     - 64
@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [256,1024]
+  CACHED_IMAGE_SIZE: [512,1024]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -54,7 +54,7 @@ OUTPUT_PATH: ./output_OAI_hrnet_feb2_mre_unet
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.0005
-  EPOCHS: 200
+  EPOCHS: 500
   LOSS: nll_across_batch_OAImrediff
   GAMMA: 1.0
 
