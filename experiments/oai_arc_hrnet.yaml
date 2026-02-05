@@ -25,7 +25,7 @@ MODEL:
     - 64
   IN_CHANNELS: 3
   ATTENTION: scse
-  FREEZE_LAYERS: 1
+  FREEZE_LAYERS: 2
 
 DATASET:
   IMAGE_EXT: ".jpg"
@@ -53,7 +53,7 @@ DATASET:
 OUTPUT_PATH: ./output_OAI_hrnet_feb2_mre_hrnet
 TRAIN:
   BATCH_SIZE: 4
-  LR: 0.0005
+  LR: 0.001
   EPOCHS: 500
   LOSS: nll_across_batch_OAImrediff
   GAMMA: 1.0

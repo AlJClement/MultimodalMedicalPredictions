@@ -3,6 +3,7 @@
 *.txt
 *.out
 *.swp
+*.pyc
 /__pycache__/
 output/
 .vscode/

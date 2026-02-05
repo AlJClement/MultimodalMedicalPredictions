@@ -25,14 +25,14 @@ MODEL:
     - 64
   IN_CHANNELS: 1
   ATTENTION: scse
-  FREEZE_LAYERS: 1
+  FREEZE_LAYERS: 2
 
 DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 6 
   COMBINE_REVIEWERS: False 
-  SIGMA: 2 #if sigma is NONE no guassian applied
+  SIGMA: 3 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
   CACHED_IMAGE_SIZE: [512,1024]
   PIXEL_SIZE: [1.0,1.0]
@@ -53,7 +53,7 @@ DATASET:
 OUTPUT_PATH: ./output_OAI_hrnet_feb2_mre_unet
 TRAIN:
   BATCH_SIZE: 4
-  LR: 0.0005
+  LR: 0.001
   EPOCHS: 500
   LOSS: nll_across_batch_OAImrediff
   GAMMA: 1.0
