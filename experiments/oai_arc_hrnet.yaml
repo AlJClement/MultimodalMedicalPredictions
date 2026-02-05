@@ -50,7 +50,7 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_hrnet_feb2_mre_hrnet
+OUTPUT_PATH: ./output_OAI_hrnet_feb5_mre_hrnet_taudecay
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
