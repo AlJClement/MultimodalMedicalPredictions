@@ -1,10 +1,15 @@
 *.pth
+*.pyc
 *.png
 *.txt
 *.out
 *.swp
+<<<<<<< HEAD
 *.pyc
 /__pycache__/
+=======
+__pycache__/
+>>>>>>> 0eb1581e1775aee047c7d3e980bbbdd2f96d6872
 output/
 .vscode/
 june5th
