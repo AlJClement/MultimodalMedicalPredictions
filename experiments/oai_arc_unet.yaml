@@ -55,7 +55,10 @@ TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
   EPOCHS: 500
+  DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
   LOSS: nll_across_batch_OAImrediff
+  TAU_DECAY: 0.001 ## each iter will decay tau by this amount 
+  TAU: 1.0 ##initial tau for gumbel loss, will decay each iter by TAU_DECAY until it reaches 0.5
   GAMMA: 1.0
 
 TEST:

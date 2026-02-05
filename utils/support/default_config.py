@@ -44,6 +44,7 @@ C.DATASET.CACHED_IMAGE_SIZE= [512,256]
 C.DATASET.SIGMA = 0 #if sigma is NONE no guassian applied
 C.DATASET.FLIP_AXIS = False
 
+
 C.DATASET.AUGMENTATION = CN()
 C.DATASET.AUGMENTATION.APPLY = True
 C.DATASET.AUGMENTATION.ROTATION_FACTOR = 0
@@ -71,6 +72,9 @@ C.TRAIN.GAMMA = 0.0
 C.TRAIN.COMBINE_GRAF_FHC=False
 C.TRAIN.SAVE_VAL_DCM=False
 C.TRAIN.MOMENTUM = 0.9
+C.TRAIN.DELAY_GUMBEL_LOSS = 100 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
+C.TRAIN.TAU=1.0 ## each iter will decay tau by this amount 
+C.TRAIN.TAU_DECAY=0.01 ## each iter will decay tau by this amount 
 
 C.TEST = CN()
 C.TEST.NETWORK = ''

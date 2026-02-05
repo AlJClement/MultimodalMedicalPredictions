@@ -20,10 +20,13 @@ from main.comparison_metrics import fhc, graf_angle_calc, protractor_hka
 # allow 'grey' as an alias to 'gray' (temporary)
 import matplotlib.cm as _cm
 
-if 'grey' not in _cm.cmap_d:
-    _cm.cmap_d['grey'] = _cm.get_cmap('gray')
-if 'grey_r' not in _cm.cmap_d:
-    _cm.cmap_d['grey_r'] = _cm.get_cmap('gray_r')
+# Check if 'grey' is missing, if so, register it as a copy of 'gray'
+if 'grey' not in plt.colormaps():
+    plt.register_cmap('grey', plt.get_cmap('gray'))
+# if 'grey' not in _cm.cmap_d:
+#     _cm.cmap_d['grey'] = _cm.get_cmap('gray')
+# if 'grey_r' not in _cm.cmap_d:
+#     _cm.cmap_d['grey_r'] = _cm.get_cmap('gray_r')
 
 from scipy.ndimage import zoom
 

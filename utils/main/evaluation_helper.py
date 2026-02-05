@@ -148,7 +148,7 @@ class evaluation_helper():
 
     #     return logits
     
-    def get_hottest_points(self, img, gumbel=False, increase_tau=False, tau=1.0, eps=1e-8,
+    def get_hottest_points(self, img, gumbel=False, increase_tau=False, cfg=None, tau=1.0, eps=1e-8,
                         return_int=False, seed=None, hard=False):
         """
         img: tensor [B, C, W, H]  (e.g. [4, 6, 512, 512])
@@ -161,6 +161,10 @@ class evaluation_helper():
         - Both branches compute coords with the same grid so outputs are comparable.
         - hard=True uses straight-through estimator for Gumbel branch (forward discrete).
         """
+        if cfg is not None:
+            tau_decay = cfg.TRAIN.TAU_DECAY 
+            tau = cfg.TRAIN.TAU
+
         if seed is not None:
             torch.manual_seed(seed)
 
@@ -199,9 +203,9 @@ class evaluation_helper():
                 probs = F.softmax(logits, dim=2)
             else:
                 if increase_tau > 10:
-                    tau = tau - 0.001 * increase_tau
-                    if tau <0.001:
-                        tau == 0.001
+                    tau = tau - tau_decay* increase_tau
+                    if tau <tau_decay:
+                        tau == tau_decay
                     print('tau has reduced to:', tau)
                     logits = (flattened + gumbel_noise) / float(tau)
                     probs = F.softmax(logits, dim=2)  
@@ -270,7 +274,7 @@ class evaluation_helper():
 
         return thresholded_output
     
-    def get_landmarks(self, pred, target_points, pixels_sizes, gumbel=False, increase_tau = False):
+    def get_landmarks(self, pred, target_points, pixels_sizes, gumbel=False, increase_tau = False, cfg=None):
         # Predicted points has shape (B, N, 2)
 
         if not gumbel:
@@ -283,10 +287,10 @@ class evaluation_helper():
 
             return  target_points, predicted_points
         else:
-            predicted_points = self.get_hottest_points(pred, gumbel,increase_tau)
+            predicted_points = self.get_hottest_points(pred, gumbel, increase_tau, cfg)
 
             # Get landmark center (B, N, 2)m
-            target_points = self.get_hottest_points(target_points, gumbel,increase_tau) #should be center of gaussian
+            target_points = self.get_hottest_points(target_points, gumbel,increase_tau, cfg) #should be center of gaussian
 
             return  target_points, predicted_points
     

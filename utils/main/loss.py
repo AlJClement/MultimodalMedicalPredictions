@@ -207,7 +207,8 @@ def nll_across_batch_cosinelandmarkvectorOAI(output, target, gamma):
 
     return nll_img*(1-gamma)+(a1*g)+(a2*g)
 
-def nll_across_batch_OAIanglediff(output, target, gamma, gumbel=True):
+def nll_across_batch_OAIanglediff(output, target, gamma, cfg, gumbel=True):
+    
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
@@ -241,15 +242,16 @@ def nll_across_batch_OAIanglediff(output, target, gamma, gumbel=True):
 
     return nll_img*(1-gamma)+(a1*g)+(a2*g)
 
-def nll_across_batch_OAImrediff(output, target, gamma, gumbel=True, add_loss_after_iter=0):
+def nll_across_batch_OAImrediff(output, target, gamma, cfg=None,gumbel=True):
     nll_across_batch_OAImrediff.calls += 1
     #print('CALLS: ', nll_across_batch_OAImrediff.calls)
+    add_loss_after_iter = cfg.TRAIN.DELAY_GUMBEL_LOSS
 
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
     pixelsize=1
-    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel, nll_across_batch_OAImrediff.calls)            
+    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel, nll_across_batch_OAImrediff.calls, cfg)            
 
     diff = predicted_points - target_points 
     # euc_per_point = torch.sqrt((diff ** 2).sum(dim=-1) + 1e-12)  
@@ -319,7 +321,7 @@ class L2RegLoss(nn.Module):
         
         print('loss', self.addclass)
 
-    def forward(self, x, target, model,gamma, pred_alphas=None, target_alphas=None,class_output=None,class_target=None,pred_fhc=None,  target_fhc=None):
+    def forward(self, x, target, model,gamma, cfg=None, pred_alphas=None, target_alphas=None,class_output=None,class_target=None,pred_fhc=None,  target_fhc=None):
         #abs(p) for l1
         l2 = [p.pow(2).sum() for p in model.parameters()]
         l2 = sum(l2)
@@ -346,8 +348,8 @@ class L2RegLoss(nn.Module):
             loss = self.main_loss(x, target,gamma) + self.lam*l2
         elif self.addclass=='cosinelandmarkvectorOAI':
             loss = self.main_loss(x, target,gamma) + self.lam*l2
-        elif self.addclass=='OAIanglediff' or self.addclass =='OAImrediff':
-            loss = self.main_loss(x, target,gamma) + self.lam*l2
+        elif 'anglediff' in self.addclass or 'mrediff' in self.addclass:
+            loss = self.main_loss(x, target,gamma, cfg) + self.lam*l2
         else:
             loss = self.main_loss(x, target) + self.lam*l2
 

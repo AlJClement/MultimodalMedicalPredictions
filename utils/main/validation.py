@@ -103,6 +103,13 @@ class validation():
         self.num_output_channels = cfg.MODEL.OUT_CHANNELS
 
         self.fhc_calc = fhc()
+        if 'mrediff' in cfg.TRAIN.LOSS:
+            self.add_gumbel = True
+            self.gamma = cfg.TRAIN.GAMMA
+            self.delay_gumbel_loss = cfg.TRAIN.DELAY_GUMBEL_LOSS
+            self.tau_decay = cfg.TRAIN.TAU_DECAY
+        else:
+            self.add_gumbel = False
 
     
     def _get_optimizer(self,net):
@@ -254,8 +261,10 @@ class validation():
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
                     elif self.add_alpha_loss== True:
                         loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
+                    elif self.add_gumbel == True:
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, self.cfg)
                     else:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, False)
+                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, cfg=self.cfg      )
                 else:
                     raise ValueError('only implemented for l2 reg right now')
                 
