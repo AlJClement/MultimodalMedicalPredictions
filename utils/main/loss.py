@@ -250,18 +250,17 @@ def nll_across_batch_OAImrediff(output, target, gamma, cfg=None,gumbel=True):
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
-    pixelsize=1
-    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel, nll_across_batch_OAImrediff.calls, cfg)            
+    if int(nll_across_batch_OAImrediff.calls/4) > add_loss_after_iter:
+        pixelsize=1
+        target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel, nll_across_batch_OAImrediff.calls, cfg)            
 
-    diff = predicted_points - target_points 
-    # euc_per_point = torch.sqrt((diff ** 2).sum(dim=-1) + 1e-12)  
-    # point_loss = torch.mean(euc_per_point)  # scalar
+        diff = predicted_points - target_points 
+        # euc_per_point = torch.sqrt((diff ** 2).sum(dim=-1) + 1e-12)  
+        # point_loss = torch.mean(euc_per_point)  # scalar
 
-    ###L2 Loss - peanalizing the large loss
-    sq_dist = (diff ** 2).sum(dim=-1)   # [B, L]
-    point_loss = sq_dist.mean()         # scalar
-
-    if nll_across_batch_OAImrediff.calls > add_loss_after_iter:
+        ###L2 Loss - peanalizing the large loss
+        sq_dist = (diff ** 2).sum(dim=-1)   # [B, L]
+        point_loss = sq_dist.mean()         # scalar
         print('added mre loss') ##normalise, detach helps it not normlaize through the denominator so this will remain able to learn from
         nll_norm   = nll_img / (nll_img.detach() + 1e-8)
         point_norm = point_loss / (point_loss.detach() + 1e-8)
