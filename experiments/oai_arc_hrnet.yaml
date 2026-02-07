@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: oai
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.7_0.30_0.00000.json
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.85_0.15_duplicatesforbatchsize6.json
   IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/txt
   META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
@@ -58,7 +58,7 @@ TRAIN:
   LOSS: nll_across_batch_OAImrediff
   GAMMA: 1.0
   DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
-  TAU_DECAY: 0.0001 ## each iter will decay tau by this amount 
+  TAU_DECAY: 0.0 ## each iter will decay tau by this amount 
   TAU: 1.0 ##initial tau for gumbel loss, will decay each iter by TAU_DECAY until it reaches 0.5
 
 TEST:
