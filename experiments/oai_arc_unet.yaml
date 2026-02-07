@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: oai
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.7_0.30_0.00000.json
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.85_0.15_duplicatesforbatchsize6.json
   IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/txt
   META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
@@ -25,7 +25,7 @@ MODEL:
     - 64
   IN_CHANNELS: 1
   ATTENTION: scse
-  FREEZE_LAYERS: 2
+  FREEZE_LAYERS: 1
 
 DATASET:
   IMAGE_EXT: ".jpg"
@@ -50,12 +50,12 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_hrnet_feb7_mre_unet_taudecay
+OUTPUT_PATH: ./output_OAI_hrnet_feb7_unet
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 6
   LR: 0.001
   EPOCHS: 500
-  DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
+  DELAY_GUMBEL_LOSS: 600 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
   LOSS: nll_across_batch_OAImrediff
   TAU_DECAY: 0.00001 ## each iter will decay tau by this amount 
   TAU: 1.0 ##initial tau for gumbel loss, will decay each iter by TAU_DECAY until it reaches 0.5
