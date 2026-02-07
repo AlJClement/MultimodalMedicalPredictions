@@ -25,7 +25,7 @@ MODEL:
     - 64
   IN_CHANNELS: 3
   ATTENTION: scse
-  FREEZE_LAYERS: 2
+  FREEZE_LAYERS: 1
 
 DATASET:
   IMAGE_EXT: ".jpg"
@@ -50,9 +50,9 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_hrnet_feb6_mre_hrnet_taudecay
+OUTPUT_PATH: ./output_OAI_hrnet_feb6_mre_hrnet_taudecay_freeze1
 TRAIN:
-  BATCH_SIZE: 4
+  BATCH_SIZE: 6
   LR: 0.001
   EPOCHS: 500
   LOSS: nll_across_batch_OAImrediff
