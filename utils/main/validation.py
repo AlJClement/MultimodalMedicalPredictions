@@ -103,7 +103,7 @@ class validation():
         self.num_output_channels = cfg.MODEL.OUT_CHANNELS
 
         self.fhc_calc = fhc()
-        if 'mrediff' in cfg.TRAIN.LOSS:
+        if 'diff' in cfg.TRAIN.LOSS:
             self.add_gumbel = True
             self.gamma = cfg.TRAIN.GAMMA
             self.delay_gumbel_loss = cfg.TRAIN.DELAY_GUMBEL_LOSS

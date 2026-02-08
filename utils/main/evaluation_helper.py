@@ -189,6 +189,7 @@ class evaluation_helper():
             points = torch.stack((y_f, x_f), dim=2)  # (B, C, 2) floats
 
         else:
+            print('gumbel used! tau:', tau)
             # sample gumbel noise and softmax over flattened spatial dim
             u = torch.rand_like(flattened).clamp(min=eps, max=1.0 - eps) 
             ## u creates a tensor with the same shape as flattened
@@ -202,16 +203,16 @@ class evaluation_helper():
                 logits = (flattened + gumbel_noise) / float(tau)
                 probs = F.softmax(logits, dim=2)
             else:
-                if increase_tau > 10:
-                    tau = tau - tau_decay* increase_tau
-                    if tau <tau_decay:
-                        tau == tau_decay
-                    print('tau has reduced to:', tau)
-                    logits = (flattened + gumbel_noise) / float(tau)
-                    probs = F.softmax(logits, dim=2)  
-                else:
-                    logits = (flattened + gumbel_noise) / float(tau)
-                    probs = F.softmax(logits, dim=2)    
+                #if increase_tau > 10:
+                tau = tau - tau_decay* increase_tau
+                if tau <tau_decay:
+                    tau == tau_decay
+                print('tau has reduced to:', tau)
+                logits = (flattened + gumbel_noise) / float(tau)
+                probs = F.softmax(logits, dim=2)  
+                # else:
+                #     logits = (flattened + gumbel_noise) / float(tau)
+                #     probs = F.softmax(logits, dim=2)    
 
             if hard:
                 # straight-through hard one-hot: forward discrete, backward through probs

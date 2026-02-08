@@ -50,12 +50,12 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_hrnet_feb6_mre_hrnet_taudecay_freeze1
+OUTPUT_PATH: ./output_OAI_hrnet_feb8
 TRAIN:
   BATCH_SIZE: 6
   LR: 0.001
-  EPOCHS: 500
-  LOSS: nll_across_batch_OAImrediff
+  EPOCHS: 700
+  LOSS: nll_across_batch
   GAMMA: 1.0
   DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
   TAU_DECAY: 0.0 ## each iter will decay tau by this amount 

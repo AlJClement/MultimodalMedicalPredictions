@@ -52,12 +52,12 @@ DATASET:
 
 OUTPUT_PATH: ./output_OAI_hrnet_feb2_mre_sigma2
 TRAIN:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 4
   LR: 0.001
   EPOCHS: 500
-  LOSS: nll_across_batch_OAIanglediff
+  LOSS: nll_across_batch_OAImrediff
   GAMMA: 1.0
-  DELAY_GUMBEL_LOSS: 10 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
+  DELAY_GUMBEL_LOSS: 1 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
   TAU_DECAY: 0.0 ## each iter will decay tau by this amount 
   TAU: 1.0 ##initial tau for gumbel loss, will decay each iter by TAU_DECAY until it reaches 0.5
 

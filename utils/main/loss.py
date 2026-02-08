@@ -208,39 +208,46 @@ def nll_across_batch_cosinelandmarkvectorOAI(output, target, gamma):
     return nll_img*(1-gamma)+(a1*g)+(a2*g)
 
 def nll_across_batch_OAIanglediff(output, target, gamma, cfg, gumbel=True):
-    
+    nll_across_batch_OAImrediff.calls += 1
+
+    add_loss_after_iter = cfg.TRAIN.DELAY_GUMBEL_LOSS
+
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
-    pixelsize=1
-    target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel)            
-    pred_L_arr = []
-    pred_R_arr = []
-    targ_L_arr = []
-    targ_R_arr = []
-    
-    for i in range(predicted_points.shape[0]):
-        p_swapped = predicted_points[i]
-        pred = comparison_metrics.protractor_hka().hka_angles(p_swapped,[],[],[],[])
-        pred_L, pred_R = pred[0][1], pred[3][1]
-        t_swapped = target_points[i]
-        targ = comparison_metrics.protractor_hka().hka_angles(t_swapped,[],[],[],[])
-        targ_L, targ_R = targ[0][1], targ[3][1]
-        pred_L_arr.append(pred_L)
-        pred_R_arr.append(pred_R)
-        targ_L_arr.append(targ_L)
-        targ_R_arr.append(targ_R)
+    if int(nll_across_batch_OAImrediff.calls/2) >= add_loss_after_iter:
+        pixelsize=1
+        target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel, nll_across_batch_OAImrediff.calls, cfg)            
 
-    pred_L_arr = np.array(pred_L_arr)
-    pred_R_arr = np.array(pred_R_arr)
-    targ_L_arr = np.array(targ_L_arr)
-    targ_R_arr = np.array(targ_R_arr)
+        pred_L_arr = []
+        pred_R_arr = []
+        targ_L_arr = []
+        targ_R_arr = []
         
-    g = gamma/2
-    a1 = np.mean(abs(pred_L_arr-targ_L_arr))
-    a2 = np.mean(abs(pred_R_arr-targ_R_arr))
+        for i in range(predicted_points.shape[0]):
+            p_swapped = predicted_points[i]
+            pred = comparison_metrics.protractor_hka().hka_angles(p_swapped,[],[],[],[])
+            pred_L, pred_R = pred[0][1], pred[3][1]
+            t_swapped = target_points[i]
+            targ = comparison_metrics.protractor_hka().hka_angles(t_swapped,[],[],[],[])
+            targ_L, targ_R = targ[0][1], targ[3][1]
+            pred_L_arr.append(pred_L)
+            pred_R_arr.append(pred_R)
+            targ_L_arr.append(targ_L)
+            targ_R_arr.append(targ_R)
 
-    return nll_img*(1-gamma)+(a1*g)+(a2*g)
+        pred_L_arr = np.array(pred_L_arr)
+        pred_R_arr = np.array(pred_R_arr)
+        targ_L_arr = np.array(targ_L_arr)
+        targ_R_arr = np.array(targ_R_arr)
+            
+        g = gamma/2
+        a1 = np.mean(abs(pred_L_arr-targ_L_arr))
+        a2 = np.mean(abs(pred_R_arr-targ_R_arr))
+
+        return nll_img*(1-gamma)+(a1*g)+(a2*g)
+    else:
+        return nll_img
 
 def nll_across_batch_OAImrediff(output, target, gamma, cfg=None,gumbel=True):
     nll_across_batch_OAImrediff.calls += 1
@@ -250,7 +257,7 @@ def nll_across_batch_OAImrediff(output, target, gamma, cfg=None,gumbel=True):
     nll = target * torch.log(output.double())
     nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
 
-    if int(nll_across_batch_OAImrediff.calls/4) > add_loss_after_iter:
+    if int(nll_across_batch_OAImrediff.calls/2) > add_loss_after_iter:
         pixelsize=1
         target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel, nll_across_batch_OAImrediff.calls, cfg)            
 
