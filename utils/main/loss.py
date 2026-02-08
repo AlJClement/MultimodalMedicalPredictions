@@ -354,7 +354,7 @@ class L2RegLoss(nn.Module):
             loss = self.main_loss(x, target,gamma) + self.lam*l2
         elif self.addclass=='cosinelandmarkvectorOAI':
             loss = self.main_loss(x, target,gamma) + self.lam*l2
-        elif 'anglediff' in self.addclass or 'mrediff' in self.addclass:
+        elif 'diff' in self.addclass:
             loss = self.main_loss(x, target,gamma, cfg) + self.lam*l2
         else:
             loss = self.main_loss(x, target) + self.lam*l2
