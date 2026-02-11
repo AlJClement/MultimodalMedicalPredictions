@@ -49,8 +49,8 @@ def main():
     help._dataset_shape(val_dataset)
 
     #load data into data loader (imports all data into a dataloader)
-    train_dataloader = DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = True)
-    val_dataloader = DataLoader(val_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = True)
+    train_dataloader = DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = False)
+    val_dataloader = DataLoader(val_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = False)
 
     losses = []
     max_epochs = cfg.TRAIN.EPOCHS
