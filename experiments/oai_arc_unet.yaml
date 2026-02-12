@@ -12,7 +12,7 @@ MODEL:
   OUT_CHANNELS: 6
   DEVICE: cuda
 
-  META_FEATURES: [100,100,100] 
+  META_FEATURES: [100,100,100]  
   NAME: 'unet_plus_plus'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
@@ -40,7 +40,7 @@ DATASET:
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
     ROTATION_FACTOR: 1 #affine
-    INTENSITY_FACTOR: 2.0 #multiplicaiton factor
+    INTENSITY_FACTOR: 3.0 #multiplicaiton factor
     SF: 0.1 #affine scale factor
     TRANSLATION_X: 0.1 #affine
     TRANSLATION_Y: 0.1 #affine
@@ -50,16 +50,17 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_hrnet_feb7_unet
+OUTPUT_PATH: ./output_OAI_unet_feb12
 TRAIN:
   BATCH_SIZE: 6
   LR: 0.001
-  EPOCHS: 500
-  DELAY_GUMBEL_LOSS: 600 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
-  LOSS: nll_across_batch_OAImrediff
-  TAU_DECAY: 0.00001 ## each iter will decay tau by this amount 
-  TAU: 1.0 ##initial tau for gumbel loss, will decay each iter by TAU_DECAY until it reaches 0.5
+  EPOCHS: 700
+  LOSS: nll_across_batch
+
   GAMMA: 1.0
+  DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
+  TAU_DECAY: 0.0 ## each iter will decay tau by this amount 
+  TAU: 1.0 ##initial tau for gumbel loss, will decay each iter by TAU_DECAY until it reaches 0.5
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth

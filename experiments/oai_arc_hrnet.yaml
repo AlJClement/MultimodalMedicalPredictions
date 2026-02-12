@@ -32,7 +32,7 @@ DATASET:
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 6 
   COMBINE_REVIEWERS: False 
-  SIGMA: 2 #if sigma is NONE no guassian applied
+  SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
   CACHED_IMAGE_SIZE: [512,512]
   PIXEL_SIZE: [1.0,1.0]
