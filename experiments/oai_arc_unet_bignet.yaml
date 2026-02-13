@@ -18,8 +18,8 @@ MODEL:
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
-    - 2048
     - 1024
+    - 512
     - 256
     - 128
     - 64
@@ -52,9 +52,9 @@ DATASET:
 
 OUTPUT_PATH: ./output_OAI_unet_feb12_bignet
 TRAIN:
-  BATCH_SIZE: 4
-  LR: 0.01
-  EPOCHS: 300
+  BATCH_SIZE: 6
+  LR: 0.001
+  EPOCHS: 500
   LOSS: nll_across_batch
 
   GAMMA: 1.0
