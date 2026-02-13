@@ -52,7 +52,7 @@ DATASET:
 
 OUTPUT_PATH: ./output_OAI_unet_feb12_bignet
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 4
   LR: 0.01
   EPOCHS: 300
   LOSS: nll_across_batch
