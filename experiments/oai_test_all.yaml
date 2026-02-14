@@ -18,29 +18,29 @@ MODEL:
   OUT_CHANNELS: 6
   DEVICE: cuda
 
-  META_FEATURES: [100,100,100] 
-  NAME: 'hrnet'
+  META_FEATURES: [100,100,100]  
+  NAME: 'unet_plus_plus'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
+    - 1024
     - 512
-    - 256
     - 256
     - 128
     - 64
-  IN_CHANNELS: 3
+  IN_CHANNELS: 1
   ATTENTION: scse
-  FREEZE_LAYERS: 2 
+  FREEZE_LAYERS: 1
 
 DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 6 
   COMBINE_REVIEWERS: False 
-  SIGMA: 4 #if sigma is NONE no guassian applied
+  SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,512]
+  CACHED_IMAGE_SIZE: [512,1024]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -56,7 +56,7 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_feb6
+OUTPUT_PATH: ./output_oai_5121024
 TRAIN:
   BATCH_SIZE: 2
   LR: 0.005
@@ -66,7 +66,7 @@ TRAIN:
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
-  TEST_TIME_AUG: True
+  TEST_TIME_AUG: False
   TEST_TIME_AUG_NUM: 5 ### will take 5 random augmentations and select the one with lowest eres?
   COMPARISON_METRICS: 
     - protractor_hka().hka_angles

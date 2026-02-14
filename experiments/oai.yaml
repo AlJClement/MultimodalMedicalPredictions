@@ -13,7 +13,7 @@ MODEL:
   DEVICE: cuda
 
   META_FEATURES: [100,100,100] 
-  NAME: 'hrnet'
+  NAME: 'unet_plus_plus'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
@@ -23,7 +23,7 @@ MODEL:
     - 256
     - 128
     - 64
-  IN_CHANNELS: 3
+  IN_CHANNELS: 1
   ATTENTION: scse
   FREEZE_LAYERS: 1
 
@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,512]
+  CACHED_IMAGE_SIZE: [512,1024]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:

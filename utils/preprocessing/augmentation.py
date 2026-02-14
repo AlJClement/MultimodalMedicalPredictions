@@ -426,8 +426,11 @@ class Augmentation():
 
         # 2) prepare model input
         # convert aug_img to torch NCHW float32 (keep value range as model expects)
-        aug_image_t = torch.from_numpy(aug_img).permute(2,0,1).unsqueeze(0).float().to(device) if device is not None else torch.from_numpy(aug_img).permute(2,0,1).unsqueeze(0).float()
+        try:
+            aug_image_t = torch.from_numpy(aug_img).permute(2,0,1).unsqueeze(0).float().to(device) if device is not None else torch.from_numpy(aug_img).permute(2,0,1).unsqueeze(0).float()
         # If your model needs normalization do it here (same as training), e.g. aug_image_t = normalize(aug_image_t)
+        except:#
+            aug_image_t = torch.from_numpy(aug_img).unsqueeze(0).unsqueeze(0).float().to(device)
 
         # 3) forward
         with torch.no_grad():

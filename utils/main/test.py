@@ -512,7 +512,7 @@ class test():
     
         ##plot best heatmap over augmented or normal image
         plt.ioff()
-        plt.imshow(img_hwc[:, :, 1], cmap="gray")
+        plt.imshow(img_hwc[:, :, 0], cmap="gray")
         agg_np = pred.cpu().numpy()
         combined = np.sum(agg_np, axis=1)
         plt.imshow(combined[0])
