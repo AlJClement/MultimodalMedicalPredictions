@@ -504,6 +504,10 @@ class test():
                     if abs(hka_r_tib /hka_l_tib) > 0.9 and abs(hka_r_tib /hka_l_tib) < 1.1:
                         if abs(hka_l) < 10 and abs(hka_r) < 10:
                             total_metric = abs(hka_l) + abs(hka_r)
+                    else:
+                        total_metric = 10000
+                else:
+                    total_metric = 10000
 
             else:
                 raise ValueError('define metric for test time AU')
@@ -548,7 +552,12 @@ class test():
             plt.savefig(self.save_testtimeaug+'/'+id[0]+'_AUG.jpg')
             plt.close()
         except:
-            print('the best prediction was on the original image!')
+            if best_metric == 10000:
+                print('defaulting back to the original image as all augmentations had unreasonable angles pr femur/tibia lengths')
+                best_pred = pred#
+            else:
+                print('the best prediction was on the original image!')
+
 
         return best_pred
 
