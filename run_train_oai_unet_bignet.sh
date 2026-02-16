@@ -12,4 +12,4 @@ module load Anaconda3/2022.05
 source activate /data/coml-oxmedis/kebl7678/yenv
 
 #run python code
-python ./utils/run_training.py --cfg oai_arc_unet_bignet.yaml
+python ./utils/run_training.py --cfg oai_arc_unet_bignet

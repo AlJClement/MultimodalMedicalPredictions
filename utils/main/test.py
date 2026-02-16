@@ -451,6 +451,7 @@ class test():
             best_metric = 10000
 
         for i in range(self.cfg.TEST.TEST_TIME_AUG_NUM+1):
+            print('AUG:', i)
             if i == 0: 
                 ##do not augment
                 pred = self.net(data, meta_data)                
@@ -499,11 +500,12 @@ class test():
                 hka_l_tib, hka_r_tib = hka[2][1], hka[5][1]
 
                 ## see if  femur length is reasonable
-                if abs(hka_r_fl /hka_l_fl) > 0.9 and abs(hka_r_fl /hka_l_fl) < 1.1:
+                if abs(hka_r_fl /hka_l_fl) > 0.8 and abs(hka_r_fl /hka_l_fl) < 1.2:
                     ## see if tibia length is reasonale
-                    if abs(hka_r_tib /hka_l_tib) > 0.9 and abs(hka_r_tib /hka_l_tib) < 1.1:
+                    if abs(hka_r_tib /hka_l_tib) > 0.8 and abs(hka_r_tib /hka_l_tib) < 1.2:
                         if abs(hka_l) < 10 and abs(hka_r) < 10:
                             total_metric = abs(hka_l) + abs(hka_r)
+                            print(total_metric)
                     else:
                         total_metric = 10000
                 else:
