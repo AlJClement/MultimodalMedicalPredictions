@@ -20,9 +20,9 @@ MODEL:
   DECODER_CHANNELS:
     - 1024
     - 512
-    - 512
     - 256
     - 128
+    - 64
   IN_CHANNELS: 1
   ATTENTION: scse
   FREEZE_LAYERS: 1

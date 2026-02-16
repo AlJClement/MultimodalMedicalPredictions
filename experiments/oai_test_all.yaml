@@ -67,7 +67,7 @@ TRAIN:
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
   TEST_TIME_AUG: False
-  TEST_TIME_AUG_NUM: 20 ### will take 5 random augmentations and select the one with lowest eres?
+  TEST_TIME_AUG_NUM: 30 ### will take 5 random augmentations and select the one with lowest eres?
   COMPARISON_METRICS: 
     - protractor_hka().hka_angles
   SDR_THRESHOLD: [10, 20, 40, 80]
