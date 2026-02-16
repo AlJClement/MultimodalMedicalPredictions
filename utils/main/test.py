@@ -21,6 +21,7 @@ torch.cuda.empty_cache()
 from .validation import validation
 import torch.nn.functional as F
 from preprocessing.augmentation import Augmentation
+from .comparison_metrics.landmark_metrics import landmark_metrics
 
 
 class test():
@@ -443,10 +444,10 @@ class test():
 
     def get_best_test_time_aug(self, data, meta_data, id):
         '''loads data, gets N number of augs, predicts all and takes the best model which is the one with lowest ere'''
-        metric = 'ERE'
+        metric = 'angle'
         if metric == 'ERE':
             best_metric = 10000
-        elif metric == 'angle_diff':
+        elif metric == 'angle':
             best_metric = 10000
 
         for i in range(self.cfg.TEST.TEST_TIME_AUG_NUM+1):
@@ -478,7 +479,6 @@ class test():
                 # plt.imshow(aug_img[:,:,0])
         
             ###Check eres
-            from .comparison_metrics.landmark_metrics import landmark_metrics
             ## if metric = 
             if metric == 'ERE':
                 EH=evaluation_helper.evaluation_helper()
@@ -488,12 +488,23 @@ class test():
                 ere_ls = landmark_metrics().get_eres(pred_landmarks, pred.cpu(), pixelsize=pixels_sizes)
                 total_metric = sum(value for _, value in ere_ls)
 
-            elif metric == 'angle_diff':
+            elif metric == 'angle':
                 EH=evaluation_helper.evaluation_helper()
                 _pred = pred.cpu()
                 pixels_sizes=self.pixel_size.to('cpu')
                 pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
-                ## get angles, compare to angle
+                hka = protractor_hka().hka_angles(pred_landmarks.squeeze(0), pred.squeeze(0).cpu(), pred_landmarks.squeeze(0), pred.squeeze(0).cpu(),pixelsize=pixels_sizes)
+                hka_l, hka_r = hka[0][1], hka[3][1]
+                hka_l_fl, hka_r_fl = hka[1][1], hka[4][1]
+                hka_l_tib, hka_r_tib = hka[2][1], hka[5][1]
+
+                ## see if  femur length is reasonable
+                if abs(hka_r_fl /hka_l_fl) > 0.9 and abs(hka_r_fl /hka_l_fl) < 1.1:
+                    ## see if tibia length is reasonale
+                    if abs(hka_r_tib /hka_l_tib) > 0.9 and abs(hka_r_tib /hka_l_tib) < 1.1:
+                        if abs(hka_l) < 10 and abs(hka_r) < 10:
+                            total_metric = abs(hka_l) + abs(hka_r)
+
             else:
                 raise ValueError('define metric for test time AU')
 

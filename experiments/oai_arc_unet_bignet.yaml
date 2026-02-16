@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: oai
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.85_0.15_duplicatesforbatchsize6.json
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.95_0.05_duplicatesforbatchsize8.json
   IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/txt
   META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
@@ -20,9 +20,9 @@ MODEL:
   DECODER_CHANNELS:
     - 1024
     - 512
+    - 512
     - 256
     - 128
-    - 64
   IN_CHANNELS: 1
   ATTENTION: scse
   FREEZE_LAYERS: 1
@@ -50,9 +50,9 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_feb12_bignet
+OUTPUT_PATH: ./output_OAI_unet_feb16_bignet
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 8
   LR: 0.001
   EPOCHS: 500
   LOSS: nll_across_batch
