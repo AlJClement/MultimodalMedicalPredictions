@@ -50,9 +50,9 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_feb16_bs8_lr0001_epoch700
+OUTPUT_PATH: ./output_OAI_unet_feb18_bs8_lr0001_14lm_bs8
 TRAIN:
-  BATCH_SIZE: 1
+  BATCH_SIZE: 8
   LR: 0.0001
   EPOCHS: 500
   LOSS: nll_across_batch

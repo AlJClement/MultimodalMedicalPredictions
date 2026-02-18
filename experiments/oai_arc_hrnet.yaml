@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [1024,1024]
+  CACHED_IMAGE_SIZE: [512,512]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
