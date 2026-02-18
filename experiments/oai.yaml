@@ -9,7 +9,7 @@ INPUT_PATHS:
   META_COLS: [P02SEX: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
 
 MODEL: 
-  OUT_CHANNELS: 6
+  OUT_CHANNELS: 14
   DEVICE: cuda
 
   META_FEATURES: [100,100,100] 
@@ -30,7 +30,7 @@ MODEL:
 DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
-  NUM_LANDMARKS: 6 
+  NUM_LANDMARKS: 14
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
@@ -50,7 +50,7 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_hrnet_feb2_mre_sigma2
+OUTPUT_PATH: ./output_OAI_14
 TRAIN:
   BATCH_SIZE: 2
   LR: 0.001

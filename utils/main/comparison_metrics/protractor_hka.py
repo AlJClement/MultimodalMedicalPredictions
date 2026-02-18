@@ -116,6 +116,8 @@ class protractor_hka():
                     [1,1,1]
                     ])
                 varus = np.sign(np.linalg.det(varus_array))
+                ##flip for right leg
+                varus = -varus
 
                 r_angle = varus * angle
                 r_f_len=round(np.sqrt(fk_lengthsq),2)

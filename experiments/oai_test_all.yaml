@@ -41,7 +41,7 @@ DATASET:
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
   CACHED_IMAGE_SIZE: [512,1024]
-  PIXEL_SIZE: [1.0,1.0]
+  PIXEL_SIZE: [0.34,0.34]
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
@@ -56,7 +56,7 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_oai_5121024
+OUTPUT_PATH: ./output_OAI_unet_feb16_bs8
 TRAIN:
   BATCH_SIZE: 2
   LR: 0.005
@@ -66,8 +66,8 @@ TRAIN:
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
-  TEST_TIME_AUG: False
-  TEST_TIME_AUG_NUM: 30 ### will take 5 random augmentations and select the one with lowest eres?
+  TEST_TIME_AUG: True
+  TEST_TIME_AUG_NUM: 50 ### will take 5 random augmentations and select the one with lowest eres?
   COMPARISON_METRICS: 
     - protractor_hka().hka_angles
   SDR_THRESHOLD: [10, 20, 40, 80]

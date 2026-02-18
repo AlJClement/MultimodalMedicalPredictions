@@ -6,6 +6,7 @@
 #SBATCH --partition=long,medium
 #SBATCH --gres=gpu:rtx8000:2
 
+
 module load Anaconda3/2022.05
 
 source activate /data/coml-oxmedis/kebl7678/yenv

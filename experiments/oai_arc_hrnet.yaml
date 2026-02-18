@@ -9,7 +9,7 @@ INPUT_PATHS:
   META_COLS: [P02SEX: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
 
 MODEL: 
-  OUT_CHANNELS: 6
+  OUT_CHANNELS: 14
   DEVICE: cuda
 
   META_FEATURES: [100,100,100] 
@@ -30,11 +30,11 @@ MODEL:
 DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
-  NUM_LANDMARKS: 6 
+  NUM_LANDMARKS: 14
   COMBINE_REVIEWERS: False 
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,512]
+  CACHED_IMAGE_SIZE: [1024,1024]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -52,9 +52,9 @@ DATASET:
 
 OUTPUT_PATH: ./output_OAI_hrnet_feb8
 TRAIN:
-  BATCH_SIZE: 6
-  LR: 0.001
-  EPOCHS: 700
+  BATCH_SIZE: 8
+  LR: 0.0001
+  EPOCHS: 500
   LOSS: nll_across_batch
   GAMMA: 1.0
   DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel

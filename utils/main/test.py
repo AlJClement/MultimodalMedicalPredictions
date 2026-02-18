@@ -444,10 +444,12 @@ class test():
 
     def get_best_test_time_aug(self, data, meta_data, id):
         '''loads data, gets N number of augs, predicts all and takes the best model which is the one with lowest ere'''
-        metric = 'angle'
+        metric = 'angle_and_ere'
         if metric == 'ERE':
             best_metric = 10000
         elif metric == 'angle':
+            best_metric = 10000
+        elif metric == 'angle_and_ere':
             best_metric = 10000
 
         print('ID:', id[0])
@@ -501,10 +503,10 @@ class test():
                 hka_l_tib, hka_r_tib = hka[2][1], hka[5][1]
 
                 ## see if  femur length is reasonable
-                if abs(hka_r_fl/hka_l_fl) > 0.7 and abs(hka_r_fl /hka_l_fl) < 1.3:
+                if abs(hka_r_fl/hka_l_fl) > 0.9 and abs(hka_r_fl /hka_l_fl) < 1.1:
                     ## see if tibia length is reasonale
-                    if abs(hka_r_tib /hka_l_tib) > 0.7 and abs(hka_r_tib /hka_l_tib) < 1.3:
-                        if abs(hka_l) < 10 and abs(hka_r) < 10:
+                    if abs(hka_r_tib /hka_l_tib) > 0.9 and abs(hka_r_tib /hka_l_tib) < 1.1:
+                        if abs(hka_l) < 18 and abs(hka_r) < 18:
                             total_metric = abs(hka_l) + abs(hka_r)
                             print(total_metric)
                         else:
@@ -513,7 +515,35 @@ class test():
                         total_metric = 10000
                 else:
                     total_metric = 10000
+            elif metric == 'angle_and_ere':
+                EH=evaluation_helper.evaluation_helper()
+                _pred = pred.cpu()
+                pixels_sizes=self.pixel_size.to('cpu')
+                pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
+                hka = protractor_hka().hka_angles(pred_landmarks.squeeze(0), pred.squeeze(0).cpu(), pred_landmarks.squeeze(0), pred.squeeze(0).cpu(),pixelsize=pixels_sizes)
+                hka_l, hka_r = hka[0][1], hka[3][1]
+                hka_l_fl, hka_r_fl = hka[1][1], hka[4][1]
+                hka_l_tib, hka_r_tib = hka[2][1], hka[5][1]
 
+                ## see if  femur length is reasonable
+                if abs(hka_r_fl/hka_l_fl) > 0.9 and abs(hka_r_fl /hka_l_fl) < 1.1:
+                    ## see if tibia length is reasonale
+                    if abs(hka_r_tib /hka_l_tib) > 0.9 and abs(hka_r_tib /hka_l_tib) < 1.1:
+                        if abs(hka_l) < 18 and abs(hka_r) < 18:
+                            pixels_sizes=self.pixel_size.to('cpu')
+                            pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
+                            ere_ls = landmark_metrics().get_eres(pred_landmarks, pred.cpu(), pixelsize=pixels_sizes)
+                            total_metric = sum(value for _, value in ere_ls)
+                            print(total_metric)
+
+                        else:
+                            total_metric = 10000
+                    else:
+                        total_metric = 10000
+                else:
+                    total_metric = 10000
+
+            
             else:
                 raise ValueError('define metric for test time AU')
 
@@ -543,11 +573,13 @@ class test():
         fig, axes = plt.subplots(1, 2, figsize=(8, 5))
         ## try
         try:
-            axes[0].imshow(best_aug_img[:, :, 1], cmap="gray")
+            if self.net.__class__.__name__ == 'hrnet':
+                best_aug_img = best_aug_img.squeeze(0)
+            axes[0].imshow(best_aug_img[:, :], cmap="gray")
             axes[0].set_title("Augmented")
             axes[0].axis("off")
 
-            axes[1].imshow(img_hwc[:, :, 1], cmap="gray")
+            axes[1].imshow(img_hwc[:, :], cmap="gray")
             axes[1].set_title("Original")
             axes[1].axis("off")
 
