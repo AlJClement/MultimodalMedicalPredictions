@@ -19,7 +19,7 @@ MODEL:
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
     - 512
-    - 256
+    - 512
     - 256
     - 128
     - 64
