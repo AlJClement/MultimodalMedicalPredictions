@@ -15,7 +15,7 @@ INPUT_PATHS:
   META_COLS: [P02SEX: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
 
 MODEL: 
-  OUT_CHANNELS: 6
+  OUT_CHANNELS: 14
   DEVICE: cuda
 
   META_FEATURES: [100,100,100]  
@@ -36,7 +36,7 @@ MODEL:
 DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
-  NUM_LANDMARKS: 6 
+  NUM_LANDMARKS: 14
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
@@ -56,7 +56,7 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_feb16_bs8
+OUTPUT_PATH: ./output_OAI_14
 TRAIN:
   BATCH_SIZE: 2
   LR: 0.005
@@ -66,7 +66,7 @@ TRAIN:
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
-  TEST_TIME_AUG: True
+  TEST_TIME_AUG: Flase
   TEST_TIME_AUG_NUM: 50 ### will take 5 random augmentations and select the one with lowest eres?
   COMPARISON_METRICS: 
     - protractor_hka().hka_angles
