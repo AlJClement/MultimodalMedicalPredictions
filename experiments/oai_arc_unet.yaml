@@ -18,11 +18,11 @@ MODEL:
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
-    - 1024
     - 512
     - 256
     - 128
     - 64
+    - 32
   IN_CHANNELS: 1
   ATTENTION: scse
   FREEZE_LAYERS: 1
@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,1024]
+  CACHED_IMAGE_SIZE: [512,2048]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -50,11 +50,11 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_feb23_bs8_lr0002_14lm_bs8
+OUTPUT_PATH: ./output_OAI_unet_feb23_bs8_lr0002_14lm_bs1_gradaccum
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.0002
-  EPOCHS: 800
+  EPOCHS: 200
   LOSS: nll_across_batch
 
   GAMMA: 1.0
