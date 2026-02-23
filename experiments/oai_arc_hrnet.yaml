@@ -50,11 +50,11 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_hrnet_feb20_14lm
+OUTPUT_PATH: ./output_OAI_hrnet_feb23_14lm
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.0002
-  EPOCHS: 700
+  EPOCHS: 800
   LOSS: nll_across_batch
   GAMMA: 1.0
   DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
