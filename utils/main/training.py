@@ -103,7 +103,6 @@ class training():
         self.net.train()  #Put the network in train mode
         total_loss = 0
         batches = 0
-        scaler = GradScaler()
 
         for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img)  in enumerate(dataloader):
             print(batch_idx)
@@ -133,48 +132,42 @@ class training():
             t_s= datetime.datetime.now()
 
             #target shape: (B, C, W, H) - where C is #landmarks
-            with autocast():
-                pred = self.net(data, meta_data)
+            pred = self.net(data, meta_data)
 
-                ##get variables if you need them for loss
-                if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
-                    pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
+            ##get variables if you need them for loss
+            if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
+                pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
 
-                    if self.add_alphafhc_loss==True:
-                        pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
+                if self.add_alphafhc_loss==True:
+                    pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
 
-                
-                ##calculate loss
-                if self.l2_reg==True:
-                    if self.add_class_loss==True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,self.gamma, pred_alphas, target_alphas,pred_classes, target_classes)
-                    elif self.add_alphafhc_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
-                    elif self.add_landmark_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
-                    elif self.add_alpha_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
-                    elif self.add_gumbel == True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, self.cfg)
-                    else:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
+            
+            ##calculate loss
+            if self.l2_reg==True:
+                if self.add_class_loss==True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,self.gamma, pred_alphas, target_alphas,pred_classes, target_classes)
+                elif self.add_alphafhc_loss== True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
+                elif self.add_landmark_loss== True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
+                elif self.add_alpha_loss== True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
+                elif self.add_gumbel == True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, self.cfg)
                 else:
-                    if self.add_class_loss==True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,pred_alphas, target_alphas, pred_classes, target_classes,self.gamma)
-                    elif self.add_alpha_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
-                    else:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device))
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
+            else:
+                if self.add_class_loss==True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,pred_alphas, target_alphas, pred_classes, target_classes,self.gamma)
+                elif self.add_alpha_loss== True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
+                else:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device))
 
-            # loss.backward()
-            # self.optimizer.step()
-            # total_loss += loss.item()
-
-            scaler.scale(loss).backward()
-            scaler.step(self.optimizer)
-            scaler.update()
+            loss.backward()
+            self.optimizer.step()
             total_loss += loss.item()
- 
+
 
             if batch_idx % 100 == 0: #Report stats every x batches
                     print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
