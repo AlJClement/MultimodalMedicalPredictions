@@ -52,9 +52,9 @@ DATASET:
 
 OUTPUT_PATH: ./output_OAI_unet_feb23_bs8_lr0002_14lm_bs1_gradaccum
 TRAIN:
-  BATCH_SIZE: 8
+  BATCH_SIZE: 1
   LR: 0.0002
-  EPOCHS: 200
+  EPOCHS: 100
   LOSS: nll_across_batch
 
   GAMMA: 1.0

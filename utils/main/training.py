@@ -71,6 +71,9 @@ class training():
         if cfg.MODEL.DEVICE == 'cuda':
             torch.cuda.empty_cache()
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
+
+        self.grad_accumulation_steps = cfg.TRAIN.GRAD_ACCUMULATION_STEPS
+        
         
         pass
 
@@ -99,90 +102,116 @@ class training():
         print(f"Trainable params: {trainable_params}")
         print(f"Frozen params: {total_params - trainable_params}")
 
-
-        self.net.train()  #Put the network in train mode
-        total_loss = 0
+        self.net.train()  # Put the network in train mode
+        total_loss = 0.0
         batches = 0
 
-        for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img)  in enumerate(dataloader):
+        # If batch size is 1, use EFFECTIVE_BATCH_SIZE from cfg to set accum_steps
+        if self.bs == 1:
+            accum_steps = self.grad_accumulation_steps
+            print(f"Using gradient accumulation: {accum_steps} steps (effective batch size = {accum_steps})")
+        else:
+            accum_steps = 1
+        # -------------------------------------------------------------
+
+        # Make sure grads are zero at start (important for accumulation)
+        self.optimizer.zero_grad()
+
+        # optional: if you want AMP later you can create a scaler here
+        # scaler = GradScaler()
+
+        for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(dataloader):
             print(batch_idx)
             print(id)
-            self.optimizer.zero_grad()
+
+            # NOTE: do NOT call optimizer.zero_grad() inside loop when accumulating
 
             #data shape: (B, 1, W, H)
             #target shape: (B, C, W, H) - where C is #landmarks
             #meta_data shape: (B, 1, NUM_metafeatures)
             data, target = Variable(data).to(self.device), Variable(target).to(self.device)
             meta_data = Variable(meta).to(self.device)
-            
+
             if self.plot_target == True:
-                tar=target.detach().cpu().numpy()
-                d=data.detach().cpu().numpy()[0][0]
+                tar = target.detach().cpu().numpy()
+                d = data.detach().cpu().numpy()[0][0]
                 for c in range(tar[0].shape[0]):
                     try:
-                        tar_im = tar_im+tar[0][c]
+                        tar_im = tar_im + tar[0][c]
                     except:
                         tar_im = tar[0][c]
-    
+
                 plt.imshow(tar_im)
                 plt.imshow(d, cmap='gray')
                 plt.savefig('tmp')
 
             batches += 1
-            t_s= datetime.datetime.now()
+            t_s = datetime.datetime.now()
 
-            #target shape: (B, C, W, H) - where C is #landmarks
+            # target shape: (B, C, W, H) - where C is #landmarks
             pred = self.net(data, meta_data)
 
-            ##get variables if you need them for loss
-            if self.add_class_loss==True or self.add_alpha_loss == True or self.add_alphafhc_loss==True:
-                pred_alphas, pred_classes,target_alphas, target_classes = self.class_calculation.get_class_from_output(pred,target,self.pixel_size)
+            ## get variables if you need them for loss
+            if self.add_class_loss == True or self.add_alpha_loss == True or self.add_alphafhc_loss == True:
+                pred_alphas, pred_classes, target_alphas, target_classes = self.class_calculation.get_class_from_output(pred, target, self.pixel_size)
 
-                if self.add_alphafhc_loss==True:
-                    pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
+                if self.add_alphafhc_loss == True:
+                    pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred, target, self.pixel_size)
 
-            
-            ##calculate loss
-            if self.l2_reg==True:
-                if self.add_class_loss==True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,self.gamma, pred_alphas, target_alphas,pred_classes, target_classes)
-                elif self.add_alphafhc_loss== True:
+            ## calculate loss (same branching as original)
+            if self.l2_reg == True:
+                if self.add_class_loss == True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes)
+                elif self.add_alphafhc_loss == True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
-                elif self.add_landmark_loss== True:
+                elif self.add_landmark_loss == True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
-                elif self.add_alpha_loss== True:
+                elif self.add_alpha_loss == True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
                 elif self.add_gumbel == True:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, self.cfg)
                 else:
                     loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
             else:
-                if self.add_class_loss==True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,pred_alphas, target_alphas, pred_classes, target_classes,self.gamma)
-                elif self.add_alpha_loss== True:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas,self.gamma)
+                if self.add_class_loss == True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas, pred_classes, target_classes, self.gamma)
+                elif self.add_alpha_loss == True:
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, pred_alphas, target_alphas, self.gamma)
                 else:
-                    loss = self.loss_func(pred.to(self.device), target.to(self.device))
+                    loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net)
 
-            loss.backward()
-            self.optimizer.step()
+            # accumulate loss for logging (use the unscaled loss for readability)
             total_loss += loss.item()
 
+            # divide loss by accum_steps so gradient magnitudes match an effective larger batch, only one when we arent using so wont effect
+            loss_to_backward = loss / accum_steps
+            loss_to_backward.backward()
+            # ---------------------------------------------------------------------
 
-            if batch_idx % 100 == 0: #Report stats every x batches
-                    print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                        epoch, (batch_idx+1) * len(data), len(dataloader.dataset),
-                            100. * (batch_idx+1) / len(dataloader), loss.item()), flush=True)
-                    
-            del loss, target, data, pred
+            # optimizer step once every accum_steps
+            if (batch_idx + 1) % accum_steps == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+            if batch_idx % 100 == 0:  # Report stats every x batches
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, (batch_idx + 1) * len(data), len(dataloader.dataset),
+                    100. * (batch_idx + 1) / len(dataloader), loss.item()), flush=True)
+
+            # cleanup
+            del loss, loss_to_backward, pred, target, data
             torch.cuda.empty_cache()
 
+        # after loop: if there are leftover gradients (when len(dataloader) % accum_steps != 0)
+        if (batch_idx + 1) % accum_steps != 0:
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+
         av_loss = total_loss / batches
-        #av_loss = av_loss.detach().cpu().numpy()
-        print('\nTraining Set Average loss: {:.4f}'.format(av_loss,  flush=True))
-        
-        t_e= datetime.datetime.now()
-        total_time =t_e-t_s
+        print('\nTraining Set Average loss: {:.4f}'.format(av_loss, flush=True))
+
+        t_e = datetime.datetime.now()
+        total_time = t_e - t_s
         print('Time taken for epoch = ', total_time)
-        
+
         return av_loss

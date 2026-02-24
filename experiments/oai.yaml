@@ -52,7 +52,7 @@ DATASET:
 
 OUTPUT_PATH: ./output_OAI_14
 TRAIN:
-  BATCH_SIZE: 2
+  BATCH_SIZE: 1
   LR: 0.001
   EPOCHS: 500
   LOSS: nll_across_batch
