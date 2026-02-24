@@ -18,11 +18,11 @@ MODEL:
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
+    - 1024
     - 512
     - 256
     - 128
     - 64
-    - 32
   IN_CHANNELS: 1
   ATTENTION: scse
   FREEZE_LAYERS: 1
@@ -54,8 +54,9 @@ OUTPUT_PATH: ./output_OAI_unet_feb23_bs8_lr0002_14lm_bs1_gradaccum
 TRAIN:
   BATCH_SIZE: 1
   LR: 0.0002
-  EPOCHS: 100
+  EPOCHS: 700
   LOSS: nll_across_batch
+  GRAD_ACCUMULATION_STEPS: 8
 
   GAMMA: 1.0
   DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
