@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,2048]
+  CACHED_IMAGE_SIZE: [512,1024]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -50,11 +50,11 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_feb23_bs8_lr0002_14lm_bs1_gradaccum
+OUTPUT_PATH: ./output_OAI_unet_feb23_bs8_lr0005_14lm_bs8
 TRAIN:
-  BATCH_SIZE: 1
-  LR: 0.0002
-  EPOCHS: 700
+  BATCH_SIZE: 8
+  LR: 0.0005
+  EPOCHS: 1000
   LOSS: nll_across_batch
   GRAD_ACCUMULATION_STEPS: 8
 
