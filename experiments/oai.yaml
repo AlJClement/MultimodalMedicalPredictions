@@ -13,7 +13,7 @@ MODEL:
   DEVICE: cuda
 
   META_FEATURES: [100,100,100] 
-  NAME: 'hrnet'
+  NAME: 'unet_plus_plus'
   ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
@@ -23,9 +23,9 @@ MODEL:
     - 256
     - 128
     - 64
-  IN_CHANNELS: 3
+  IN_CHANNELS: 1
   ATTENTION: scse
-  FREEZE_LAYERS: 1
+  FREEZE_LAYERS: 2
 
 DATASET:
   IMAGE_EXT: ".jpg"
@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,512]
+  CACHED_IMAGE_SIZE:  [1024,2048] #[512,512]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -60,17 +60,20 @@ TRAIN:
   DELAY_GUMBEL_LOSS: 1 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
   TAU_DECAY: 0.0 ## each iter will decay tau by this amount 
   TAU: 1.0 ##initial tau for gumbel loss, will decay each iter by TAU_DECAY until it reaches 0.5
+  GRAD_ACCUMULATION_STEPS: 8 ## start at this many steps
+  GRAD_ACCUMULATION_STEPS_REDUCE: 1 ## num of epochs to reduce grad accum steps by half 
+  GRAD_ACCUMULATION_STEPS_MIN: 4 ## reduce by half grad accum every x epochs until reaches this min value
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
   COMPARISON_METRICS: 
-    - landmark_metrics().get_eres
+    # - landmark_metrics().get_eres
     - landmark_metrics().get_radial_errors
     - protractor_hka().hka_angles
   SDR_THRESHOLD: [10, 20, 40, 80]
   SDR_UNITS: pixels
   
-  SAVE_HEATMAPS_LANDMARKS_IMG: True
-  SAVE_IMG_LANG_PREDANDTRUE: True
+  SAVE_HEATMAPS_LANDMARKS_IMG: False
+  SAVE_IMG_LANG_PREDANDTRUE: False
   SAVE_HEATMAPS_NP: True
   

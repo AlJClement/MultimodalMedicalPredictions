@@ -68,13 +68,17 @@ class training():
         self.momentum_0 = 0.90
         self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
-        if cfg.MODEL.DEVICE == 'cuda':
-            torch.cuda.empty_cache()
+        # if cfg.MODEL.DEVICE == 'cuda':
+        #     torch.cuda.empty_cache()
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
 
         self.grad_accumulation_steps = cfg.TRAIN.GRAD_ACCUMULATION_STEPS
+        self.grad_accumulation_steps_min = cfg.TRAIN.GRAD_ACCUMULATION_STEPS_MIN
+        self.grad_accumulation_steps_reduce = cfg.TRAIN.GRAD_ACCUMULATION_STEPS_REDUCE
         
-        
+        # Add a config flag in your cfg e.g. cfg.TRAIN.USE_AMP (default True)
+        self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
+        self.scaler = GradScaler() if self.use_amp else None
         pass
 
     def _get_network(self):
@@ -108,10 +112,17 @@ class training():
         # Use accumulation config always (unless it's 1)
         accum_steps = max(1, getattr(self, "grad_accumulation_steps", 1))
         if accum_steps > 1:
+            if epoch % 50 == 0 and accum_steps > self.grad_accumulation_steps_min:
+                # compute new value but assign to local var and to attribute consistently
+                new_acc = max(self.grad_accumulation_steps_min, accum_steps // 2)
+                self.grad_accumulation_steps = new_acc
+                accum_steps = new_acc
+                print(f"Reducing gradient accumulation steps to {accum_steps}")
+
             print(f"Gradient accumulation enabled: {accum_steps} steps (effective batch size = {accum_steps * self.bs})")
 
         # zero grads at epoch start
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none=True)
 
         epoch_start = datetime.datetime.now()
         for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(dataloader):
@@ -162,25 +173,50 @@ class training():
 
             # scale loss for accumulation then backward
             loss = loss / accum_steps
-            loss.backward()
+            if self.use_amp:
+                self.scaler.scale(loss).backward()
+            else:
+                loss.backward()
 
-            # Debug: verify gradient existence (optional)
+   
+            # optional debug: verify gradient existence
             if batch_idx % 100 == 0:
                 any_grad = any((p.grad is not None) for p in self.net.parameters() if p.requires_grad)
                 print(f"[batch {batch_idx}] any_grad after backward: {any_grad}")
 
             # optimizer step every accum_steps
             if (batch_idx + 1) % accum_steps == 0:
-                self.optimizer.step()
-                self.optimizer.zero_grad()
+                if self.use_amp:
+                    # unscale & step via scaler, then update scaler
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                else:
+                    self.optimizer.step()
+                # zero grads for next accumulation block
+                self.optimizer.zero_grad(set_to_none=True)
                 print(f"optimizer.step() at batch {batch_idx}")
-
+                
             # periodic logging
             if batch_idx % 100 == 0:
                 print(f"Train Epoch: {epoch} [{(batch_idx + 1) * len(data)}/{len(dataloader.dataset)} ({100. * (batch_idx + 1) / len(dataloader):.0f}%)]\tLoss: {loss.item() * accum_steps:.6f}", flush=True)
 
-            # lightweight cleanup (let python free references)
+            # cleanup
             del pred
+            del loss
+            # del pred_alphas etc. if they exist to free memory earlier
+            if 'pred_alphas' in locals():
+                del pred_alphas
+            if 'pred_classes' in locals():
+                del pred_classes
+            if 'target_alphas' in locals():
+                del target_alphas
+            if 'target_classes' in locals():
+                del target_classes
+            if 'pred_fhc' in locals():
+                del pred_fhc
+            if 'target_fhc' in locals():
+                del target_fhc
+
 
         # final step for leftover gradients
         if (batch_idx + 1) % accum_steps != 0:

@@ -25,7 +25,7 @@ MODEL:
     - 64
   IN_CHANNELS: 1
   ATTENTION: scse
-  FREEZE_LAYERS: 1
+  FREEZE_LAYERS: 2
 
 DATASET:
   IMAGE_EXT: ".jpg"
@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,2048]
+  CACHED_IMAGE_SIZE: [1024,4096]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -50,13 +50,15 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_feb25_bs8_lr0005_14lm_bs8_gradacc
+OUTPUT_PATH: ./output_OAI_unet_feb26_bs8_lr0005_14lm_bs8_gradaccREDUCE
 TRAIN:
   BATCH_SIZE: 1
-  LR: 0.0005
-  EPOCHS: 100
+  LR: 0.001
+  EPOCHS: 1000
   LOSS: nll_across_batch
-  GRAD_ACCUMULATION_STEPS: 8
+  GRAD_ACCUMULATION_STEPS: 16 ## start at this many steps
+  GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## num of epochs to reduce grad accum steps by half 
+  GRAD_ACCUMULATION_STEPS_MIN: 4 ## reduce by half grad accum every x epochs until reaches this min value
 
   GAMMA: 1.0
   DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
@@ -72,7 +74,7 @@ TEST:
   SDR_THRESHOLD: [10, 20, 40, 80]
   SDR_UNITS: pixels
   
-  SAVE_HEATMAPS_LANDMARKS_IMG: True
-  SAVE_IMG_LANG_PREDANDTRUE: True
+  SAVE_HEATMAPS_LANDMARKS_IMG: Flase
+  SAVE_IMG_LANG_PREDANDTRUE: False
   SAVE_HEATMAPS_NP: True
   
