@@ -50,14 +50,14 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_feb26_bs8_lr0005_14lm_bs8_gradaccREDUCE
+OUTPUT_PATH: ./output_OAI_unet_mar2_14lm_gradaccREDUCE
 TRAIN:
   BATCH_SIZE: 1
   LR: 0.001
   EPOCHS: 1000
   LOSS: nll_across_batch
   GRAD_ACCUMULATION_STEPS: 16 ## start at this many steps
-  GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## num of epochs to reduce grad accum steps by half 
+  GRAD_ACCUMULATION_STEPS_REDUCE: 100 ## num of epochs to reduce grad accum steps by half 
   GRAD_ACCUMULATION_STEPS_MIN: 4 ## reduce by half grad accum every x epochs until reaches this min value
 
   GAMMA: 1.0
@@ -74,7 +74,7 @@ TEST:
   SDR_THRESHOLD: [10, 20, 40, 80]
   SDR_UNITS: pixels
   
-  SAVE_HEATMAPS_LANDMARKS_IMG: Flase
+  SAVE_HEATMAPS_LANDMARKS_IMG: False
   SAVE_IMG_LANG_PREDANDTRUE: False
   SAVE_HEATMAPS_NP: True
   
