@@ -22,7 +22,7 @@ MODEL:
     - 512
     - 256
     - 128
-    - 64
+    - 128
   IN_CHANNELS: 1
   ATTENTION: scse
   FREEZE_LAYERS: 2
@@ -50,15 +50,15 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_mar2_14lm_gradaccREDUCE_4096
+OUTPUT_PATH: ./output_OAI_unet_mar6_14lm_4096_bs4
 TRAIN:
-  BATCH_SIZE: 1
-  LR: 0.0001
+  BATCH_SIZE: 4
+  LR: 0.001
   EPOCHS: 1000
   LOSS: nll_across_batch
-  GRAD_ACCUMULATION_STEPS: 16 ## start at this many steps
-  GRAD_ACCUMULATION_STEPS_REDUCE: 100 ## num of epochs to reduce grad accum steps by half 
-  GRAD_ACCUMULATION_STEPS_MIN: 4 ## reduce by half grad accum every x epochs until reaches this min value
+  # GRAD_ACCUMULATION_STEPS: 8 ## start at this many steps
+  # GRAD_ACCUMULATION_STEPS_REDUCE: 100 ## num of epochs to reduce grad accum steps by half 
+  # GRAD_ACCUMULATION_STEPS_MIN: 4 ## reduce by half grad accum every x epochs until reaches this min value
 
   GAMMA: 1.0
   DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
