@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [1024,4096]
+  CACHED_IMAGE_SIZE: [1024,2048]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -56,9 +56,9 @@ TRAIN:
   LR: 0.001
   EPOCHS: 1000
   LOSS: nll_across_batch
-  # GRAD_ACCUMULATION_STEPS: 8 ## start at this many steps
-  # GRAD_ACCUMULATION_STEPS_REDUCE: 100 ## num of epochs to reduce grad accum steps by half 
-  # GRAD_ACCUMULATION_STEPS_MIN: 4 ## reduce by half grad accum every x epochs until reaches this min value
+  GRAD_ACCUMULATION_STEPS: 1 ## start at this many steps
+  GRAD_ACCUMULATION_STEPS_REDUCE: 100 ## num of epochs to reduce grad accum steps by half 
+  GRAD_ACCUMULATION_STEPS_MIN: 4 ## reduce by half grad accum every x epochs until reaches this min value
 
   GAMMA: 1.0
   DELAY_GUMBEL_LOSS: 400 ##number of iterations (each batch iter) of just NLL before you switch to gumbel

@@ -288,7 +288,7 @@ class dataloader(Dataset):
             except:
                 #add _ between L/R and series number
                 if self.dataset_name== 'ddh':
-                    new_name = img_path.split('/')[-1][:-5]+'_'+img_path.split('/')[-1][-5:-4]+'.png'
+                    new_name = img_path.split('/')[-1][:-5]+img_path.split('/')[-1][-5:-4]+'.png'                    
                     image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
                 if self.dataset_name == 'hand':
                     #check if its in a subdirectory (Data Hand Atlas)
