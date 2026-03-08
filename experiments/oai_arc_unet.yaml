@@ -50,7 +50,7 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_mar6_14lm_4096_bs4
+OUTPUT_PATH: ./output_OAI_unet_mar6_14lm_2048_bs4
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
