@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_best.json
+  PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_TEST.json
   IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
   DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
   LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
@@ -76,12 +76,15 @@ DATASET:
 
 OUTPUT_PATH: ./output_ddh_0305_newsplit_0.01466
 TRAIN:
-  BATCH_SIZE: 1
+  BATCH_SIZE: 6
   LR: 0.005
   EPOCHS: 20
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
+  # GRAD_ACCUMULATION_STEPS: 8
+  # GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## num of epochs to reduce grad accum steps by half 
+  # GRAD_ACCUMULATION_STEPS_MIN: 4 ## 
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth

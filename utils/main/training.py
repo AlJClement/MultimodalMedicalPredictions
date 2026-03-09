@@ -9,7 +9,7 @@ from .comparison_metrics import graf_angle_calc
 from .evaluation_helper import evaluation_helper
 from .comparison_metrics import fhc
 from torch.cuda.amp import autocast, GradScaler
-
+import matplotlib.pyplot as plt
 class training():
     def __init__(self, cfg, logger, l2_reg=True):
         self.plot_target = False
@@ -78,7 +78,28 @@ class training():
         
         # Add a config flag in your cfg e.g. cfg.TRAIN.USE_AMP (default True)
         self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
-        self.scaler = GradScaler() if self.use_amp else None
+
+        from torch.amp import GradScaler as AMPGradScaler
+        self.scaler = AMPGradScaler("cuda", init_scale=2**8) if self.use_amp else None
+
+
+        # Early stopping config (optional)
+        es_cfg = getattr(cfg.TRAIN, "EARLY_STOPPING", None)
+        if es_cfg is None:
+            # defaults: disabled
+            self.early_stopping_enabled = False
+            self.early_stopping_patience = 10
+            self.early_stopping_min_delta = 0.0
+            self.early_stopping_mode = 'min'
+        else:
+            self.early_stopping_enabled = True
+            self.early_stopping_patience = 10
+            self.early_stopping_min_delta = 0.5
+            self.early_stopping_mode = 'min'  # 'min' or 'max'
+
+        # initialize internal ES trackers (persist across epochs)
+        self._es_best = None
+        self._es_wait = 0
         pass
 
     def _get_network(self):
@@ -97,189 +118,23 @@ class training():
             for param in layer.parameters():
                 param.requires_grad = False
         return net
-    #def train_meta(self, dataloader, epoch):
-        total_params = sum(p.numel() for p in self.net.parameters())
-        trainable_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
-        print(f"Total params: {total_params}")
-        print(f"Trainable params: {trainable_params}")
-        print(f"Frozen params: {total_params - trainable_params}")
 
-        self.net.train()
-        total_loss = 0.0
-        batches = 0
 
-        # Use accumulation config always (unless it's 1)
-        accum_steps = max(1, getattr(self, "grad_accumulation_steps", 1))
-        if accum_steps > 1:
-            if epoch % 50 == 0 and accum_steps > self.grad_accumulation_steps_min:
-                # compute new value but assign to local var and to attribute consistently
-                new_acc = max(self.grad_accumulation_steps_min, accum_steps // 2)
-                self.grad_accumulation_steps = new_acc
-                accum_steps = new_acc
-                print(f"Reducing gradient accumulation steps to {accum_steps}")
+    def train_meta(self, dataloader, epoch, val_dataloader=None):
+        """
+        Train for one epoch.
 
-            print(f"Gradient accumulation enabled: {accum_steps} steps (effective batch size = {accum_steps * self.bs})")
-
-        # zero grads at epoch start
-        self.optimizer.zero_grad(set_to_none=True)
-
-        epoch_start = datetime.datetime.now()
-        for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(dataloader):
-            batches += 1
-
-            # Move tensors to device (no Variables)
-            data = data.to(self.device, non_blocking=True)
-            target = target.to(self.device, non_blocking=True)
-            meta = meta.to(self.device, non_blocking=True)
-
-            # ---------- Use autocast for mixed precision around forward+loss ----------
-            with autocast(enabled=self.use_amp):  # <<< FIX: ensure autocast is used
-                pred = self.net(data, meta)
-
-                # compute any extra needed values (alphas/classes/fhc) as in your original
-                if self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss:
-                    pred_alphas, pred_classes, target_alphas, target_classes = \
-                        self.class_calculation.get_class_from_output(pred, target, self.pixel_size)
-                if self.add_alphafhc_loss:
-                    pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred, target, self.pixel_size)
-
-                # compute loss (kept same branching as your original)
-                if self.l2_reg:
-                    if self.add_class_loss:
-                        loss = self.loss_func(pred, target, self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes)
-                    elif self.add_alphafhc_loss:
-                        loss = self.loss_func(pred, target, self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
-                    elif self.add_landmark_loss:
-                        loss = self.loss_func(pred, target, self.net, self.gamma)
-                    elif self.add_alpha_loss:
-                        loss = self.loss_func(pred, target, self.net, self.gamma, pred_alphas, target_alphas)
-                    elif self.add_gumbel:
-                        loss = self.loss_func(pred, target, self.net, self.gamma, self.cfg)
-                    else:
-                        loss = self.loss_func(pred, target, self.net, self.gamma)
-                else:
-                    if self.add_class_loss:
-                        loss = self.loss_func(pred, target, self.net, pred_alphas, target_alphas, pred_classes, target_classes, self.gamma)
-                    elif self.add_alpha_loss:
-                        loss = self.loss_func(pred, target, self.net, pred_alphas, target_alphas, self.gamma)
-                    else:
-                        loss = self.loss_func(pred, target, self.net)
-
-            # Make sure loss is a tensor and connected
-            if not isinstance(loss, torch.Tensor):
-                raise RuntimeError("Loss returned not a torch.Tensor — cannot call backward()")
-
-            total_loss += loss.item()
-
-            # scale loss for accumulation then backward
-            loss = loss / accum_steps
-
-            # ---------- backward (scaled when using AMP) ----------
-            if self.use_amp:
-                # scale and backward using GradScaler
-                self.scaler.scale(loss).backward()
-            else:
-                loss.backward()
-
-            # ---------- DEBUG: print grad existence and stats after backward ----------
-            if batch_idx % 100 == 0:
-                grads_exist = [p.grad is not None for p in self.net.parameters() if p.requires_grad]
-                any_grad = any(grads_exist)
-                print(f"[batch {batch_idx}] any_grad after backward: {any_grad}")
-
-                # compute a few grad stats (max and norm) safely
-                max_grad = None
-                total_norm = 0.0
-                found = False
-                for p in self.net.parameters():
-                    if p.requires_grad and p.grad is not None:
-                        try:
-                            g = p.grad.detach()
-                            g_abs_max = g.abs().max().item()
-                            if max_grad is None or g_abs_max > max_grad:
-                                max_grad = g_abs_max
-                            total_norm += float(torch.norm(g).item() ** 2)
-                            found = True
-                        except Exception:
-                            pass
-                if found:
-                    total_norm = total_norm ** 0.5
-                    print(f"[batch {batch_idx}] grad max abs = {max_grad:.6e}, grad norm = {total_norm:.6e}")
-
-            # ---------- optimizer step every accum_steps ----------
-            if (batch_idx + 1) % accum_steps == 0:
-                # OPTIONAL: if you want to clip grads when using AMP, do:
-                # if self.use_amp:
-                #     self.scaler.unscale_(self.optimizer)  # unscale before clipping
-                # torch.nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.net.parameters()), max_norm)
-
-                # print gradient stats just BEFORE the step (optional, helpful)
-                if (batch_idx + 1) % (accum_steps * 10) == 0:  # less frequent to avoid spam
-                    # compute a cheap grad max for logging
-                    max_grad_pre = None
-                    for p in self.net.parameters():
-                        if p.requires_grad and p.grad is not None:
-                            try:
-                                mg = p.grad.abs().max().item()
-                                if max_grad_pre is None or mg > max_grad_pre:
-                                    max_grad_pre = mg
-                            except Exception:
-                                pass
-                    print(f"[batch {batch_idx}] max grad pre-step = {max_grad_pre}")
-
-                if self.use_amp:
-                    # <<< FIX: use scaler.step + scaler.update with AMP
-                    self.scaler.step(self.optimizer)
-                    self.scaler.update()
-                else:
-                    self.optimizer.step()
-
-                # zero grads for next accumulation block
-                self.optimizer.zero_grad(set_to_none=True)
-                print(f"optimizer.step() at batch {batch_idx}")  # help confirm stepping frequency
-
-            # periodic logging (note: loss is the divided version — multiply back for display)
-            if batch_idx % 100 == 0:
-                display_loss = (loss.item() * accum_steps)
-                print(f"Train Epoch: {epoch} [{(batch_idx + 1) * len(data)}/{len(dataloader.dataset)} ({100. * (batch_idx + 1) / len(dataloader):.0f}%)]\tLoss: {display_loss:.6f}", flush=True)
-
-            # cleanup
-            del pred
-            del loss
-            # del pred_alphas etc. if they exist to free memory earlier
-            if 'pred_alphas' in locals():
-                del pred_alphas
-            if 'pred_classes' in locals():
-                del pred_classes
-            if 'target_alphas' in locals():
-                del target_alphas
-            if 'target_classes' in locals():
-                del target_classes
-            if 'pred_fhc' in locals():
-                del pred_fhc
-            if 'target_fhc' in locals():
-                del target_fhc
-
-        # ---------- final step for leftover gradients (AMP-aware) ----------
-        if (batch_idx + 1) % accum_steps != 0:
-            if self.use_amp:
-                # <<< FIX: use scaler.step + scaler.update for final leftover
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
-            else:
-                self.optimizer.step()
-            self.optimizer.zero_grad(set_to_none=True)
-            print("optimizer.step() at final leftover batch")
-
-        av_loss = total_loss / batches
-        print(f"\nTraining Set Average loss: {av_loss:.4f}", flush=True)
-
-        epoch_end = datetime.datetime.now()
-        print('Time taken for epoch = ', epoch_end - epoch_start)
-
-        return av_loss
-
-    def train_meta(self, dataloader, epoch):
+        Args:
+            dataloader: training dataloader
+            epoch: current epoch index (int)
+            val_dataloader: optional validation dataloader (same item structure as train)
+        Returns:
+            av_loss (float) average training loss for this epoch
+        other/also:
+            - updates self.train_losses and self.val_losses lists
+            - updates early stopping state self._es_should_stop (True/False)
+            - saves a plot every 10 epochs to ./train_val_loss_epoch{epoch}.png
+        """
         total_params = sum(p.numel() for p in self.net.parameters())
         trainable_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
         print(f"Total params: {total_params}")
@@ -297,22 +152,19 @@ class training():
                 self.grad_accumulation_steps = new_acc
                 accum_steps = new_acc
                 print(f"Reducing gradient accumulation steps to {accum_steps}")
-
             print(f"Gradient accumulation enabled: {accum_steps} steps (effective batch size = {accum_steps * self.bs})")
 
         # zero grads at epoch start
         self.optimizer.zero_grad(set_to_none=True)
-
         epoch_start = datetime.datetime.now()
+
         for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(dataloader):
             batches += 1
-
-            # Move tensors to device (no Variables)
             data = data.to(self.device, non_blocking=True)
             target = target.to(self.device, non_blocking=True)
             meta = meta.to(self.device, non_blocking=True)
 
-            # ---------- Debug: print micro-batch info ----------
+            # debug prints for micro-batches
             if batch_idx % 10 == 0:
                 print(f"\n--- batch_idx={batch_idx} ---")
                 print(f"data.shape={tuple(data.shape)}, target.shape={tuple(target.shape)}")
@@ -322,27 +174,20 @@ class training():
                     except Exception:
                         print("Could not read scaler scale")
 
-            # ---------- Use autocast for mixed precision around forward+loss ----------
+            # forward + loss under autocast
             with autocast(enabled=self.use_amp):
                 pred = self.net(data, meta)
-                # Debug: check forward outputs
                 if batch_idx % 10 == 0:
-                    try:
-                        print(f"pred.shape={getattr(pred,'shape', 'unknown')}")
-                        # If pred is tensor, print a tiny summary
-                        if isinstance(pred, torch.Tensor):
-                            print(f"pred min={float(pred.detach().min()):.6e}, max={float(pred.detach().max()):.6e}, mean={float(pred.detach().mean()):.6e}")
-                    except Exception as e:
-                        print("Error printing pred stats:", e)
+                    if isinstance(pred, torch.Tensor):
+                        print(f"pred.shape={pred.shape}, pred min={float(pred.detach().min()):.6e}, max={float(pred.detach().max()):.6e}, mean={float(pred.detach().mean()):.6e}")
 
-                # compute any extra needed values
+                # compute targets if needed
                 if self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss:
-                    pred_alphas, pred_classes, target_alphas, target_classes = \
-                        self.class_calculation.get_class_from_output(pred, target, self.pixel_size)
+                    pred_alphas, pred_classes, target_alphas, target_classes = self.class_calculation.get_class_from_output(pred, target, self.pixel_size)
                 if self.add_alphafhc_loss:
                     pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred, target, self.pixel_size)
 
-                # compute loss (kept same branching as your original)
+                # compute main loss (preserves your branching)
                 if self.l2_reg:
                     if self.add_class_loss:
                         loss = self.loss_func(pred, target, self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes)
@@ -364,30 +209,27 @@ class training():
                     else:
                         loss = self.loss_func(pred, target, self.net)
 
-            # Make sure loss is a tensor and connected
+            # sanity checks on loss
             if not isinstance(loss, torch.Tensor):
                 raise RuntimeError("Loss returned not a torch.Tensor — cannot call backward()")
 
-            # Debug: loss checks
             if batch_idx % 10 == 0:
                 try:
-                    print(f"raw loss item = {loss.item():.6e}")
+                    raw_loss = float(loss.item())
+                    pixels = float(data.numel())
+                    print(f"raw loss = {raw_loss:.6e}, loss/pixel = {raw_loss/pixels:.6e}, pixels = {int(pixels)}")
+                    if not torch.isfinite(loss).all():
+                        print(">>>> Loss is not finite (NaN or Inf) at batch", batch_idx)
                 except Exception:
                     print("Could not read loss.item()")
 
-                if not torch.isfinite(loss).all():
-                    print(">>>> Loss is not finite (NaN or Inf) at batch", batch_idx)
-                    # Optional: raise or continue depending on whether you want to stop
-                    # raise RuntimeError("Non-finite loss")
-
             total_loss += loss.item()
 
-            # scale loss for accumulation then backward
+            # scale/divide for accumulation
             loss = loss / accum_steps
 
-            # ---------- backward (scaled when using AMP) ----------
+            # backward (AMP aware)
             if self.use_amp:
-                # Debug: print scale before backward
                 if batch_idx % 50 == 0:
                     try:
                         print("scaler.get_scale() before backward =", self.scaler.get_scale())
@@ -397,13 +239,11 @@ class training():
             else:
                 loss.backward()
 
-            # ---------- DEBUG: print grad existence and stats after backward ----------
+            # debug: grad existence & sample stats
             if batch_idx % 10 == 0:
                 grads_exist = [p.grad is not None for p in self.net.parameters() if p.requires_grad]
                 any_grad = any(grads_exist)
                 print(f"[batch {batch_idx}] any_grad after backward: {any_grad}")
-
-                # compute a few grad stats safely (sample first few params)
                 max_grad = None
                 total_norm = 0.0
                 found = False
@@ -412,7 +252,7 @@ class training():
                     if p.requires_grad and p.grad is not None:
                         try:
                             g = p.grad.detach()
-                            g_abs_max = g.abs().max().item()
+                            g_abs_max = float(g.abs().max())
                             if max_grad is None or g_abs_max > max_grad:
                                 max_grad = g_abs_max
                             total_norm += float(torch.norm(g).item() ** 2)
@@ -428,19 +268,50 @@ class training():
                 else:
                     print(f"[batch {batch_idx}] No gradients found on sampled params after backward")
 
-            # ---------- optimizer step every accum_steps ----------
+            # optimizer step (every accum_steps)
             if (batch_idx + 1) % accum_steps == 0:
                 print(f"[batch {batch_idx}] Performing optimizer step (accum count reached).")
                 if self.use_amp:
-                    # Optional: unscale if you want to clip grads
+                    # unscale so checks/clipping are meaningful
                     try:
-                        # debug: scaler scale before step
-                        print("scaler.get_scale() before step =", self.scaler.get_scale())
-                    except Exception:
-                        pass
-                    # If clipping is used: self.scaler.unscale_(self.optimizer) -> clip -> scaler.step
-                    self.scaler.step(self.optimizer)
-                    self.scaler.update()
+                        self.scaler.unscale_(self.optimizer)
+                    except Exception as e:
+                        print("Warning: scaler.unscale_() failed:", e)
+
+                    # check grads for NaN/Inf or huge values
+                    bad_grad = False
+                    for name, p in self.net.named_parameters():
+                        if not p.requires_grad or p.grad is None:
+                            continue
+                        g = p.grad.detach()
+                        if torch.isnan(g).any() or torch.isinf(g).any():
+                            print(f"NON-FINITE GRAD: {name} min/max = {float(g.min()):.3e}/{float(g.max()):.3e}")
+                            bad_grad = True
+                            break
+
+                    if bad_grad:
+                        # skip optimizer step, let the scaler reduce its scale
+                        print(f"[batch {batch_idx}] Skipping optimizer.step() due to non-finite grads. Calling scaler.update() and zeroing grads.")
+                        try:
+                            self.scaler.update()
+                        except Exception as e:
+                            print("Warning: scaler.update() failed:", e)
+                        self.optimizer.zero_grad(set_to_none=True)
+                    else:
+                        # OPTIONAL: clip grads here if you want (after unscale)
+                        # torch.nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.net.parameters()), max_norm=5.0)
+
+                        try:
+                            self.scaler.step(self.optimizer)
+                        except Exception as e:
+                            print("scaler.step() raised:", e)
+                            self.optimizer.zero_grad(set_to_none=True)
+                            try:
+                                self.scaler.update()
+                            except Exception:
+                                pass
+                        else:
+                            self.scaler.update()
                 else:
                     self.optimizer.step()
 
@@ -448,46 +319,173 @@ class training():
                 self.optimizer.zero_grad(set_to_none=True)
                 print(f"optimizer.step() at batch {batch_idx}")
 
-            # periodic logging (loss is already scaled)
+            # periodic logging
             if batch_idx % 50 == 0:
                 display_loss = (loss.item() * accum_steps)
                 print(f"Train Epoch: {epoch} [{(batch_idx + 1) * len(data)}/{len(dataloader.dataset)} ({100. * (batch_idx + 1) / len(dataloader):.0f}%)]\tLoss: {display_loss:.6f}", flush=True)
 
-            # cleanup
+            # cleanup to free memory early
             del pred
             del loss
-            if 'pred_alphas' in locals():
-                del pred_alphas
-            if 'pred_classes' in locals():
-                del pred_classes
-            if 'target_alphas' in locals():
-                del target_alphas
-            if 'target_classes' in locals():
-                del target_classes
-            if 'pred_fhc' in locals():
-                del pred_fhc
-            if 'target_fhc' in locals():
-                del target_fhc
+            if 'pred_alphas' in locals(): del pred_alphas
+            if 'pred_classes' in locals(): del pred_classes
+            if 'target_alphas' in locals(): del target_alphas
+            if 'target_classes' in locals(): del target_classes
+            if 'pred_fhc' in locals(): del pred_fhc
+            if 'target_fhc' in locals(): del target_fhc
 
-        # ---------- final step for leftover gradients (AMP-aware) ----------
+        # final leftover step (if any)
         if (batch_idx + 1) % accum_steps != 0:
             print("Final leftover optimizer step (not aligned to accum_steps).")
             if self.use_amp:
                 try:
-                    print("scaler.get_scale() before final step =", self.scaler.get_scale())
+                    self.scaler.unscale_(self.optimizer)
                 except Exception:
                     pass
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+                try:
+                    self.scaler.step(self.optimizer)
+                except Exception as e:
+                    print("scaler.step() (final) raised:", e)
+                    try:
+                        self.scaler.update()
+                    except Exception:
+                        pass
+                else:
+                    self.scaler.update()
             else:
                 self.optimizer.step()
             self.optimizer.zero_grad(set_to_none=True)
             print("optimizer.step() at final leftover batch")
 
         av_loss = total_loss / batches
-        print(f"\nTraining Set Average loss: {av_loss:.4f}", flush=True)
-
+        print(f"\nTraining Set Average loss: {av_loss:.6f}", flush=True)
         epoch_end = datetime.datetime.now()
         print('Time taken for epoch = ', epoch_end - epoch_start)
+
+        # === VALIDATION PASS (optional) ===
+        val_loss = None
+        if val_dataloader is not None:
+            was_training = self.net.training
+            self.net.eval()
+            total_val_loss = 0.0
+            val_batches = 0
+            with torch.no_grad():
+                for v_batch_idx, (v_data, v_target, v_landmarks, v_meta, v_id, v_orig_size, v_orig_img) in enumerate(val_dataloader):
+                    v_data = v_data.to(self.device, non_blocking=True)
+                    v_target = v_target.to(self.device, non_blocking=True)
+                    v_meta = v_meta.to(self.device, non_blocking=True)
+
+                    # compute forward (no accumulation on val)
+                    with autocast(enabled=self.use_amp):
+                        v_pred = self.net(v_data, v_meta)
+
+                        # compute any auxiliary targets same as train
+                        if self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss:
+                            v_pred_alphas, v_pred_classes, v_target_alphas, v_target_classes = self.class_calculation.get_class_from_output(v_pred, v_target, self.pixel_size)
+                        if self.add_alphafhc_loss:
+                            v_pred_fhc, v_target_fhc = self.fhc_calc.get_fhc_batches(v_pred, v_target, self.pixel_size)
+
+                        # compute val loss using same branches
+                        if self.l2_reg:
+                            if self.add_class_loss:
+                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma, v_pred_alphas, v_target_alphas, v_pred_classes, v_target_classes)
+                            elif self.add_alphafhc_loss:
+                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma, v_pred_alphas, v_target_alphas, v_pred_classes, v_target_classes, v_pred_fhc, v_target_fhc)
+                            elif self.add_landmark_loss:
+                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma)
+                            elif self.add_alpha_loss:
+                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma, v_pred_alphas, v_target_alphas)
+                            elif self.add_gumbel:
+                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma, self.cfg)
+                            else:
+                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma)
+                        else:
+                            if self.add_class_loss:
+                                v_loss = self.loss_func(v_pred, v_target, self.net, v_pred_alphas, v_target_alphas, v_pred_classes, v_target_classes, self.gamma)
+                            elif self.add_alpha_loss:
+                                v_loss = self.loss_func(v_pred, v_target, self.net, v_pred_alphas, v_target_alphas, self.gamma)
+                            else:
+                                v_loss = self.loss_func(v_pred, v_target, self.net)
+
+                    total_val_loss += float(v_loss.item())
+                    val_batches += 1
+
+            val_loss = total_val_loss / max(1, val_batches)
+            print(f"Validation Set Average loss: {val_loss:.6f}", flush=True)
+            # restore mode
+            if was_training:
+                self.net.train()
+
+        # === RECORD HISTORY ===
+        if not hasattr(self, "train_losses"):
+            self.train_losses = []
+        if not hasattr(self, "val_losses"):
+            self.val_losses = []
+
+        self.train_losses.append(av_loss)
+        # append val loss or nan if no val provided
+        self.val_losses.append(val_loss if val_loss is not None else float("nan"))
+        self.last_val_loss = val_loss
+
+        # === EARLY STOPPING CHECK ===
+        # initialize if first time
+        if self._es_best is None:
+            self._es_best = val_loss if (self.early_stopping_enabled and val_dataloader is not None) else av_loss
+            self._es_wait = 0
+            self._es_should_stop = False
+
+        if self.early_stopping_enabled:
+            # choose metric depending if val available else train
+            metric = val_loss if val_dataloader is not None else av_loss
+            if metric is None:
+                # can't evaluate early stopping without a metric
+                print("Early stopping enabled but no metric available this epoch (val missing). Skipping ES update.")
+                self._es_should_stop = False
+            else:
+                improved = False
+                if self.early_stopping_mode == 'min':
+                    if metric < (self._es_best - self.early_stopping_min_delta):
+                        improved = True
+                else:  # 'max'
+                    if metric > (self._es_best + self.early_stopping_min_delta):
+                        improved = True
+
+                if improved:
+                    self._es_best = metric
+                    self._es_wait = 0
+                    print(f"EarlyStopping: improvement detected (best -> {self._es_best:.6f}). Reset wait.")
+                else:
+                    self._es_wait += 1
+                    print(f"EarlyStopping: no improvement. Wait = {self._es_wait}/{self.early_stopping_patience}")
+                    if self._es_wait >= self.early_stopping_patience:
+                        print("EarlyStopping: patience exceeded. Will request stop.")
+                        self._es_should_stop = True
+
+        else:
+            # early stopping disabled
+            self._es_should_stop = False
+
+        # === PLOTTING every 10 epochs ===
+        if epoch % 10 == 0:
+            try:
+                epochs = list(range(1, len(self.train_losses) + 1))
+                plt.figure(figsize=(8, 5))
+                plt.plot(epochs, self.train_losses, label="train loss")
+                # plot val only where value not nan
+                val_plot_x = [i+1 for i, v in enumerate(self.val_losses) if not (v is None or (isinstance(v, float) and (v != v)))]
+                val_plot_y = [v for v in self.val_losses if not (v is None or (isinstance(v, float) and (v != v)))]
+                if len(val_plot_x) > 0:
+                    plt.plot(val_plot_x, val_plot_y, label="val loss")
+                plt.xlabel("Epoch")
+                plt.ylabel("Loss")
+                plt.title(f"Train/Val Loss (epoch {epoch})")
+                plt.legend()
+                plt.grid(True)
+                fname = f"train_val_loss_epoch{epoch}.png"
+                plt.savefig(fname, bbox_inches="tight")
+                plt.close()
+                print(f"Saved train/val loss plot to {fname}")
+            except Exception as e:
+                print("Plotting failed:", e)
 
         return av_loss
