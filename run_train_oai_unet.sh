@@ -5,12 +5,11 @@
 #SBATCH --clusters=htc
 #SBATCH --partition=long,medium
 #SBATCH --mem-per-cpu=50G
-#SBATCH --gres=gpu:a100:1
-#SBATCH --constraint=80G
+#SBATCH --gres=gpu:1 --constraint=80G
 
 module load Anaconda3/2022.05
 
 source activate /data/coml-oxmedis/kebl7678/yenv
-ls
+
 #run python code
 python ./utils/run_training.py --cfg oai_arc_unet
