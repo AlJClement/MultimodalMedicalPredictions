@@ -34,7 +34,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 2 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [1024,2048]
+  CACHED_IMAGE_SIZE: [1024,4098]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -50,7 +50,7 @@ DATASET:
     ##flip is also now on
 
 
-OUTPUT_PATH: ./output_OAI_unet_mar6_14lm_2048_bs4
+OUTPUT_PATH: ./output_OAI_unet_mar6_14lm_4098_bs4
 TRAIN:
   BATCH_SIZE: 4
   LR: 0.001
