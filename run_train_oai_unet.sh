@@ -6,7 +6,7 @@
 #SBATCH --partition=long,medium
 #SBATCH --mem-per-cpu=50G
 #SBATCH --gres=gpu:1 
-#SBATCH --include=htc-h[053-055]
+#SBATCH --mem-per-gpu=80GB
 
 module load Anaconda3/2022.05
 
