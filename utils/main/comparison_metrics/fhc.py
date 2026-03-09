@@ -47,7 +47,7 @@ class fhc():
         else:
             if self.fhc_type=='EuclideanDistance':
                 print('Euclidan Distance FHC')
-                D = math.dist(fh_1, fh_2)
+                D = math.dist(fh_1, fh_2) 
 
                 x=1
                 y=0
@@ -77,12 +77,17 @@ class fhc():
                 d = fh_2[1]-i
 
             try:
-                FHC = (d/D)
+                FHC = (d/(D))
             except:
                 FHC = 0
 
             if FHC<=0: FHC=0
             if FHC>=1: FHC=1
+
+            if not math.isfinite(FHC):
+                FHC = 0.0
+            else:
+                FHC = max(0.0, min(1.0, FHC))  # optional clamp to [0,1]
 
             return FHC
     

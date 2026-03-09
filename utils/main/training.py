@@ -112,7 +112,7 @@ class training():
                 # initialize internal ES trackers (persist across epochs)
         self._es_best = None
         self._es_wait = 0
-        
+
         pass
 
     def _get_network(self):
@@ -184,6 +184,7 @@ class training():
                 if self.use_amp:
                     try:
                         print("AMP enabled. GradScaler scale =", self.scaler.get_scale())
+                        
                     except Exception:
                         print("Could not read scaler scale")
 
@@ -429,7 +430,6 @@ class training():
             if was_training:
                 self.net.train()
 
-        # === RECORD HISTORY ===
         if not hasattr(self, "train_losses"):
             self.train_losses = []
         if not hasattr(self, "val_losses"):
