@@ -1,12 +1,12 @@
 #!/bin/sh
-#SBATCH --nodes=1
+#SBATCH --N=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=48:00:00
 #SBATCH --cpus-per-task=4
 #SBATCH --clusters=htc
 #SBATCH --partition=long,medium
 #SBATCH --gres=gpu:1
-#SBATCH --nodelist=htc-g[053-060]
+#SBATCH --nodelist=htc-g[060]
 
 module load Anaconda3/2022.05
 
