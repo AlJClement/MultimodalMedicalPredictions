@@ -79,27 +79,40 @@ class training():
         # Add a config flag in your cfg e.g. cfg.TRAIN.USE_AMP (default True)
         self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
 
+
+        # AMP toggle + GradScaler (modern API). Use device type (e.g., 'cuda' or 'cpu').
         from torch.amp import GradScaler as AMPGradScaler
-        self.scaler = AMPGradScaler("cuda", init_scale=2**8) if self.use_amp else None
+        device_type = self.device.type  # 'cuda' or 'cpu'
+        self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
+        self.scaler = AMPGradScaler(device_type, init_scale=2**8) if self.use_amp else None
 
-
-        # Early stopping config (optional)
-        es_cfg = getattr(cfg.TRAIN, "EARLY_STOPPING", None)
-        if es_cfg is None:
+        # Early stopping config (parse safely from cfg)
+        # Support both attribute-style and dict-style EARLY_STOPPING config.
+        if hasattr(cfg.TRAIN, "EARLY_STOPPING") and cfg.TRAIN.EARLY_STOPPING is not None:
+            es_cfg = cfg.TRAIN.EARLY_STOPPING
+            # If it's a dict-like:
+            if isinstance(es_cfg, dict):
+                self.early_stopping_enabled = bool(es_cfg.get("ENABLED", False))
+                self.early_stopping_patience = int(es_cfg.get("PATIENCE", 10))
+                self.early_stopping_min_delta = float(es_cfg.get("MIN_DELTA", 0.0))
+                self.early_stopping_mode = es_cfg.get("MODE", "min")
+            else:
+                # attribute style fallback
+                self.early_stopping_enabled = bool(getattr(cfg.TRAIN, "EARLY_STOPPING_ENABLED", False))
+                self.early_stopping_patience = int(getattr(cfg.TRAIN, "EARLY_STOPPING_PATIENCE", 10))
+                self.early_stopping_min_delta = float(getattr(cfg.TRAIN, "EARLY_STOPPING_MIN_DELTA", 0.0))
+                self.early_stopping_mode = getattr(cfg.TRAIN, "EARLY_STOPPING_MODE", "min")
+        else:
             # defaults: disabled
             self.early_stopping_enabled = False
             self.early_stopping_patience = 10
             self.early_stopping_min_delta = 0.0
             self.early_stopping_mode = 'min'
-        else:
-            self.early_stopping_enabled = True
-            self.early_stopping_patience = 10
-            self.early_stopping_min_delta = 0.5
-            self.early_stopping_mode = 'min'  # 'min' or 'max'
-
-        # initialize internal ES trackers (persist across epochs)
+        
+                # initialize internal ES trackers (persist across epochs)
         self._es_best = None
         self._es_wait = 0
+        
         pass
 
     def _get_network(self):
@@ -299,7 +312,7 @@ class training():
                         self.optimizer.zero_grad(set_to_none=True)
                     else:
                         # OPTIONAL: clip grads here if you want (after unscale)
-                        # torch.nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.net.parameters()), max_norm=5.0)
+                        torch.nn.utils.clip_grad_norm_(filter(lambda p: p.requires_grad, self.net.parameters()), max_norm=5.0)
 
                         try:
                             self.scaler.step(self.optimizer)

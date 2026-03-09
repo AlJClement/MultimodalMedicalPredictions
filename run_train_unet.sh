@@ -1,12 +1,11 @@
 #!/bin/sh
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=12:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --time=15:00:00
 #SBATCH --clusters=htc
-#SBATCH --partition=short
-#SBATCH --mem-per-cpu=100G
-
+#SBATCH --partition=long,medium
+#SBATCH --mem-per-cpu=50G
+#SBATCH --gres=gpu:rtx8000:1
 
 module load Anaconda3
 source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
