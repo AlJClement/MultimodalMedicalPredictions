@@ -92,7 +92,6 @@ class training():
         self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
         # self.scaler = AMPGradScaler(device_type, init_scale=2**8) if self.use_amp else None
         self.scaler = AMPGradScaler(
-            device_type=device_type,
             init_scale=2**8
         ) if self.use_amp else None
         # Early stopping config (parse safely from cfg)
