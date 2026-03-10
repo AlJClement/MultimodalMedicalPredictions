@@ -23,8 +23,11 @@ class training():
         self.cfg = cfg
         self.model_init = model_init(cfg)
         self.logger = logger
+        self.device = torch.device(cfg.MODEL.DEVICE)
+        
         #get specific models/feature loaders
         self.net, self.net_param = self.model_init.get_net_from_conf()
+        self.net = self.net.to(self.device)
         self.l2_reg=l2_reg
         if l2_reg == True:
             self.loss_func = eval('L2RegLoss(cfg.TRAIN.LOSS)')
@@ -74,26 +77,24 @@ class training():
         self.momentum = 0.99
         self.momentum_0 = 0.90
         self.optimizer = self._get_optimizer(self.net)
-        self.device = torch.device(cfg.MODEL.DEVICE)
         # if cfg.MODEL.DEVICE == 'cuda':
         #     torch.cuda.empty_cache()
-        self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
+        self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE, device=self.device)
 
         self.grad_accumulation_steps = cfg.TRAIN.GRAD_ACCUMULATION_STEPS
         self.grad_accumulation_steps_min = cfg.TRAIN.GRAD_ACCUMULATION_STEPS_MIN ## min value to stop
         self.grad_accumulation_steps_reduce = cfg.TRAIN.GRAD_ACCUMULATION_STEPS_REDUCE
-        
-        # Add a config flag in your cfg e.g. cfg.TRAIN.USE_AMP (default True)
-        self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
-
 
         # AMP toggle + GradScaler (modern API). Use device type (e.g., 'cuda' or 'cpu').
         device_type = self.device.type  # 'cuda' or 'cpu'
         self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
         # self.scaler = AMPGradScaler(device_type, init_scale=2**8) if self.use_amp else None
-        self.scaler = AMPGradScaler(
-            init_scale=2**8
-        ) if self.use_amp else None
+        if self.use_amp and torch.cuda.is_available() and self.device.type == 'cuda':
+            from torch.cuda.amp import GradScaler as AMPGradScaler
+            self.scaler = AMPGradScaler(init_scale=2**8)
+        else:
+            self.scaler = None
+            self.use_amp = False
         # Early stopping config (parse safely from cfg)
         # Support both attribute-style and dict-style EARLY_STOPPING config.
         if hasattr(cfg.TRAIN, "EARLY_STOPPING") and cfg.TRAIN.EARLY_STOPPING is not None:
