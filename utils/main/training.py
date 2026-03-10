@@ -90,8 +90,11 @@ class training():
         # AMP toggle + GradScaler (modern API). Use device type (e.g., 'cuda' or 'cpu').
         device_type = self.device.type  # 'cuda' or 'cpu'
         self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
-        self.scaler = AMPGradScaler(device_type, init_scale=2**8) if self.use_amp else None
-
+        # self.scaler = AMPGradScaler(device_type, init_scale=2**8) if self.use_amp else None
+        self.scaler = AMPGradScaler(
+            device_type=device_type,
+            init_scale=2**8
+        ) if self.use_amp else None
         # Early stopping config (parse safely from cfg)
         # Support both attribute-style and dict-style EARLY_STOPPING config.
         if hasattr(cfg.TRAIN, "EARLY_STOPPING") and cfg.TRAIN.EARLY_STOPPING is not None:
