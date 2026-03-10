@@ -6,6 +6,8 @@ from datetime import datetime
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use("Agg")
 class evaluation_helper():
     def __init__(self) -> None:
         self.output_path = './check_gumbel'

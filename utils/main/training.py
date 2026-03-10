@@ -1,6 +1,8 @@
 import torch.nn as nn
 import torch
 from torch.autograd import Variable
+from torch.cuda.amp import autocast
+from torch.cuda.amp import GradScaler
 import datetime
 from .model_init import model_init
 from .loss import *
@@ -8,8 +10,13 @@ torch.cuda.empty_cache()
 from .comparison_metrics import graf_angle_calc
 from .evaluation_helper import evaluation_helper
 from .comparison_metrics import fhc
-from torch.cuda.amp import autocast, GradScaler
+from torch.cuda.amp import autocast
+from torch.cuda.amp import GradScaler as AMPGradScaler
+
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.use("Agg")
+
 class training():
     def __init__(self, cfg, logger, l2_reg=True):
         self.plot_target = False
@@ -81,7 +88,6 @@ class training():
 
 
         # AMP toggle + GradScaler (modern API). Use device type (e.g., 'cuda' or 'cpu').
-        from torch.amp import GradScaler as AMPGradScaler
         device_type = self.device.type  # 'cuda' or 'cpu'
         self.use_amp = getattr(cfg.TRAIN, "USE_AMP", True)
         self.scaler = AMPGradScaler(device_type, init_scale=2**8) if self.use_amp else None
@@ -180,13 +186,13 @@ class training():
             # debug prints for micro-batches
             if batch_idx % 10 == 0:
                 print(f"\n--- batch_idx={batch_idx} ---")
-                print(f"data.shape={tuple(data.shape)}, target.shape={tuple(target.shape)}")
-                if self.use_amp:
-                    try:
-                        print("AMP enabled. GradScaler scale =", self.scaler.get_scale())
+                # print(f"data.shape={tuple(data.shape)}, target.shape={tuple(target.shape)}")
+                # if self.use_amp:
+                #     try:
+                #         print("AMP enabled. GradScaler scale =", self.scaler.get_scale())
                         
-                    except Exception:
-                        print("Could not read scaler scale")
+                #     except Exception:
+                #         print("Could not read scaler scale")
 
             # forward + loss under autocast
             with autocast(enabled=self.use_amp):

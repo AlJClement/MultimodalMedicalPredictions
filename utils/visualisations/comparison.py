@@ -4,6 +4,8 @@ import seaborn as sns
 from sklearn.manifold import TSNE
 import pandas as pd
 import scipy
+import matplotlib
+matplotlib.use("Agg")
 class comparison():
     def __init__(self,dataset_name, output_path, calc_name):
         self.dataset_name = dataset_name
