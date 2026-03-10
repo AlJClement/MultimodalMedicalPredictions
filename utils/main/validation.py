@@ -273,7 +273,7 @@ class validation():
 
                 ## Save images for validation
                 if self.save_img == True:
-                    for i in range(self.bs):
+                    for i in range(orig_img.shape[0]):
                         #get original image and resize predictions to image size
                         _data = orig_img[i].numpy()
                         _pred, _target =self.resize_backto_original(pred[i], target[i], orig_size[i])
