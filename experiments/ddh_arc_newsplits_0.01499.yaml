@@ -1,12 +1,17 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_TEST.json
-  IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
-  DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
-  LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
-  META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
- # DATASET_NAME: ddh
+  # PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_best.json
+  # IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+  # DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+  # LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
+  # META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
 
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.15_0.15_0.7_0.01499_best.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  DCMS:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+ # DATASET_NAME: ddh
 
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1.json  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/imgs 
@@ -74,17 +79,18 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0309_newsplit_0.01466
+OUTPUT_PATH: ./output_ddh_0309_newsplit_0.01499
 TRAIN:
-  BATCH_SIZE: 1
-  LR: 0.0001
-  EPOCHS: 50
+  BATCH_SIZE: 8
+  LR: 0.001
+  EPOCHS: 100
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
-  GRAD_ACCUMULATION_STEPS: 16
-  GRAD_ACCUMULATION_STEPS_REDUCE: 10 ## num of epochs to reduce grad accum steps by half 
-  GRAD_ACCUMULATION_STEPS_MIN: 2 ## 
+  # GRAD_ACCUMULATION_STEPS: 8
+  # GRAD_ACCUMULATION_STEPS_REDUCE: 5 ## num of epochs to reduce grad accum steps by half 
+  # GRAD_ACCUMULATION_STEPS_MIN: 2 ## 
+
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
@@ -96,7 +102,7 @@ TEST:
   SDR_THRESHOLD: [7.1, 14.2, 28.45, 56.9]
   SDR_UNITS: pixels
   
-  SAVE_HEATMAPS_LANDMARKS_IMG: True
+  SAVE_HEATMAPS_LANDMARKS_IMG: False
   SAVE_IMG_LANG_PREDANDTRUE: True
-  SAVE_HEATMAPS_NP: True
+  SAVE_HEATMAPS_NP: False
   
