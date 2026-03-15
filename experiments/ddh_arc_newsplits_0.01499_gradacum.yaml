@@ -6,7 +6,7 @@ INPUT_PATHS:
   # LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
   # META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
 
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.15_0.15_0.7_0.01499_best.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.7_0.15_0.15_0.01499_best.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
@@ -79,17 +79,17 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0309_newsplit_0.01499
+OUTPUT_PATH: ./output_ddh_0309_newsplit_0.01499_GRADaccum
 TRAIN:
-  BATCH_SIZE: 8
+  BATCH_SIZE: 1
   LR: 0.005
-  EPOCHS: 100
+  EPOCHS: 50
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
-  # GRAD_ACCUMULATION_STEPS: 16
-  # GRAD_ACCUMULATION_STEPS_REDUCE: 20 ## num of epochs to reduce grad accum steps by half 
-  # GRAD_ACCUMULATION_STEPS_MIN: 2 ## 
+  GRAD_ACCUMULATION_STEPS: 16
+  GRAD_ACCUMULATION_STEPS_REDUCE: 10 ## num of epochs to reduce grad accum steps by half 
+  GRAD_ACCUMULATION_STEPS_MIN: 2 ## 
 
 
 TEST:

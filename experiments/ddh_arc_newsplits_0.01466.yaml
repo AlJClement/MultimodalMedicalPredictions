@@ -82,7 +82,7 @@ DATASET:
 OUTPUT_PATH: ./output_ddh_0309_newsplit_0.01466
 TRAIN:
   BATCH_SIZE: 
-  LR: 0.001
+  LR: 0.005
   EPOCHS: 50
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.0
