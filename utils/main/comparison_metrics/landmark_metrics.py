@@ -28,7 +28,7 @@ class landmark_metrics():
         
 
     def get_eres(self, pred, pred_map, true=None, true_map=None, pixelsize=[1.0,1.0]):        
-        # Expected radial error, can handle multiple inputs or one.
+        # Expected radial error, can erhandle multiple inputs or one.
         # explains how uncertian a model is based on heatmap output and predicted landmark
         # if pred output is dim x,y add channel for threshold to work
         if len(pred.shape) == 2:

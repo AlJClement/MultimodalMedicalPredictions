@@ -74,17 +74,17 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0309_newsplit_0.01466
+OUTPUT_PATH: ./output_ddh_0312_newsplit_0.01466
 TRAIN:
   BATCH_SIZE: 1
-  LR: 0.0001
-  EPOCHS: 50
+  LR: 0.005
+  EPOCHS: 40
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
   GRAD_ACCUMULATION_STEPS: 16
   GRAD_ACCUMULATION_STEPS_REDUCE: 10 ## num of epochs to reduce grad accum steps by half 
-  GRAD_ACCUMULATION_STEPS_MIN: 2 ## 
+  GRAD_ACCUMULATION_STEPS_MIN: 4 ## 
 
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth

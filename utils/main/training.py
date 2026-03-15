@@ -102,20 +102,20 @@ class training():
             # If it's a dict-like:
             if isinstance(es_cfg, dict):
                 self.early_stopping_enabled = bool(es_cfg.get("ENABLED", False))
-                self.early_stopping_patience = int(es_cfg.get("PATIENCE", 10))
-                self.early_stopping_min_delta = float(es_cfg.get("MIN_DELTA", 0.0))
+                self.early_stopping_patience = int(es_cfg.get("PATIENCE", 3))
+                self.early_stopping_min_delta = float(es_cfg.get("MIN_DELTA", 1.0))
                 self.early_stopping_mode = es_cfg.get("MODE", "min")
             else:
                 # attribute style fallback
                 self.early_stopping_enabled = bool(getattr(cfg.TRAIN, "EARLY_STOPPING_ENABLED", False))
-                self.early_stopping_patience = int(getattr(cfg.TRAIN, "EARLY_STOPPING_PATIENCE", 10))
-                self.early_stopping_min_delta = float(getattr(cfg.TRAIN, "EARLY_STOPPING_MIN_DELTA", 0.0))
+                self.early_stopping_patience = int(getattr(cfg.TRAIN, "EARLY_STOPPING_PATIENCE", 3))
+                self.early_stopping_min_delta = float(getattr(cfg.TRAIN, "EARLY_STOPPING_MIN_DELTA", 1.0))
                 self.early_stopping_mode = getattr(cfg.TRAIN, "EARLY_STOPPING_MODE", "min")
         else:
             # defaults: disabled
             self.early_stopping_enabled = False
-            self.early_stopping_patience = 10
-            self.early_stopping_min_delta = 0.0
+            self.early_stopping_patience = 3
+            self.early_stopping_min_delta = 1.0
             self.early_stopping_mode = 'min'
         
                 # initialize internal ES trackers (persist across epochs)
@@ -487,26 +487,52 @@ class training():
             # early stopping disabled
             self._es_should_stop = False
 
-        # === PLOTTING every 10 epochs ===
         if epoch % 10 == 0:
             try:
                 epochs = list(range(1, len(self.train_losses) + 1))
+
                 plt.figure(figsize=(8, 5))
-                plt.plot(epochs, self.train_losses, label="train loss")
-                # plot val only where value not nan
-                val_plot_x = [i+1 for i, v in enumerate(self.val_losses) if not (v is None or (isinstance(v, float) and (v != v)))]
-                val_plot_y = [v for v in self.val_losses if not (v is None or (isinstance(v, float) and (v != v)))]
+
+                # ---- Training loss (filter NaNs just in case) ----
+                train_plot_x = []
+                train_plot_y = []
+                for i, v in enumerate(self.train_losses):
+                    if v is None:
+                        continue
+                    if isinstance(v, float) and (v != v):  # NaN check
+                        continue
+                    train_plot_x.append(i + 1)
+                    train_plot_y.append(v)
+
+                if len(train_plot_x) > 0:
+                    plt.plot(train_plot_x, train_plot_y, label="Train Loss")
+
+                # ---- Validation loss ----
+                val_plot_x = []
+                val_plot_y = []
+                for i, v in enumerate(self.val_losses):
+                    if v is None:
+                        continue
+                    if isinstance(v, float) and (v != v):
+                        continue
+                    val_plot_x.append(i + 1)
+                    val_plot_y.append(v)
+
                 if len(val_plot_x) > 0:
-                    plt.plot(val_plot_x, val_plot_y, label="val loss")
+                    plt.plot(val_plot_x, val_plot_y, label="Val Loss")
+
                 plt.xlabel("Epoch")
                 plt.ylabel("Loss")
                 plt.title(f"Train/Val Loss (epoch {epoch})")
                 plt.legend()
                 plt.grid(True)
-                fname = f"train_val_loss_epoch{epoch}.png"
+
+                fname = self.cfg.OUTPUT_PATH + f"/train_val_loss_epoch{epoch}.png"
                 plt.savefig(fname, bbox_inches="tight")
                 plt.close()
+
                 print(f"Saved train/val loss plot to {fname}")
+
             except Exception as e:
                 print("Plotting failed:", e)
 
