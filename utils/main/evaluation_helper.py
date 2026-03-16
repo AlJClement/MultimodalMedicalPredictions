@@ -311,7 +311,7 @@ class evaluation_helper():
     def calculate_ere(self, heatmap, predicted_point_scaled, pixel_size, significant_pixel_cutoff=0.05):
         normalized_heatmap = heatmap / np.max(heatmap)
         normalized_heatmap = np.where(normalized_heatmap > significant_pixel_cutoff, normalized_heatmap, 0)
-        normalized_heatmap /= np.sum(normalized_heatmap)
+        normalized_heatmap /= (np.sum(normalized_heatmap) + 1e-8)
         indices = np.argwhere(normalized_heatmap)
         ere = 0
         for twod_idx in indices:
@@ -331,6 +331,37 @@ class evaluation_helper():
         flattened_heatmap = np.ndarray.flatten(heatmap)
         hottest_idx = np.argmax(flattened_heatmap)
         return np.flip(np.array(np.unravel_index(hottest_idx, [w, h])))
+
+    def get_topk_probability(self, heatmap, k=50, remove_percent=5):
+        """
+        Sum of the K largest probabilities after removing the lowest values.
+
+        Steps:
+        1. Remove lowest `remove_percent` of values
+        2. Set them to zero
+        3. Renormalize heatmap
+        4. Compute Top-K sum
+
+        heatmap: (H, W)
+        """
+
+        hm = heatmap.copy()
+
+        # ---- remove lowest values ----
+        threshold = np.percentile(hm, remove_percent)
+        hm[hm < threshold] = 0.0
+
+        # ---- renormalize ----
+        total = hm.sum()
+        if total > 0:
+            hm = hm / total
+
+        # ---- Top-K probability ----
+        flat = hm.flatten()
+        k = min(k, flat.size)
+        topk = np.partition(flat, -k)[-k:]
+
+        return float(np.sum(topk))
     
     def evaluate_for_tempscale(self, heatmap_stack, landmarks_per_annotator, pixels_sizes):
         batch_size, no_of_key_points, w, h = heatmap_stack.shape
@@ -358,6 +389,8 @@ class evaluation_helper():
                 expected_error_per_landmark[i, j] = self.calculate_ere(heatmap_stack[i, j] , predicted_point_scaled,
                                                                 pixel_size_for_sample)
 
+                ###mode  is just top value of heatmap
+                ### get_topk_probability(self, heatmap, k=10, remove_percent=5) maybe use this to get top k
                 mode_probability_per_landmark[i, j] = self.get_mode_probability(heatmap_stack[i, j])
 
         return radial_error_per_landmark, expected_error_per_landmark, mode_probability_per_landmark

@@ -121,24 +121,19 @@ class TemperatureScaling(nn.Module):
     def reliability_diagram(self, all_radial_errors, all_mode_probabilities, save_path, tol,
                             n_of_bins=10, x_max=0.2, do_not_save=False):
         """
-        Safer reliability diagram that preserves original colors:
-        - Accuracy bars: blue
+        - Accuracy: blue
         - Confidence bars: lime (alpha=0.5)
-        - Edge color: black
-
         Returns:
         (ece, avg_conf_for_each_bin, avg_acc_for_each_bin, count_for_each_bin)
         """
         # ensure inputs are numpy arrays
         all_mode_probabilities = np.asarray(all_mode_probabilities).ravel()
         all_radial_errors = np.asarray(all_radial_errors).ravel()
+        x_min, x_max = min(all_mode_probabilities), max(all_mode_probabilities)
 
         # bins fixed on [0,1] (confidence lies in [0,1]).
-        bins = np.linspace(0.0, 1.0, n_of_bins + 1)
+        bins = np.linspace(0.0, x_max, n_of_bins + 1)
         widths = bins[1:] - bins[:-1]
-
-        # plotting x-range: allow optional zoom but do not change bin edges
-        plot_xmax = float(x_max) if (0.0 < x_max <= 1.0) else 1.0
 
         # determine correctness per sample using area-based tolerance
         radius = math.sqrt((tol**2) / math.pi)
@@ -184,9 +179,11 @@ class TemperatureScaling(nn.Module):
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
         plt.grid(zorder=0)
-        plt.xlim(0.0, plot_xmax)
-        plt.ylim(0.0, 1.0)  # accuracy/confidence are in [0,1]
-
+        # plt.xlim(0.0, plot_xmax)
+        # plt.ylim(0.0, 1.0)  # accuracy/confidence are in [0,1]
+        plt.xlim(x_min,x_max)
+        y_max = max(avg_acc_for_each_bin)
+        plt.ylim(0,y_max)
         # Accuracy bars (blue)
         ax.bar(bins[:-1], avg_acc_for_each_bin, align='edge', width=widths,
                color='blue', edgecolor='black', label='Accuracy', zorder=3)
@@ -204,8 +201,7 @@ class TemperatureScaling(nn.Module):
         plt.close()
 
         return ece, avg_conf_for_each_bin, avg_acc_for_each_bin, count_for_each_bin
-    # Primary API: fit
-    # ----------------------
+    
     def fit(self,
             fine_tune_loader: torch.utils.data.DataLoader,
             val_loader: Optional[torch.utils.data.DataLoader] = None,
@@ -292,6 +288,61 @@ class TemperatureScaling(nn.Module):
             self._patched_scale = True
 
         return final_temp
+    import numpy as np
+
+    def normalize_channels_95(self,out_np):
+        """
+        out_np: numpy array with shape (1, C, H, W)
+        returns normalized array same shape
+        """
+        
+        out = out_np.copy().astype(np.float32)
+        B, C, H, W = out.shape
+        
+        for c in range(C):
+            channel = out[0, c]
+
+            # 95% confidence interval
+            lo, hi = np.percentile(channel, [2.5, 97.5])
+            # mask inside range
+            mask = (channel >= lo) & (channel <= hi)
+
+            if np.any(mask):
+                vmin = channel[mask].min()
+                vmax = channel[mask].max()
+            else:
+                vmin, vmax = 0.0, 0.0
+
+            # remove outside values
+            channel[~mask] = 0.0
+
+            # normalize
+            if vmax > vmin:
+                channel = (channel - vmin) / (vmax - vmin)
+            else:
+                channel = np.zeros_like(channel)
+
+            out[0, c] = np.clip(channel, 0, 1)
+
+        return out
+
+    def normalize_to_probability(self, out_np):
+        """
+        Convert out_np shaped (B, C, H, W) logits/probs to valid probability maps:
+        For each (b,c): if sum>0 -> map /= sum, else leave zeros.
+        Returns array same shape, dtype float32.
+        """
+        out = out_np.astype(np.float32).copy()
+        B, C, H, W = out.shape
+        for b in range(B):
+            for c in range(C):
+                arr = out[b, c]
+                s = float(arr.sum())
+                if s > 0.0:
+                    out[b, c] = arr / s
+                else:
+                    out[b, c] = np.zeros_like(arr)
+        return out
 
     def fit_with_evaluation(self,
                             train_loader: torch.utils.data.DataLoader,
@@ -400,7 +451,8 @@ class TemperatureScaling(nn.Module):
             mode_prob_all = []
 
             with torch.no_grad():
-                for batch in val_loader:
+                for batch_idx, batch in enumerate(val_loader):
+                    print(f"Validation batch: {batch_idx}")
                     if isinstance(batch, (list, tuple)) and len(batch) >= 2:
                         inputs = batch[0].to(device)
                         targets = batch[1].to(device)
@@ -423,53 +475,20 @@ class TemperatureScaling(nn.Module):
                     probs = self.two_d_softmax(scaled)
                     val_losses.append(float(self.heatmap_nll(scaled, targets).item()))
 
-                    # ---------- replace peak confidence with mass-within-radius ----------
-                    Bv, Cv, Hv, Wv = probs.shape
-                    flat = probs.view(Bv, Cv, -1)
+                    probs = probs.detach().cpu().numpy()
 
-                    # old/diagnostic: peak_conf = flat.max(dim=2).values.detach().cpu().numpy().ravel()
-
-                    # compute mass within radius (resolution-invariant)
-                    radius_pixels = 30 # max(1, int(round(tol_px)))
-                    probs_np = probs.detach().cpu().numpy()
-                    yy, xx = np.meshgrid(np.arange(Hv), np.arange(Wv), indexing='ij')
-
-                    masses = []
-                    for b in range(Bv):
-                        for c in range(Cv):
-                            hm = probs_np[b, c]
-                            mode_idx = np.unravel_index(int(np.argmax(hm)), hm.shape)
-                            dy = yy - mode_idx[0]
-                            dx = xx - mode_idx[1]
-                            mask = (dx * dx + dy * dy) <= (radius_pixels ** 2)
-                            masses.append(float(hm[mask].sum()))
-                    conf_topk = np.array(masses)  # shape (Bv*Cv,)
-
-                    # Prepare probs for evaluation_helper (previously had p95 clipping — kept commented)
-                    out_np = probs.cpu().numpy()
-                    eps = 1e-12
-
-                    # (commented) optional clipping block preserved for reference
-                    # for b in range(out_np.shape[0]):
-                    #     for c in range(out_np.shape[1]):
-                    #         hm = out_np[b, c]
-                    #         nz = hm[hm > 0]
-                    #         if nz.size == 0:
-                    #             continue
-                    #         p95 = np.percentile(nz, 95)
-                    #         hm = np.where(hm >= p95, hm, 0)
-                    #         s = hm.sum()
-                    #         if s <= 0:
-                    #             continue
-                    #         hm = hm / s
-                    #         out_np[b, c] = hm
+                    # prepare heatmaps for evaluation or landmark/ere error
+                    out_np = probs
 
                     landmarks = targets.detach().cpu().numpy()
-                    radial_errors, _, _ = evaluation_helper().evaluate_for_tempscale(out_np, landmarks, self.cfg.DATASET.PIXEL_SIZE)
-                    radial_flat = radial_errors.ravel()  # (B*C,)
+                    radial_errors, _, mp = evaluation_helper().evaluate_for_tempscale(
+                        out_np,
+                        landmarks,
+                        self.cfg.DATASET.PIXEL_SIZE
+                    )
 
-                    # append per-batch arrays so we can concat after full validation pass
-                    mode_prob_all.append(conf_topk)
+                    radial_flat = radial_errors.ravel()
+                    mode_prob_all.append(mp)
                     radial_all.append(radial_flat)
 
             # --- After iterating all validation batches: flatten, sanitize, compute ECE once ---
@@ -512,7 +531,7 @@ class TemperatureScaling(nn.Module):
                 plot_path = os.path.join(save_dir, f"reliability_epoch_{epoch+1}.png")
                 ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram(radial_flat, mode_flat,
                                                                                plot_path, tol_px,
-                                                                               n_of_bins=chosen_bins, x_max=1.0, do_not_save=False)
+                                                                               n_of_bins=chosen_bins, x_max=0.2, do_not_save=False)
                 if logger: logger.info("Saved reliability diagram to %s (ECE=%.4f)", plot_path, ece)
 
                 # Save model if ECE improved

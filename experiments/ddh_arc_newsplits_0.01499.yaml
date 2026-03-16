@@ -83,7 +83,7 @@ OUTPUT_PATH: ./output_ddh_0309_newsplit_0.01499
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.005
-  EPOCHS: 50
+  EPOCHS: 40
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
