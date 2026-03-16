@@ -5,6 +5,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --clusters=htc
 #SBATCH --mem-per-cpu=50G
+#SBATCH --gres=gpu:rtx8000:1
 
 module load Anaconda3/2022.05
 

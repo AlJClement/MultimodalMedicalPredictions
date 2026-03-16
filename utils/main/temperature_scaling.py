@@ -451,45 +451,112 @@ class TemperatureScaling(nn.Module):
             mode_prob_all = []
 
             with torch.no_grad():
+                # precompute things once
+                pix_size = np.array(self.cfg.DATASET.PIXEL_SIZE)  # if you need pixel scaling later
+                device = next(self.model.parameters()).device
+
+                val_losses = []
+                radial_all = []
+                mode_prob_all = []
+
                 for batch_idx, batch in enumerate(val_loader):
-                    print(f"Validation batch: {batch_idx}")
+                    # Optional: remove or throttle prints for speed
+                    # print(f"Validation batch: {batch_idx}")
+
                     if isinstance(batch, (list, tuple)) and len(batch) >= 2:
-                        inputs = batch[0].to(device)
-                        targets = batch[1].to(device)
+                        inputs = batch[0].to(device, non_blocking=True)
+                        targets = batch[1].to(device, non_blocking=True)  # assume heatmaps
+                        # if you have metadata with coords, use it instead of argmax on targets
                         meta = batch[3] if len(batch) > 3 else None
                     else:
                         raise RuntimeError("val_loader batch format not recognized; expected (input, target, ...).")
 
+                    # forward
                     try:
                         out = self.model(inputs) if meta is None else self.model(inputs, meta)
                     except TypeError:
                         out = self.model(inputs)
 
+                    # apply temperature (reuse same code)
                     if hasattr(self.model, "scale") and callable(getattr(self.model, "scale")):
                         scaled = self.model.scale(out)
                     else:
                         temp = F.softplus(self.model.temperatures) + 1e-6
-                        temp = temp.view(1, -1, 1, 1)
+                        temp = temp.view(1, -1, 1, 1)   # shape (1, C, 1, 1)
                         scaled = out / temp
 
-                    probs = self.two_d_softmax(scaled)
+                    # NLL on GPU (still fine)
                     val_losses.append(float(self.heatmap_nll(scaled, targets).item()))
 
-                    probs = probs.detach().cpu().numpy()
+                    # compute probs on GPU (keep as torch tensor)
+                    # two_d_softmax likely does softmax over H*W per-channel; implement inline for speed if needed
+                    # Here we try to use your function if it accepts tensors; if not, inline:
+                    try:
+                        probs_t = self.two_d_softmax(scaled)  # expect torch.Tensor (B,C,H,W)
+                        if not isinstance(probs_t, torch.Tensor):
+                            probs_t = torch.from_numpy(probs_t).to(device)
+                    except Exception:
+                        # inline 2D softmax: (B,C,H,W) -> softmax over last two dims
+                        B, C, H, W = scaled.shape
+                        probs_t = torch.softmax(scaled.view(B, C, -1), dim=-1).view(B, C, H, W)
 
-                    # prepare heatmaps for evaluation or landmark/ere error
-                    out_np = probs
+                    # --- Vectorized extraction of mode (max prob) and predicted coords ---
+                    # mode_prob: max value per (B,C)
+                    B, C, H, W = probs_t.shape
+                    probs_flat = probs_t.view(B, C, -1)                 # (B, C, H*W)
+                    mode_vals, mode_idx = torch.max(probs_flat, dim=-1) # both (B, C)
 
-                    landmarks = targets.detach().cpu().numpy()
-                    radial_errors, _, mp = evaluation_helper().evaluate_for_tempscale(
-                        out_np,
-                        landmarks,
-                        self.cfg.DATASET.PIXEL_SIZE
-                    )
+                    # convert flat index to (x,y)
+                    mode_idx = mode_idx.long()
+                    ys = (mode_idx // W).to(torch.float32)
+                    xs = (mode_idx % W).to(torch.float32)
+                    pred_coords = torch.stack([xs, ys], dim=-1)         # (B, C, 2) in heatmap pixel space
 
-                    radial_flat = radial_errors.ravel()
-                    mode_prob_all.append(mp)
-                    radial_all.append(radial_flat)
+                    # --- obtain GT coords ---
+                    # Option A: if targets are heatmaps, argmax them to get GT coords
+                    if targets is not None and targets.dim() == 4:
+                        tgt_flat = targets.view(B, C, -1)
+                        _, tgt_idx = torch.max(tgt_flat, dim=-1)
+                        tgt_ys = (tgt_idx // W).to(torch.float32)
+                        tgt_xs = (tgt_idx % W).to(torch.float32)
+                        gt_coords = torch.stack([tgt_xs, tgt_ys], dim=-1)  # (B, C, 2)
+                    else:
+                        # If you already have explicit (x,y) coordinates in meta, compute gt_coords from meta here
+                        raise RuntimeError("Expected targets as heatmaps to extract GT coords. If you have GT coords already, modify this block.")
+
+                    # --- compute radial errors (Euclidean) on GPU ---
+                    diffs = pred_coords - gt_coords           # (B, C, 2)
+                    dists = torch.norm(diffs, dim=-1)        # (B, C) distances in pixel units (heatmap resolution)
+                    # If your pixel scaling differs, multiply by pixel size here, e.g. dists *= pix_size[0]
+
+                    # append results (move small tensors to CPU once)
+                    radial_all.append(dists.cpu().numpy())     # keep per-batch arrays, small-ish
+                    mode_prob_all.append(mode_vals.cpu().numpy())
+
+                # after loop: concatenate
+                radial_all = np.concatenate(radial_all, axis=0)      # shape (N_samples, C)
+                mode_prob_all = np.concatenate(mode_prob_all, axis=0)  # shape (N_samples, C)
+
+                # flatten as your downstream code expects
+                radial_flat = radial_all.ravel()
+                mode_flat = mode_prob_all.ravel()
+
+                # now you can compute reliability / ece using your existing helper:
+                # e.g. valid_mask = np.isfinite(radial_flat)
+                valid_mask = np.isfinite(radial_flat)
+                mode_valid = mode_flat[valid_mask]
+                radial_valid = radial_flat[valid_mask]
+
+                # rest of your code: convert to correctness, plotting, etc.
+                plot_path = os.path.join(save_dir, f"reliability_epoch_{epoch+1}.png")
+                correctness = (radial_valid <= tol_px).astype(int)
+                ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram_and_ece(
+                    mode_valid, correctness, n_bins, plot_path,
+                    title=f"Epoch {epoch+1} Reliability (tol={tol_px}px)"
+                )
+
+                # val_nll
+                val_nll = float(np.mean(val_losses)) if val_losses else float("nan")
 
             # --- After iterating all validation batches: flatten, sanitize, compute ECE once ---
             val_nll = float(np.mean(val_losses)) if val_losses else float("nan")
