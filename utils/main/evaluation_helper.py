@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use("Agg")
+from scipy.special import softmax
+
 class evaluation_helper():
     def __init__(self) -> None:
         self.output_path = './check_gumbel'
@@ -305,7 +307,9 @@ class evaluation_helper():
         return  predicted_points
         
     def get_mode_probability(self, heatmap):
-        return np.max(heatmap)
+        flat = heatmap.ravel()
+        probs = softmax(flat)  
+        return np.max(probs)
 
 
     def calculate_ere(self, heatmap, predicted_point_scaled, pixel_size, significant_pixel_cutoff=0.05):

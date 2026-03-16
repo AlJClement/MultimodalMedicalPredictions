@@ -343,6 +343,63 @@ class TemperatureScaling(nn.Module):
                 else:
                     out[b, c] = np.zeros_like(arr)
         return out
+    
+    def get_center_window_probability(self,
+            heatmap: torch.Tensor,
+            radius: int = 1, ## how many pixels outwards to check - make same as plot
+            remove_percent: float = 5.0, ### removes all zeros in heatmap and rescales 
+        ) -> torch.Tensor:
+            """
+            heatmap: (B, C, H, W)
+            radius : int, pixel radius around the center to include (radius=1 -> 3x3)
+            remove_percent: float in [0,100), percent of lowest values to zero-out per channel
+
+            Returns:
+                Tensor of shape (B, C) with the sum of probabilities inside the center window
+            """
+
+            if heatmap.dim() != 4:
+                raise ValueError("heatmap must be (B, C, H, W)")
+
+            hm = heatmap.clone()
+
+            B, C, H, W = hm.shape
+            device = hm.device
+            dtype = hm.dtype
+
+            # compute per-channel threshold across spatial dims
+            # shape (B, C, 1, 1) to broadcast
+            flat = hm.view(B, C, -1)
+            q = remove_percent / 100.0
+            if q <= 0:
+                threshold = torch.full((B, C, 1, 1), float("-inf"), device=device, dtype=dtype)
+            elif q >= 1:
+                threshold = torch.full((B, C, 1, 1), float("inf"), device=device, dtype=dtype)
+            else:
+                # torch.quantile supports dim for recent PyTorch; use dim=2 on flattened
+                threshold_vals = torch.quantile(flat, q, dim=2)          # shape (B, C)
+                threshold = threshold_vals.view(B, C, 1, 1)              # broadcastable
+
+            # zero-out below threshold
+            hm = torch.where(hm < threshold, torch.zeros_like(hm), hm)
+
+            # renormalize per (B,C)
+            total = hm.sum(dim=(2, 3), keepdim=True)   # shape (B, C, 1, 1)
+            nonzero = total > 0
+            hm = torch.where(nonzero, hm / total, hm)  # keep zeros when total==0
+
+            # center window coordinates (clamped to image bounds)
+            cy = H // 2
+            cx = W // 2
+            y0 = max(0, cy - radius)
+            y1 = min(H, cy + radius + 1)   # python slice end-exclusive
+            x0 = max(0, cx - radius)
+            x1 = min(W, cx + radius + 1)
+
+            # sum over the center window
+            center_sum = hm[:, :, y0:y1, x0:x1].sum(dim=(2, 3))  # shape (B, C)
+
+            return center_sum
 
     def fit_with_evaluation(self,
                             train_loader: torch.utils.data.DataLoader,
@@ -460,8 +517,7 @@ class TemperatureScaling(nn.Module):
                 mode_prob_all = []
 
                 for batch_idx, batch in enumerate(val_loader):
-                    # Optional: remove or throttle prints for speed
-                    # print(f"Validation batch: {batch_idx}")
+                    #print(f"Validation batch: {batch_idx}")
 
                     if isinstance(batch, (list, tuple)) and len(batch) >= 2:
                         inputs = batch[0].to(device, non_blocking=True)
@@ -502,18 +558,18 @@ class TemperatureScaling(nn.Module):
 
                     # --- Vectorized extraction of mode (max prob) and predicted coords ---
                     # mode_prob: max value per (B,C)
-                    B, C, H, W = probs_t.shape
-                    probs_flat = probs_t.view(B, C, -1)                 # (B, C, H*W)
-                    mode_vals, mode_idx = torch.max(probs_flat, dim=-1) # both (B, C)
+                    mode_vals = self.get_center_window_probability(probs_t, radius=1, remove_percent=5)
 
                     # convert flat index to (x,y)
+                    B, C, H, W = probs_t.shape
+                    probs_flat = probs_t.view(B, C, -1)
+                    _, mode_idx = torch.max(probs_flat, dim=-1)
                     mode_idx = mode_idx.long()
                     ys = (mode_idx // W).to(torch.float32)
                     xs = (mode_idx % W).to(torch.float32)
                     pred_coords = torch.stack([xs, ys], dim=-1)         # (B, C, 2) in heatmap pixel space
 
-                    # --- obtain GT coords ---
-                    # Option A: if targets are heatmaps, argmax them to get GT coords
+                    # targets are heatmaps, argmax them to get GT coords
                     if targets is not None and targets.dim() == 4:
                         tgt_flat = targets.view(B, C, -1)
                         _, tgt_idx = torch.max(tgt_flat, dim=-1)
@@ -524,8 +580,8 @@ class TemperatureScaling(nn.Module):
                         # If you already have explicit (x,y) coordinates in meta, compute gt_coords from meta here
                         raise RuntimeError("Expected targets as heatmaps to extract GT coords. If you have GT coords already, modify this block.")
 
-                    # --- compute radial errors (Euclidean) on GPU ---
-                    diffs = pred_coords - gt_coords           # (B, C, 2)
+                    # --- compute radial errors (Euclidean) on GPU - multiply by pixel size to get mm away
+                    diffs = (pred_coords - gt_coords)*torch.tensor(pix_size).to(self.device)           # (B, C, 2)
                     dists = torch.norm(diffs, dim=-1)        # (B, C) distances in pixel units (heatmap resolution)
                     # If your pixel scaling differs, multiply by pixel size here, e.g. dists *= pix_size[0]
 
@@ -549,14 +605,9 @@ class TemperatureScaling(nn.Module):
 
                 # rest of your code: convert to correctness, plotting, etc.
                 plot_path = os.path.join(save_dir, f"reliability_epoch_{epoch+1}.png")
-                correctness = (radial_valid <= tol_px).astype(int)
-                ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram_and_ece(
-                    mode_valid, correctness, n_bins, plot_path,
-                    title=f"Epoch {epoch+1} Reliability (tol={tol_px}px)"
+                ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram(
+                    radial_valid, mode_valid, plot_path, tol_px ,n_bins
                 )
-
-                # val_nll
-                val_nll = float(np.mean(val_losses)) if val_losses else float("nan")
 
             # --- After iterating all validation batches: flatten, sanitize, compute ECE once ---
             val_nll = float(np.mean(val_losses)) if val_losses else float("nan")

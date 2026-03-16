@@ -6,7 +6,6 @@
 #SBATCH --clusters=htc
 #SBATCH --partition=long,medium
 #SBATCH --gres=gpu:1
-#SBATCH --nodelist=htc-g[084]
 
 module load Anaconda3/2022.05
 
