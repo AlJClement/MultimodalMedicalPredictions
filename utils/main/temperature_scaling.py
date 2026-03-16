@@ -346,8 +346,8 @@ class TemperatureScaling(nn.Module):
     
     def get_center_window_probability(self,
             heatmap: torch.Tensor,
-            radius: int = 1, ## how many pixels outwards to check - make same as plot
-            remove_percent: float = 5.0, ### removes all zeros in heatmap and rescales 
+            radius: int = 2, ## how many pixels outwards to check - make same as plot
+            remove_percent: float = 10.0, ### removes all zeros in heatmap and rescales 
         ) -> torch.Tensor:
             """
             heatmap: (B, C, H, W)
@@ -427,8 +427,7 @@ class TemperatureScaling(nn.Module):
         device = device or self.device
         os.makedirs(save_dir, exist_ok=True)
         self.model = self.model.to(device)
-        tol_px = self.cfg.DATASET.PIXEL_SIZE[0] * tol_px
-
+        
         # ensure temperature parameter present (vector per-channel)
         if not hasattr(self.model, "temperatures"):
             C = self.cfg.DATASET.NUM_LANDMARKS
@@ -604,6 +603,7 @@ class TemperatureScaling(nn.Module):
                 radial_valid = radial_flat[valid_mask]
 
                 # rest of your code: convert to correctness, plotting, etc.
+                tol_px = tol_px *self.cfg.DATASET.PIXEL_SIZE[0]
                 plot_path = os.path.join(save_dir, f"reliability_epoch_{epoch+1}.png")
                 ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram(
                     radial_valid, mode_valid, plot_path, tol_px ,n_bins
