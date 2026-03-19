@@ -79,7 +79,7 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0316_newsplit_0.01499_GRADaccum
+OUTPUT_PATH: ./output_ddh_0316_newsplit_0.01499_gradaccum
 TRAIN:
   BATCH_SIZE: 1
   LR: 0.005
