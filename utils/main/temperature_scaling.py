@@ -119,7 +119,7 @@ class TemperatureScaling(nn.Module):
         return loss
     
     def reliability_diagram(self, all_radial_errors, all_mode_probabilities, save_path, tol,
-                            n_of_bins=10, x_max=0.2, do_not_save=False):
+                            n_of_bins=20, x_max=0.2, do_not_save=False):
         """
         - Accuracy: blue
         - Confidence bars: lime (alpha=0.5)
@@ -134,6 +134,7 @@ class TemperatureScaling(nn.Module):
         # bins fixed on [0,1] (confidence lies in [0,1]).
         bins = np.linspace(0.0, x_max, n_of_bins + 1)
         widths = bins[1:] - bins[:-1]
+        # tol=3
 
         # determine correctness per sample using area-based tolerance
         radius = math.sqrt((tol**2) / math.pi)
@@ -346,8 +347,8 @@ class TemperatureScaling(nn.Module):
     
     def get_center_window_probability(self,
             heatmap: torch.Tensor,
-            radius: int = 2, ## how many pixels outwards to check - make same as plot
-            remove_percent: float = 10.0, ### removes all zeros in heatmap and rescales 
+            radius: int = 0, ## how many pixels outwards to check - make same as plot
+            keep_frac_input: float = 0.005 #emoves all zeros in heatmap and rescales 
         ) -> torch.Tensor:
             """
             heatmap: (B, C, H, W)
@@ -361,43 +362,113 @@ class TemperatureScaling(nn.Module):
             if heatmap.dim() != 4:
                 raise ValueError("heatmap must be (B, C, H, W)")
 
+            # work on a copy
             hm = heatmap.clone()
 
             B, C, H, W = hm.shape
             device = hm.device
             dtype = hm.dtype
+            npx = H * W
 
-            # compute per-channel threshold across spatial dims
-            # shape (B, C, 1, 1) to broadcast
-            flat = hm.view(B, C, -1)
-            q = remove_percent / 100.0
-            if q <= 0:
-                threshold = torch.full((B, C, 1, 1), float("-inf"), device=device, dtype=dtype)
-            elif q >= 1:
-                threshold = torch.full((B, C, 1, 1), float("inf"), device=device, dtype=dtype)
+            # normalize and broadcast keep_percent -> keep_frac (shape (B,C))
+            if isinstance(keep_frac_input, torch.Tensor):
+                kf = keep_frac_input.to(device=device, dtype=dtype)
+                if kf.dim() == 1 and kf.numel() == C:
+                    # per-channel: expand to (B,C)
+                    keep_frac = kf.unsqueeze(0).expand(B, C).contiguous()
+                elif kf.shape == (B, C):
+                    keep_frac = kf
+                else:
+                    raise ValueError("keep_percent tensor shape must be (C,) or (B,C)")
+                
+            elif isinstance(keep_frac_input, (list, tuple)):
+                arr = torch.tensor(keep_frac_input, device=device, dtype=dtype)
+                if arr.numel() == C:
+                    keep_frac = arr.unsqueeze(0).expand(B, C).contiguous()
+                elif arr.numel() == B * C:
+                    keep_frac = arr.view(B, C).to(device=device, dtype=dtype)
+                else:
+                    raise ValueError("keep_percent list/tuple must be length C or B*C")
             else:
-                # torch.quantile supports dim for recent PyTorch; use dim=2 on flattened
-                threshold_vals = torch.quantile(flat, q, dim=2)          # shape (B, C)
-                threshold = threshold_vals.view(B, C, 1, 1)              # broadcastable
+                # scalar (float or int)
+                keep_frac = torch.full((B, C), float(keep_frac_input), device=device, dtype=dtype)
 
-            # zero-out below threshold
-            hm = torch.where(hm < threshold, torch.zeros_like(hm), hm)
+            # clamp to [0,1]
+            keep_frac = keep_frac.clamp(min=0.0, max=1.0)
 
-            # renormalize per (B,C)
-            total = hm.sum(dim=(2, 3), keepdim=True)   # shape (B, C, 1, 1)
+            # if keep_frac <= 0 -> keep none; keep_frac >=1 -> keep all
+            k = torch.clamp((keep_frac * float(npx)).round().to(torch.long), min=0, max=npx)  # (B,C) ints
+
+            # If every k is the same we could do topk; but we handle varying k by sorting once per map.
+            flat = hm.view(B, C, -1)                          # (B,C,N)
+            # sort descending so index (k-1) gives the k-th largest
+            vals_sorted, _ = flat.sort(dim=2, descending=True)  # (B,C,N)
+
+            # prepare index tensor of shape (B,C,1) with positions = k-1 (clamped)
+            # for k==0 we'll set threshold to +inf; for k==npx we'll set threshold = 0 (no subtraction)
+            idx = (k - 1).clamp(min=0, max=npx - 1).unsqueeze(-1)  # (B,C,1)
+
+            # gather threshold candidates
+            thr_candidates = vals_sorted.gather(2, idx).squeeze(-1)  # (B,C)
+
+            # build threshold_vals with special cases:
+            # - if k == 0 -> threshold = +inf (keeps nothing)
+            # - if k == npx -> threshold = 0.0 (keep all, subtract nothing)
+            threshold_vals = thr_candidates.clone()
+            threshold_vals = torch.where(k == 0, torch.full_like(threshold_vals, float("inf")), threshold_vals)
+            threshold_vals = torch.where(k == npx, torch.zeros_like(threshold_vals), threshold_vals)
+
+            # reshape to broadcastable (B,C,1,1)
+            threshold = threshold_vals.view(B, C, 1, 1)
+
+            # SUBTRACTIVE soft-threshold: keep gradients inside region
+            # subtract threshold, clamp at zero; this preserves continuous heatmap structure
+            hm = (hm - threshold).clamp(min=0.0)
+
+            # renormalize per (B,C) channel so kept pixels sum to 1 (maps with zero mass stay zero)
+            total = hm.sum(dim=(2, 3), keepdim=True)  # (B,C,1,1)
             nonzero = total > 0
-            hm = torch.where(nonzero, hm / total, hm)  # keep zeros when total==0
+            hm_norm = hm / total.clamp(min=1e-12)
+            hm = torch.where(nonzero, hm_norm, hm)
 
-            # center window coordinates (clamped to image bounds)
-            cy = H // 2
-            cx = W // 2
-            y0 = max(0, cy - radius)
-            y1 = min(H, cy + radius + 1)   # python slice end-exclusive
-            x0 = max(0, cx - radius)
-            x1 = min(W, cx + radius + 1)
+            #         # plt dbug
+            # before = heatmap[0, 0].detach().cpu()
+            # after = hm[0, 0].detach().cpu()
 
-            # sum over the center window
-            center_sum = hm[:, :, y0:y1, x0:x1].sum(dim=(2, 3))  # shape (B, C)
+            # fig, ax = plt.subplots(1, 2, figsize=(8,4))
+
+            # ax[0].imshow(before, origin="lower")
+            # ax[0].set_title("before")
+            # ax[0].axis("off")
+
+            # ax[1].imshow(after, origin="lower")
+            # ax[1].set_title("after")
+            # ax[1].axis("off")
+
+            # plt.savefig("./tmp.png", bbox_inches="tight", dpi=150)
+
+            # -------------------------
+            # If radius == 0 -> center_sum is the per-(B,C) max value.
+            # Otherwise: find max location per (B,C) and sum values in a square window
+            # centered at that max with radius `radius` (clamped to image bounds).
+            if radius == 0:
+                center_sum = hm.view(B, C, -1).max(dim=2).values    # shape (B, C)
+            else:
+                # argmax indices (flat index into H*W)
+                flat_idx = hm.view(B, C, -1).argmax(dim=2)          # shape (B, C)
+                ys = (flat_idx // W).to(torch.long)                 # shape (B, C)
+                xs = (flat_idx % W).to(torch.long)                  # shape (B, C)
+
+                center_sum = torch.zeros((B, C), device=device, dtype=dtype)
+                for b in range(B):
+                    for c in range(C):
+                        y = int(ys[b, c].item())
+                        x = int(xs[b, c].item())
+                        y0 = max(0, y - radius)
+                        y1 = min(H, y + radius + 1)   # end-exclusive
+                        x0 = max(0, x - radius)
+                        x1 = min(W, x + radius + 1)   # end-exclusive
+                        center_sum[b, c] = hm[b, c, y0:y1, x0:x1].sum()
 
             return center_sum
 
@@ -409,7 +480,7 @@ class TemperatureScaling(nn.Module):
                             lr: float = 1e-2,
                             weight_decay: float = 0.0,
                             tol_px: float = 1.0, ## num pixels
-                            n_bins: int = 10,
+                            n_bins: int = 20,
                             device: Optional[torch.device] = None,
                             logger: Optional[Any] = None,
                             csv_name: str = "temperature_scaling_history.csv") -> Dict[str, Any]:
@@ -556,8 +627,24 @@ class TemperatureScaling(nn.Module):
                         probs_t = torch.softmax(scaled.view(B, C, -1), dim=-1).view(B, C, H, W)
 
                     # --- Vectorized extraction of mode (max prob) and predicted coords ---
-                    # mode_prob: max value per (B,C)
-                    mode_vals = self.get_center_window_probability(probs_t, radius=1, remove_percent=5)
+                    # # mode_prob: max value per (B,C)
+
+                    # H_orig, W_orig = 768, 1024
+
+                    # probs_t = F.interpolate(
+                    #     probs_t,
+                    #     size=(H_orig, W_orig),
+                    #     mode='bilinear',
+                    #     align_corners=False
+                    # )
+                    # targets = F.interpolate(
+                    #     targets,
+                    #     size=(H_orig, W_orig),
+                    #     mode='bilinear',
+                    #     align_corners=False
+                    # )
+
+                    mode_vals = self.get_center_window_probability(probs_t, radius=0)
 
                     # convert flat index to (x,y)
                     B, C, H, W = probs_t.shape
@@ -579,8 +666,8 @@ class TemperatureScaling(nn.Module):
                         # If you already have explicit (x,y) coordinates in meta, compute gt_coords from meta here
                         raise RuntimeError("Expected targets as heatmaps to extract GT coords. If you have GT coords already, modify this block.")
 
-                    # --- compute radial errors (Euclidean) on GPU - multiply by pixel size to get mm away
-                    diffs = (pred_coords - gt_coords)*torch.tensor(pix_size).to(self.device)           # (B, C, 2)
+                    # --- compute radial errors (Euclidean) on GPU - keep in pixel size
+                    diffs = (pred_coords - gt_coords)#*torch.tensor(pix_size).to(self.device)           # (B, C, 2)
                     dists = torch.norm(diffs, dim=-1)        # (B, C) distances in pixel units (heatmap resolution)
                     # If your pixel scaling differs, multiply by pixel size here, e.g. dists *= pix_size[0]
 
@@ -603,7 +690,7 @@ class TemperatureScaling(nn.Module):
                 radial_valid = radial_flat[valid_mask]
 
                 # rest of your code: convert to correctness, plotting, etc.
-                tol_px = tol_px *self.cfg.DATASET.PIXEL_SIZE[0]
+                
                 plot_path = os.path.join(save_dir, f"reliability_epoch_{epoch+1}.png")
                 ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram(
                     radial_valid, mode_valid, plot_path, tol_px ,n_bins

@@ -5,8 +5,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --clusters=htc
 #SBATCH --partition=long,medium
-#SBATCH --gres=gpu:rtx8000:1
-
+#SBATCH --gres=gpu:v100:1
 
 module load Anaconda3/2022.05
 
