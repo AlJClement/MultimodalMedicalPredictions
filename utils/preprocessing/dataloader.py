@@ -27,6 +27,7 @@ class dataloader(Dataset):
     def __init__(self, cfg, set, subset=None) -> None:
         #paths
         self.cfg=cfg
+        self.partition_size_test = cfg.DATASET.PARTITION_SIZE_TEST
 
         if subset != None:
             self.subset=subset
@@ -90,7 +91,7 @@ class dataloader(Dataset):
         return
 
     
-    def get_partition(self):
+    def get_partition(self): ### make partition size not none if you want to sample
         # open partition
         if self.partition_file_path:
             partition_file = open(self.partition_file_path)
@@ -148,6 +149,10 @@ class dataloader(Dataset):
                 annotation_dic[key]=[]
 
             for i in partition_dict:
+                if self.partition_size_test != None:
+                    partition_dict[i] = partition_dict[i][:self.partition_size_test]
+                else:
+                    pass
                 for id in partition_dict[i]:
 
                     if self.cfg_combine_reviewers==False:
