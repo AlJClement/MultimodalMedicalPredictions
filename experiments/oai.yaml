@@ -1,6 +1,6 @@
 INPUT_PATHS:
   DATASET_NAME: oai
-  PARTITION: /experiments/datasets-in-use/multimodal_datasets/oai/partition_0.7_0.30_0.00000.json
+  PARTITION: /experiments/datasets-in-use/multimodal_datasets/oai/partition_0.85_0.15_0.00000.json
   IMAGES: /experiments/datasets-in-use/multimodal_datasets/oai/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /experiments/datasets-in-use/multimodal_datasets/oai/txt
   META_PATH: /experiments/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
@@ -24,7 +24,7 @@ MODEL:
     - 128
     - 64
   IN_CHANNELS: 1
-  ATTENTION: scse
+  ATTENTION: None
   FREEZE_LAYERS: 2
 
 DATASET:
@@ -32,9 +32,9 @@ DATASET:
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 14
   COMBINE_REVIEWERS: False 
-  SIGMA: 2 #if sigma is NONE no guassian applied
+  SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE:  [1024,2048] #[512,512]
+  CACHED_IMAGE_SIZE: [512,512]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -48,7 +48,7 @@ DATASET:
     COARSE_SALTANDPEPPER: 0.0 #percent of all pixels that will be dropped
     SOME_OF: 2 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
     ##flip is also now on
-
+  # PARTITION_SIZE_TEST: 4 ## remove if not a test
 
 OUTPUT_PATH: ./output_OAI_14
 TRAIN:
@@ -60,8 +60,8 @@ TRAIN:
   DELAY_GUMBEL_LOSS: 1 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
   TAU_DECAY: 0.0 ## each iter will decay tau by this amount 
   TAU: 1.0 ##initial tau for gumbel loss, will decay each iter by TAU_DECAY until it reaches 0.5
-  GRAD_ACCUMULATION_STEPS: 8 ## start at this many steps
-  GRAD_ACCUMULATION_STEPS_REDUCE: 1 ## num of epochs to reduce grad accum steps by half 
+  GRAD_ACCUMULATION_STEPS: 16 ## start at this many steps
+  GRAD_ACCUMULATION_STEPS_REDUCE: 10 ## num of epochs to reduce grad accum steps by half 
   GRAD_ACCUMULATION_STEPS_MIN: 4 ## reduce by half grad accum every x epochs until reaches this min value
 
 TEST:

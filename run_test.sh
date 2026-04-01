@@ -12,4 +12,4 @@ source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
 
 #run python code
 
-python ./utils/run_test.py --cfg ddh_denoise_journalpaper_arc
+python ./utils/run_test.py --cfg ddh_arc_newsplits_0.01466_gradacum

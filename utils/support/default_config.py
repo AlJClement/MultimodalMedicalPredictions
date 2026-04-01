@@ -81,6 +81,7 @@ C.TRAIN.TAU=1.0 ## each iter will decay tau by this amount
 C.TRAIN.TAU_DECAY=0.01 ## each iter will decay tau by this amount 
 C.TRAIN.EARLY_STOPPING = True ## make none if you dont want it - defaults are in training
 
+
 C.TEST = CN()
 C.TEST.NETWORK = ''
 C.TEST.COMPARISON_METRICS = []
