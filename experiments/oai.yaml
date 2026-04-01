@@ -41,8 +41,8 @@ DATASET:
   #all of the defined parameters allow for a range of the factors below
     ROTATION_FACTOR: 1 #affine
     INTENSITY_FACTOR: 2.0 #multiplicaiton factor
-    SF: 0.1 #affine scale factor
-    TRANSLATION_X: 0.1 #affine
+    SF: 0.2 #affine scale factor
+    TRANSLATION_X: 0.5 #affine
     TRANSLATION_Y: 0.1 #affine
     SPECKLE_NOISE: 0
     COARSE_SALTANDPEPPER: 0.0 #percent of all pixels that will be dropped
