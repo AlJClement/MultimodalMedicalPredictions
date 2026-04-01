@@ -65,8 +65,9 @@ class test():
 
         self.output_path = cfg.OUTPUT_PATH
         self.net = self.load_network(self.output_path+cfg.TEST.NETWORK)
-
-        self.save_img_path = cfg.OUTPUT_PATH +'/test'
+        self.test_output_dir_name = self._resolve_test_output_dir_name(cfg)
+        self.test_output_path = os.path.join(cfg.OUTPUT_PATH, self.test_output_dir_name)
+        self.save_img_path = self.test_output_path
         if self.save_txt == True:
             if not os.path.isdir(self.output_path+'/'+'txt/'):
                 os.makedirs(self.output_path+'/'+'txt/')
@@ -97,6 +98,23 @@ class test():
         self.augmenter = Augmentation(self.cfg)
         self.eval_helper = evaluation_helper.evaluation_helper()
         self.landmark_metric_helper = landmark_metrics()
+
+    def _resolve_test_output_dir_name(self, cfg):
+        candidate_text = " ".join([
+            str(getattr(cfg.INPUT_PATHS, "PARTITION", "")),
+            str(getattr(cfg.INPUT_PATHS, "IMAGES", "")),
+            str(getattr(cfg.INPUT_PATHS, "LABELS", "")),
+            str(getattr(cfg.INPUT_PATHS, "META_PATH", "")),
+            str(getattr(cfg.INPUT_PATHS, "DCMS", "")),
+        ]).lower()
+
+        if "mkuh" in candidate_text:
+            return "test_mkuh"
+        if "rnoh" in candidate_text:
+            return "test_rnoh"
+        if "retuve" in candidate_text:
+            return "test_retuve"
+        return "test"
 
     def _debug_print(self, *args, **kwargs):
         if self.debug_testing:
@@ -422,8 +440,8 @@ class test():
         if not values:
             return None
 
-        os.makedirs(os.path.join(self.output_path, "test"), exist_ok=True)
-        plot_path = os.path.join(self.output_path, "test", f"{prefix}_bar_metrics.png")
+        os.makedirs(self.test_output_path, exist_ok=True)
+        plot_path = os.path.join(self.test_output_path, f"{prefix}_bar_metrics.png")
 
         fig, ax = plt.subplots(figsize=(6, 4))
         bars = ax.bar(labels, values, color=["#2f6db3", "#2a9d8f", "#e9c46a"])
@@ -458,8 +476,8 @@ class test():
         if not values:
             return None, None
 
-        os.makedirs(os.path.join(self.output_path, "test"), exist_ok=True)
-        plot_path = os.path.join(self.output_path, "test", filename)
+        os.makedirs(self.test_output_path, exist_ok=True)
+        plot_path = os.path.join(self.test_output_path, filename)
         mean_value = float(np.mean(values))
 
         fig, ax = plt.subplots(figsize=(8, 4.5))
@@ -517,8 +535,8 @@ class test():
             else:
                 labels.append(f"{threshold:g} px")
 
-        os.makedirs(os.path.join(self.output_path, "test"), exist_ok=True)
-        plot_path = os.path.join(self.output_path, "test", "sdr_all_landmarks.png")
+        os.makedirs(self.test_output_path, exist_ok=True)
+        plot_path = os.path.join(self.test_output_path, "sdr_all_landmarks.png")
         mean_value = float(np.mean(values))
 
         fig, ax = plt.subplots(figsize=(8, 4.5))
@@ -552,8 +570,8 @@ class test():
         if np.isnan(numeric_value):
             return None
 
-        os.makedirs(os.path.join(self.output_path, "test"), exist_ok=True)
-        plot_path = os.path.join(self.output_path, "test", filename)
+        os.makedirs(self.test_output_path, exist_ok=True)
+        plot_path = os.path.join(self.test_output_path, filename)
 
         fig, ax = plt.subplots(figsize=(4.5, 4.5))
         ax.scatter([0], [numeric_value], color=color, s=140, zorder=3)
@@ -1173,7 +1191,7 @@ class test():
                 
                     if self.label_dir == '':
                         if self.save_img_landmarks_predandtrue == True:
-                            visuals(self.output_path+'/test/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points[0], _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True)
+                            visuals(os.path.join(self.test_output_path, id[i]), self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points[0], _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True)
                             if self.dataset_name == 'oai_nolandmarks':
                                 true_hkas.append(_target_points[0].detach().cpu().numpy())
                     else:
@@ -1271,7 +1289,7 @@ class test():
                     )
         total_time = datetime.datetime.now() - start_time
         self._debug_print('Time taken for epoch = ', total_time)
-        comparison_csv_path = self.output_path+'/test/comparison_metrics.csv'
+        comparison_csv_path = os.path.join(self.test_output_path, 'comparison_metrics.csv')
         comparison_df.to_csv(comparison_csv_path)
         self._debug_print('Saving Results to comparison_metrics.csv')
 
@@ -1374,7 +1392,7 @@ class test():
             comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
             comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
 
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true',self.output_path, loc=self.test_output_dir_name)._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement FHC: {}".format(class_agreement))
             plot_path = self._save_class_agreement_bar_plot("class_agreement_fhc", class_agreement)
             if plot_path is not None:
@@ -1384,12 +1402,12 @@ class test():
             ## Concensus of FHC and Graf
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', groups=[('i'),('ii','iii/iv')])
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv',self.output_path, loc=self.test_output_dir_name)._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
             plot_path = self._save_class_agreement_bar_plot("class_agreement_graf_fhc_i_vs_ii_iii_iv", class_agreement)
             if plot_path is not None:
                 wandb_plot_paths["class_agreement_graf_fhc_i_vs_ii_iii_iv_bar"] = plot_path
-            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
+            class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv',self.output_path, loc=self.test_output_dir_name)._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
             plot_path = self._save_class_agreement_bar_plot("class_agreement_graf_fhc_i_ii_vs_iii_iv", class_agreement)
             if plot_path is not None:
