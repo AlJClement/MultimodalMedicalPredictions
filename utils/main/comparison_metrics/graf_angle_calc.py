@@ -146,12 +146,9 @@ class graf_angle_calc():
             alpha = a_rad*180/np.pi
             if alpha > 90:
                 alpha = 180-alpha
-                print(alpha)
         except:
             a_rad = 0.0
             alpha = 0.0
-            print(np.dot(v_baseline,v_bonyroof),(np.linalg.norm(v_baseline),np.linalg.norm(v_bonyroof)))
-            print('arc cos did not work')
 
 
         #b_rad = np.arccos(np.dot(v_baseline,v_cartroof)/(np.linalg.norm(v_baseline)*np.linalg.norm(v_cartroof)))
@@ -166,9 +163,6 @@ class graf_angle_calc():
             plt.text(xt,yt,'a='+str(round(alpha))+u"\u00b0",color='w')
             plt.show()
 
-        if np.isnan(alpha)==True:
-            print('alpha is nan')
-
         return alpha
     
     def graf_class_comparison(self, pred, pred_map, true, true_map, pixelsize):
@@ -176,13 +170,11 @@ class graf_angle_calc():
         pred=pred.detach().cpu().numpy()
         alpha_pred = self.calculate_alpha(pred)
         class_pred = self.get_alpha_class(alpha_pred)
-        print('pred alpha:', alpha_pred)
         
         try:
             true=true.detach().cpu().numpy()
             alpha_true = self.calculate_alpha(true)
             class_true = self.get_alpha_class(alpha_true)
-            print('true alpha:',alpha_true)
             alpha_diff = alpha_pred-alpha_true
 
         except:

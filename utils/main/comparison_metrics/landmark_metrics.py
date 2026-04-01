@@ -39,17 +39,19 @@ class landmark_metrics():
         
         eres_per_image = []
 
-        for pred_thresholded, predicted_points, pixel_size in zip(pred_thresholded, pred, pixelsize):
+        for pred_thresholded_image, predicted_points in zip(pred_thresholded, pred):
             ere_per_heatmap = []
-            for pred_thresh, predicted_point in zip(pred_thresholded, predicted_points):
+            for pred_thresh, predicted_point in zip(pred_thresholded_image, predicted_points):
                
                 indices = torch.nonzero(pred_thresh)
                 pred_flattened = torch.flatten(pred_thresh)
                 flattened_indices = torch.nonzero(pred_flattened)
                 significant_values = pred_flattened[flattened_indices]
-                scaled_indices = torch.multiply(indices, pixel_size.to('cpu').float())
+                # torch.nonzero returns (row, col); landmarks use (x, y), so flip to match.
+                scaled_indices = torch.flip(indices, dims=[1]).to(predicted_point.device).float()
+                scaled_predicted_point = predicted_point.float()
 
-                displacement_vectors = torch.sub(scaled_indices, predicted_point)
+                displacement_vectors = torch.sub(scaled_indices, scaled_predicted_point)
                 distances = torch.norm(displacement_vectors, dim=1)
                 ere = torch.sum(torch.multiply(torch.squeeze(significant_values), distances))
                 ere_per_heatmap.append(ere)

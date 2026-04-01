@@ -52,7 +52,7 @@ MODEL:
   FREEZE_LAYERS: 2
 
 DATASET:
-  # PARTITION_SIZE_TEST: None ## remove if not a test
+  PARTITION_SIZE_TEST: 5 ## remove if not a test
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
   NUM_LANDMARKS: 7 

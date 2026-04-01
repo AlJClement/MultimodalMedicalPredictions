@@ -94,10 +94,8 @@ class fhc():
     
     def get_fhc(self, pred, pred_map, true, true_map, pixelsize):
         fhc_pred = self.fhc(pred)
-        print('pred fhc:',fhc_pred)
 
         fhc_true = self.fhc(true)
-        print('true fhc:',fhc_true)
 
         ls_values = [['fhc pred', fhc_pred],
                     ['fhc true', fhc_true]]
@@ -105,7 +103,6 @@ class fhc():
     
     def get_fhc_pred(self, pred, pred_map, pixelsize):
         fhc_pred = self.fhc(pred)
-        print('pred fhc:',fhc_pred)
 
         ls_values = ['fhc pred', fhc_pred]
         return ls_values 

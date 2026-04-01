@@ -48,9 +48,25 @@ def main():
     val_dataset=dataloader(cfg,'validation')    
     help._dataset_shape(val_dataset)
 
+    num_workers = int(getattr(cfg.TRAIN, "NUM_WORKERS", 4))
+    pin_memory = bool(getattr(cfg.TRAIN, "PIN_MEMORY", torch.cuda.is_available()))
+    persistent_workers = bool(getattr(cfg.TRAIN, "PERSISTENT_WORKERS", num_workers > 0))
+    prefetch_factor = getattr(cfg.TRAIN, "PREFETCH_FACTOR", None)
+    dataloader_kwargs = {
+        "batch_size": cfg.TRAIN.BATCH_SIZE,
+        "shuffle": False,
+        "drop_last": False,
+        "num_workers": num_workers,
+        "pin_memory": pin_memory,
+    }
+    if num_workers > 0:
+        dataloader_kwargs["persistent_workers"] = persistent_workers
+        if prefetch_factor is not None:
+            dataloader_kwargs["prefetch_factor"] = int(prefetch_factor)
+
     #load data into data loader (imports all data into a dataloader)
-    train_dataloader = DataLoader(train_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = False)
-    val_dataloader = DataLoader(val_dataset, batch_size=cfg.TRAIN.BATCH_SIZE, shuffle=False, drop_last = False)
+    train_dataloader = DataLoader(train_dataset, **dataloader_kwargs)
+    val_dataloader = DataLoader(val_dataset, **dataloader_kwargs)
 
     losses = []
     max_epochs = cfg.TRAIN.EPOCHS

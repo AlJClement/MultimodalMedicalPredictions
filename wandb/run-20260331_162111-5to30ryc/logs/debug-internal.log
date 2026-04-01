@@ -1,0 +1,6 @@
+{"time":"2026-03-31T16:21:11.648196486+01:00","level":"INFO","msg":"stream: starting","core version":"0.22.3"}
+{"time":"2026-03-31T16:21:11.896428769+01:00","level":"INFO","msg":"stream: created new stream","id":"5to30ryc"}
+{"time":"2026-03-31T16:21:11.89653083+01:00","level":"INFO","msg":"handler: started","stream_id":"5to30ryc"}
+{"time":"2026-03-31T16:21:11.896595401+01:00","level":"INFO","msg":"stream: started","id":"5to30ryc"}
+{"time":"2026-03-31T16:21:11.896664731+01:00","level":"INFO","msg":"writer: started","stream_id":"5to30ryc"}
+{"time":"2026-03-31T16:21:11.896665593+01:00","level":"INFO","msg":"sender: started","stream_id":"5to30ryc"}

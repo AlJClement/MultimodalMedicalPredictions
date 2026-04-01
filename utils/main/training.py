@@ -24,6 +24,7 @@ class training():
         self.model_init = model_init(cfg)
         self.logger = logger
         self.device = torch.device(cfg.MODEL.DEVICE)
+        self.debug_training = bool(getattr(cfg.TRAIN, "DEBUG_LOGGING", False))
         
         #get specific models/feature loaders
         self.net, self.net_param = self.model_init.get_net_from_conf()
@@ -124,6 +125,10 @@ class training():
 
         pass
 
+    def _debug_print(self, *args, **kwargs):
+        if self.debug_training:
+            print(*args, **kwargs)
+
     def _get_network(self):
         return self.net
     
@@ -159,9 +164,9 @@ class training():
         """
         total_params = sum(p.numel() for p in self.net.parameters())
         trainable_params = sum(p.numel() for p in self.net.parameters() if p.requires_grad)
-        print(f"Total params: {total_params}")
-        print(f"Trainable params: {trainable_params}")
-        print(f"Frozen params: {total_params - trainable_params}")
+        self._debug_print(f"Total params: {total_params}")
+        self._debug_print(f"Trainable params: {trainable_params}")
+        self._debug_print(f"Frozen params: {total_params - trainable_params}")
 
         self.net.train()
         total_loss = 0.0
@@ -173,8 +178,8 @@ class training():
                 new_acc = max(self.grad_accumulation_steps_min, accum_steps // 2)
                 self.grad_accumulation_steps = new_acc
                 accum_steps = new_acc
-                print(f"Reducing gradient accumulation steps to {accum_steps}")
-            print(f"Gradient accumulation enabled: {accum_steps} steps (effective batch size = {accum_steps * self.bs})")
+                self._debug_print(f"Reducing gradient accumulation steps to {accum_steps}")
+            self._debug_print(f"Gradient accumulation enabled: {accum_steps} steps (effective batch size = {accum_steps * self.bs})")
 
         # zero grads at epoch start
         self.optimizer.zero_grad(set_to_none=True)
@@ -188,7 +193,7 @@ class training():
 
             # debug prints for micro-batches
             if batch_idx % 10 == 0:
-                print(f"\n--- batch_idx={batch_idx} ---")
+                self._debug_print(f"\n--- batch_idx={batch_idx} ---")
                 # print(f"data.shape={tuple(data.shape)}, target.shape={tuple(target.shape)}")
                 # if self.use_amp:
                 #     try:
@@ -202,7 +207,7 @@ class training():
                 pred = self.net(data, meta)
                 if batch_idx % 10 == 0:
                     if isinstance(pred, torch.Tensor):
-                        print(f"pred.shape={pred.shape}, pred min={float(pred.detach().min()):.6e}, max={float(pred.detach().max()):.6e}, mean={float(pred.detach().mean()):.6e}")
+                        self._debug_print(f"pred.shape={pred.shape}, pred min={float(pred.detach().min()):.6e}, max={float(pred.detach().max()):.6e}, mean={float(pred.detach().mean()):.6e}")
 
                 # compute targets if needed
                 if self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss:
@@ -240,11 +245,11 @@ class training():
                 try:
                     raw_loss = float(loss.item())
                     pixels = float(data.numel())
-                    print(f"raw loss = {raw_loss:.6e}, loss/pixel = {raw_loss/pixels:.6e}, pixels = {int(pixels)}")
+                    self._debug_print(f"raw loss = {raw_loss:.6e}, loss/pixel = {raw_loss/pixels:.6e}, pixels = {int(pixels)}")
                     if not torch.isfinite(loss).all():
-                        print(">>>> Loss is not finite (NaN or Inf) at batch", batch_idx)
+                        self._debug_print(">>>> Loss is not finite (NaN or Inf) at batch", batch_idx)
                 except Exception:
-                    print("Could not read loss.item()")
+                    self._debug_print("Could not read loss.item()")
 
             total_loss += loss.item()
 
@@ -255,7 +260,7 @@ class training():
             if self.use_amp:
                 if batch_idx % 50 == 0:
                     try:
-                        print("scaler.get_scale() before backward =", self.scaler.get_scale())
+                        self._debug_print("scaler.get_scale() before backward =", self.scaler.get_scale())
                     except Exception:
                         pass
                 self.scaler.scale(loss).backward()
@@ -266,7 +271,7 @@ class training():
             if batch_idx % 10 == 0:
                 grads_exist = [p.grad is not None for p in self.net.parameters() if p.requires_grad]
                 any_grad = any(grads_exist)
-                print(f"[batch {batch_idx}] any_grad after backward: {any_grad}")
+                self._debug_print(f"[batch {batch_idx}] any_grad after backward: {any_grad}")
                 max_grad = None
                 total_norm = 0.0
                 found = False
@@ -287,19 +292,19 @@ class training():
                             pass
                 if found:
                     total_norm = total_norm ** 0.5
-                    print(f"[batch {batch_idx}] grad sample max abs = {max_grad:.6e}, grad sample norm = {total_norm:.6e}")
+                    self._debug_print(f"[batch {batch_idx}] grad sample max abs = {max_grad:.6e}, grad sample norm = {total_norm:.6e}")
                 else:
-                    print(f"[batch {batch_idx}] No gradients found on sampled params after backward")
+                    self._debug_print(f"[batch {batch_idx}] No gradients found on sampled params after backward")
 
             # optimizer step (every accum_steps)
             if (batch_idx + 1) % accum_steps == 0:
-                print(f"[batch {batch_idx}] Performing optimizer step (accum count reached).")
+                self._debug_print(f"[batch {batch_idx}] Performing optimizer step (accum count reached).")
                 if self.use_amp:
                     # unscale so checks/clipping are meaningful
                     try:
                         self.scaler.unscale_(self.optimizer)
                     except Exception as e:
-                        print("Warning: scaler.unscale_() failed:", e)
+                        self._debug_print("Warning: scaler.unscale_() failed:", e)
 
                     # check grads for NaN/Inf or huge values
                     bad_grad = False
@@ -308,17 +313,17 @@ class training():
                             continue
                         g = p.grad.detach()
                         if torch.isnan(g).any() or torch.isinf(g).any():
-                            print(f"NON-FINITE GRAD: {name} min/max = {float(g.min()):.3e}/{float(g.max()):.3e}")
+                            self._debug_print(f"NON-FINITE GRAD: {name} min/max = {float(g.min()):.3e}/{float(g.max()):.3e}")
                             bad_grad = True
                             break
 
                     if bad_grad:
                         # skip optimizer step, let the scaler reduce its scale
-                        print(f"[batch {batch_idx}] Skipping optimizer.step() due to non-finite grads. Calling scaler.update() and zeroing grads.")
+                        self._debug_print(f"[batch {batch_idx}] Skipping optimizer.step() due to non-finite grads. Calling scaler.update() and zeroing grads.")
                         try:
                             self.scaler.update()
                         except Exception as e:
-                            print("Warning: scaler.update() failed:", e)
+                            self._debug_print("Warning: scaler.update() failed:", e)
                         self.optimizer.zero_grad(set_to_none=True)
                     else:
                         # OPTIONAL: clip grads here if you want (after unscale)
@@ -327,7 +332,7 @@ class training():
                         try:
                             self.scaler.step(self.optimizer)
                         except Exception as e:
-                            print("scaler.step() raised:", e)
+                            self._debug_print("scaler.step() raised:", e)
                             self.optimizer.zero_grad(set_to_none=True)
                             try:
                                 self.scaler.update()
@@ -340,7 +345,7 @@ class training():
 
                 # zero grads for next accumulation block
                 self.optimizer.zero_grad(set_to_none=True)
-                print(f"optimizer.step() at batch {batch_idx}")
+                self._debug_print(f"optimizer.step() at batch {batch_idx}")
 
             # periodic logging
             if batch_idx % 50 == 0:
@@ -359,7 +364,7 @@ class training():
 
         # final leftover step (if any)
         if (batch_idx + 1) % accum_steps != 0:
-            print("Final leftover optimizer step (not aligned to accum_steps).")
+            self._debug_print("Final leftover optimizer step (not aligned to accum_steps).")
             if self.use_amp:
                 try:
                     self.scaler.unscale_(self.optimizer)
@@ -368,7 +373,7 @@ class training():
                 try:
                     self.scaler.step(self.optimizer)
                 except Exception as e:
-                    print("scaler.step() (final) raised:", e)
+                    self._debug_print("scaler.step() (final) raised:", e)
                     try:
                         self.scaler.update()
                     except Exception:
@@ -378,7 +383,7 @@ class training():
             else:
                 self.optimizer.step()
             self.optimizer.zero_grad(set_to_none=True)
-            print("optimizer.step() at final leftover batch")
+            self._debug_print("optimizer.step() at final leftover batch")
 
         av_loss = total_loss / batches
         print(f"\nTraining Set Average loss: {av_loss:.6f}", flush=True)
@@ -461,7 +466,7 @@ class training():
             metric = val_loss if val_dataloader is not None else av_loss
             if metric is None:
                 # can't evaluate early stopping without a metric
-                print("Early stopping enabled but no metric available this epoch (val missing). Skipping ES update.")
+                self._debug_print("Early stopping enabled but no metric available this epoch (val missing). Skipping ES update.")
                 self._es_should_stop = False
             else:
                 improved = False
@@ -475,12 +480,12 @@ class training():
                 if improved:
                     self._es_best = metric
                     self._es_wait = 0
-                    print(f"EarlyStopping: improvement detected (best -> {self._es_best:.6f}). Reset wait.")
+                    self._debug_print(f"EarlyStopping: improvement detected (best -> {self._es_best:.6f}). Reset wait.")
                 else:
                     self._es_wait += 1
-                    print(f"EarlyStopping: no improvement. Wait = {self._es_wait}/{self.early_stopping_patience}")
+                    self._debug_print(f"EarlyStopping: no improvement. Wait = {self._es_wait}/{self.early_stopping_patience}")
                     if self._es_wait >= self.early_stopping_patience:
-                        print("EarlyStopping: patience exceeded. Will request stop.")
+                        self._debug_print("EarlyStopping: patience exceeded. Will request stop.")
                         self._es_should_stop = True
 
         else:
@@ -531,9 +536,9 @@ class training():
                 plt.savefig(fname, bbox_inches="tight")
                 plt.close()
 
-                print(f"Saved train/val loss plot to {fname}")
+                self._debug_print(f"Saved train/val loss plot to {fname}")
 
             except Exception as e:
-                print("Plotting failed:", e)
+                self._debug_print("Plotting failed:", e)
 
         return av_loss

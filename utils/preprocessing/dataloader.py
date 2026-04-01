@@ -28,6 +28,7 @@ class dataloader(Dataset):
         #paths
         self.cfg=cfg
         self.partition_size_test = cfg.DATASET.PARTITION_SIZE_TEST
+        self.debug = getattr(cfg.DATASET, 'DEBUG_DATALOADER', False)
 
         if subset != None:
             self.subset=subset
@@ -74,6 +75,10 @@ class dataloader(Dataset):
         self.model_init = model_init(cfg)
         #get specific models/feature loaders
         self.meta_feat_structure = self.model_init.get_modelspecific_feature_structure()
+        self.augmentation = Augmentation(self.cfg)
+        self.preprocess_seq = self.augmentation.downsample_and_padd()
+        self.label_number_frames = self._load_label_number_frames()
+        self.testing_path_cache = self._load_testing_path_cache()
 
         self.set = set
         self.data, self.target, self.landmarks, self.meta, self.ids, self.orig_img_shape,  self.orig_im= self.get_numpy_dataset() 
@@ -82,6 +87,7 @@ class dataloader(Dataset):
             self.perform_aug = False
         else:
             self.perform_aug = cfg.DATASET.AUGMENTATION.APPLY
+        self.train_aug_seq = self.augmentation.augmentation_fn() if self.perform_aug else None
     
         self.save_aug = cfg.DATASET.AUGMENTATION.SAVE
         if self.save_aug == True:
@@ -89,6 +95,98 @@ class dataloader(Dataset):
             if not os.path.exists(self.aug_path):
                 os.makedirs(self.aug_path)
         return
+
+    def _debug_print(self, *args, **kwargs):
+        if self.debug:
+            print(*args, **kwargs)
+
+    def _load_label_number_frames(self):
+        if self.labels_dir_numbers == [] or self.dataset_name != 'oai_nolandmarks':
+            return {}
+
+        frames = {}
+        for csv_file in self.labels_dir_numbers:
+            frames[csv_file] = pd.read_csv(csv_file, sep="|")
+            if "ID" in frames[csv_file].columns:
+                frames[csv_file]["ID"] = frames[csv_file]["ID"].astype(str)
+        return frames
+
+    def _load_testing_path_cache(self):
+        cache = Path("./testing_path_cache.txt")
+        if not cache.exists():
+            return {}
+
+        cache_map = {}
+        for path in cache.read_text().splitlines():
+            parts = Path(path).parts
+            if len(parts) >= 3:
+                cache_map[parts[-3]] = path
+        return cache_map
+
+    def _append_testing_path_cache(self, path):
+        cache = Path("./testing_path_cache.txt")
+        with cache.open("a") as f:
+            f.write(path + "\n")
+
+        parts = Path(path).parts
+        if len(parts) >= 3:
+            self.testing_path_cache[parts[-3]] = path
+
+    def _get_oai_label_numbers(self, id):
+        ann_list = []
+        for csv_file, df in self.label_number_frames.items():
+            df_pat = df.loc[df["ID"] == id]
+
+            if 'cooke' in csv_file.lower():
+                R_HKA = df_pat.loc[df_pat["SIDE"] == 1, "V01HKANGLE"].values
+                L_HKA = df_pat.loc[df_pat["SIDE"] == 2, "V01HKANGLE"].values
+            elif 'duryea' in csv_file.lower():
+                R_HKA = df_pat.loc[df_pat["SIDE"] == '1: Right', "V01HKANGJD"].values
+                L_HKA = df_pat.loc[df_pat["SIDE"] == '2: Left',  "V01HKANGJD"].values
+            else:
+                raise ValueError("dataset not implemented for label numbers")
+
+            try:
+                R_HKA = float(R_HKA[0])
+            except (IndexError, ValueError, TypeError):
+                R_HKA = np.nan
+
+            try:
+                L_HKA = float(L_HKA[0])
+            except (IndexError, ValueError, TypeError):
+                L_HKA = np.nan
+
+            ann_list.append([R_HKA, L_HKA])
+
+        return ann_list
+
+    def _find_oai_image_path(self, id):
+        cached_path = self.testing_path_cache.get(id)
+        if cached_path:
+            return cached_path
+
+        BASE = Path(self.img_dir)
+        selected_path = None
+
+        for d in BASE.rglob(id):
+            if not d.is_dir():
+                continue
+            for img in d.rglob("*_1x1.jpg"):
+                with Image.open(img) as im:
+                    w, h = im.size
+                    self._debug_print(im.size)
+                    if w == 440 and h == 535:
+                        self._debug_print(f"{img} {w}x{h}")
+                        selected_path = img.as_posix()
+                    if h > 2 * w:
+                        self._debug_print(f"{img} {w}x{h}")
+                        selected_path = img.as_posix()
+
+        if selected_path is None:
+            raise FileNotFoundError(f"Could not find cached testing image for {id}")
+
+        self._append_testing_path_cache(selected_path)
+        return selected_path
 
     
     def get_partition(self): ### make partition size not none if you want to sample
@@ -170,77 +268,11 @@ class dataloader(Dataset):
                             else:
                                 ## loop through labels files and get the values.
                                 if self.dataset_name == 'oai_nolandmarks':
-                                    for csv_file in self.labels_dir_numbers:
-                                        
-                                        if 'cooke' in csv_file.lower():
-                                            df = pd.read_csv(csv_file, sep="|")
-                                            df_pat = df.loc[df["ID"].astype(str) == id]
-
-                                            R_HKA = df_pat.loc[df_pat["SIDE"] == 1, "V01HKANGLE"].values
-                                            L_HKA = df_pat.loc[df_pat["SIDE"] == 2, "V01HKANGLE"].values
-
-                                        elif 'duryea' in csv_file.lower():
-                                            df = pd.read_csv(csv_file, sep="|")
-                                            df_pat = df.loc[df["ID"].astype(str) == id]
-
-                                            R_HKA = df_pat.loc[df_pat["SIDE"] == '1: Right', "V01HKANGJD"].values
-                                            L_HKA = df_pat.loc[df_pat["SIDE"] == '2: Left',  "V01HKANGJD"].values
-
-                                        else:
-                                            raise ValueError("dataset not implemented for label numbers")
-
-                                        try:
-                                            R_HKA = float(R_HKA[0])
-                                        except (IndexError, ValueError, TypeError):
-                                            R_HKA = np.nan
-
-                                        try:
-                                            L_HKA = float(L_HKA[0])
-                                        except (IndexError, ValueError, TypeError):
-                                            L_HKA = np.nan
-
-                                        ann_list.append([R_HKA, L_HKA])
+                                    ann_list = self._get_oai_label_numbers(id)
                                         
                                     if self.dataset_name == 'oai_nolandmarks':
-                                        ## finds file within subdirectories
-                                        ##store in cache to avoid re searching 
-                                        cache = Path("./testing_path_cache.txt")
-
-                                        try:
-                                            paths = cache.read_text().splitlines()
-                                        except:
-                                            paths = []
-
-                                            
-                                        ## load file
-                                        img = [p for p in paths if id in p]
-
-                                        if img==[]:
-                                            ##find path
-                                            BASE = Path(self.img_dir)
-
-                                            for d in BASE.rglob(id):
-                                                if not d.is_dir():
-                                                    continue
-                                                for img in d.rglob("*_1x1.jpg"):
-                                                    with Image.open(img) as im:
-                                                        w, h = im.size
-                                                        print(im.size)
-                                                        if w == 440 and h == 535:
-                                                            print(f"{img} {w}x{h}")
-                                                            _img = img.as_posix() 
-                                                        if h > 2 * w:
-                                                            print(f"{img} {w}x{h}")
-                                                            _img = img.as_posix()
-                                            
-                                            img =_img
-                                                        
-                                            with cache.open("a") as f:
-                                                f.write(img + "\n")    
-     
-                                        print(f"loaded already, {img}")
-                                        if len(img) == 1:
-                                            img = img[0]
+                                        img = self._find_oai_image_path(id)
+                                        self._debug_print(f"loaded already, {img}")
                                         img_file_dic[i].append(img)
 
                                     else:
@@ -281,7 +313,7 @@ class dataloader(Dataset):
         return img_file_dic, annotation_dic
     
     def get_img(self, seq, img_path:str):
-        print(img_path)
+        self._debug_print(img_path)
         '''loads images as arr'''
         try:
             #assumes file is jpg
@@ -315,7 +347,7 @@ class dataloader(Dataset):
     
     def get_landmarks(self, ann_path, seq, image_shape):
         # Get annotations
-        print(ann_path)
+        self._debug_print(ann_path)
         try:
             kps_np_array = np.loadtxt(ann_path, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
             if self.dataset_name == 'oai':
@@ -331,7 +363,7 @@ class dataloader(Dataset):
             ext = '.txt'
             kps_np_array = np.loadtxt(ann_path[:-4]+'_g'+ext, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
         
-        print('truth:',kps_np_array)
+        self._debug_print('truth:',kps_np_array)
         if self.flip_axis:
             if ann_path.split('/')[-1][0]=='A':
                 kps_np_array = np.flip(kps_np_array, axis=1)
@@ -414,13 +446,19 @@ class dataloader(Dataset):
         # meta_arr (numscans,num_metafeatures)]
 
         #initalize downsample/padd
-        seq = Augmentation(self.cfg).downsample_and_padd()
+        seq = self.preprocess_seq
         
         img_files, annotation_files = self.get_partition()
-        meta_arr = pd.DataFrame([])
+        meta_rows = []
+        id_rows = []
+        image_rows = []
+        image_orig_rows = []
+        orig_shape_rows = []
+        annotation_rows = []
+        landmark_rows = []
 
 
-        print('loading:', self.set)
+        self._debug_print('loading:', self.set)
         if self.subset != None:
             im_set=img_files[self.set][:self.subset]
         else:
@@ -438,7 +476,7 @@ class dataloader(Dataset):
             ##LOAD IMAGES##
             # print(img_files[self.set][i])
             _im_arr, orig_shape, _im_orig = self.get_img(seq,img_files[self.set][i])
-            print('orig_shape:',orig_shape)
+            self._debug_print('orig_shape:',orig_shape)
             
             ##LOAD ANNOTATIONS##
             if self.dataset_name == 'oai_nolandmarks':
@@ -504,41 +542,24 @@ class dataloader(Dataset):
                     plt.close()
 
             
-            if meta_arr.empty:
-                accessionid_arr = np.array([pat_id])
-                id_arr = np.array([pat_id])
-                meta_arr = _meta_arr
-                im_arr = np.expand_dims(_im_arr,axis=0)
-                im_orig_arrs = [_im_orig]
-
-                # if self.rgb ==True:
-                #     im_arr=im_arr.repeat(3, axis=0)
-                orig_shape_arr = np.expand_dims(orig_shape,axis=0)
-                annotation_arr =np.expand_dims(_annotation_arr,axis=0)
-                landmark_arr = np.array([annotation_points]) 
-            else:
-                accessionid_arr = np.concatenate((accessionid_arr,np.array([pat_id])),0)
-                id_arr = np.concatenate((id_arr,np.array([pat_id])),0)
-                
-                # if self.rgb==True:
-                #     _im_arr=np.expand_dims(_im_arr,axis=0).repeat(3, axis=0)
-                #     im_arr = np.concatenate((im_arr, _im_arr),0)
-                # else:
-                im_arr = np.concatenate((im_arr, np.expand_dims(_im_arr,axis=0)),0)
-                # im_orig_arrs = np.concatenate((im_orig_arrs,np.expand_dims(_im_orig,axis=0)),0)
-                im_orig_arrs.append(_im_orig)
-                annotation_arr = np.concatenate((annotation_arr,np.expand_dims(_annotation_arr,axis=0)),0)
-                meta_arr=pd.concat([meta_arr,_meta_arr])
-                orig_shape_arr=np.concatenate((orig_shape_arr,np.array([orig_shape])),0)
-                landmark_arr = np.concatenate((landmark_arr,np.array([annotation_points])),0)
+            id_rows.append(pat_id)
+            meta_rows.append(_meta_arr)
+            image_rows.append(_im_arr)
+            image_orig_rows.append(_im_orig)
+            orig_shape_rows.append(orig_shape)
+            annotation_rows.append(_annotation_arr)
+            landmark_rows.append(annotation_points)
 
 
 
         if save_cache==True:                      
             #save meta dictionary, with ids
             meta_path = os.path.join(cache_data_dir,'all_meta.csv')
+            meta_arr = pd.concat(meta_rows, ignore_index=True)
             meta_arr.to_csv(meta_path)
         
+        meta_arr = pd.concat(meta_rows, ignore_index=True)
+
         #drop first col of ids
         accessionid_arr = meta_arr[self.pat_id_col]
         meta_arr=meta_arr.drop(self.pat_id_col,axis=1)
@@ -546,22 +567,23 @@ class dataloader(Dataset):
         #expand numpy arr and make values as torch
         ### if landmarks dont == chanels its oai
 
-        im_arr = np.expand_dims(im_arr,axis=1)
+        im_arr = np.expand_dims(np.stack(image_rows, axis=0),axis=1)
         im_torch = torch.from_numpy(im_arr).float()
 
         # im_orig_arrs =np.expand_dims(im_orig_arrs,axis=1)
         # im_orig_torch = torch.from_numpy(im_orig_arrs).float() 
 
         #expand numpy arr and make values as torch
-        orig_shape_arr = np.expand_dims(orig_shape_arr,axis=1)
+        orig_shape_arr = np.expand_dims(np.stack(orig_shape_rows, axis=0),axis=1)
         orig_shape_arr = torch.from_numpy(orig_shape_arr).float()
 
         try:
+            annotation_arr = np.stack(annotation_rows, axis=0)
             annotation_torch = torch.from_numpy(annotation_arr).float()
             if len(annotation_torch.shape)==5:
                 annotation_torch=torch.squeeze(annotation_torch,dim=1)
         except:
-            annotation_torch = annotation_arr
+            annotation_torch = annotation_rows
 
 
         #encoed meta/id data for network in cfg
@@ -577,10 +599,10 @@ class dataloader(Dataset):
         accessionid_arr = np.expand_dims(accessionid_arr,axis=1)
 
         #expand numpy arr and make values as torch
-        landmark_arr = np.expand_dims(landmark_arr,axis=1)
+        landmark_arr = np.expand_dims(np.array(landmark_rows),axis=1)
         landmark_torch = torch.from_numpy(landmark_arr).float()
 
-        return im_torch, annotation_torch, landmark_torch, meta_torch, id_arr, orig_shape_arr, im_orig_arrs 
+        return im_torch, annotation_torch, landmark_torch, meta_torch, np.array(id_rows), orig_shape_arr, image_orig_rows 
 
     def __getitem__(self, index):
 
@@ -602,7 +624,7 @@ class dataloader(Dataset):
             raise ValueError('check num reviewers for augmentation')
 
         if self.perform_aug==True:
-            aug_seq = Augmentation(self.cfg).augmentation_fn()
+            aug_seq = self.train_aug_seq
 
             repeat = True
             counter = 0

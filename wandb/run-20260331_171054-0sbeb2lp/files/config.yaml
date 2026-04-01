@@ -1,0 +1,175 @@
+_wandb:
+    value:
+        cli_version: 0.22.3
+        e:
+            yapjhrjltyxns5a11w53u5di8th1h43f:
+                args:
+                    - --cfg
+                    - ddh_clpc
+                codePath: utils/run_test.py
+                codePathLocal: utils/run_test.py
+                cpu_count: 16
+                cpu_count_logical: 24
+                cudaVersion: "13.0"
+                disk:
+                    /:
+                        total: "58863067136"
+                        used: "50384064512"
+                email: allison.clement@cs.ox.ac.uk
+                executable: /users/allent/.conda/envs/mm_env_py310/bin/python
+                git:
+                    commit: 0d8ac37a5d7fea5df3dba2c9c1344e0841538523
+                    remote: git@github.com:AlJClement/MultimodalMedicalPredictions.git
+                gpu: NVIDIA RTX A2000 12GB
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Ampere
+                      cudaCores: 3328
+                      memoryTotal: "12878610432"
+                      name: NVIDIA RTX A2000 12GB
+                      uuid: GPU-74fbbe45-7de1-09bd-3fd5-b7c78b2dd42e
+                host: clpc125.cs.ox.ac.uk
+                memory:
+                    total: "33311592448"
+                os: Linux-6.18.6-100.fc42.x86_64-x86_64-with-glibc2.41
+                program: ./utils/run_test.py
+                python: CPython 3.10.19
+                root: /home/scratch/allent/MultimodalMedicalPredictions
+                startedAt: "2026-03-31T16:10:54.571300Z"
+                writerId: yapjhrjltyxns5a11w53u5di8th1h43f
+        m: []
+        python_version: 3.10.19
+        t:
+            "1":
+                - 1
+                - 5
+                - 41
+                - 49
+                - 53
+                - 63
+                - 74
+            "2":
+                - 1
+                - 5
+                - 41
+                - 49
+                - 53
+                - 63
+                - 74
+            "3":
+                - 2
+                - 13
+                - 15
+                - 16
+                - 62
+            "4": 3.10.19
+            "5": 0.22.3
+            "12": 0.22.3
+            "13": linux-x86_64
+DATASET:
+    value:
+        ANNOTATION_TYPE: LANDMARKS
+        AUGMENTATION:
+            APPLY: true
+            COARSE_SALTANDPEPPER: 0.2
+            ELASTIC_SMOOTHNESS: 0
+            ELASTIC_STRENGTH: 0
+            INTENSITY_FACTOR: 1
+            ROTATION_FACTOR: 1
+            SAVE: true
+            SF: 0.5
+            SOME_OF: 3
+            SPECKLE_NOISE: 2
+            TRANSLATION_X: 0.2
+            TRANSLATION_Y: 0.2
+        CACHED_IMAGE_SIZE:
+            - 512
+            - 512
+        COMBINE_REVIEWERS: false
+        FLIP_AXIS: true
+        IMAGE_EXT: .jpg
+        NUM_LANDMARKS: 7
+        PARTITION_SIZE_TEST: 5
+        PIXEL_SIZE:
+            - 0.0700711
+            - 0.0700711
+        SIGMA: 2
+INPUT_PATHS:
+    value:
+        DATASET_NAME: ddh
+        DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+        ID_COL: Accession Number
+        IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+        LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
+        LABELS_NUMBERS: []
+        META_COLS:
+            - Sex: hot
+        META_COLS_CLASSES: []
+        META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
+        PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_best.json
+MODEL:
+    value:
+        ATTENTION: scse
+        BATCH_NORM_DECODER: true
+        DECODER_CHANNELS:
+            - 512
+            - 256
+            - 256
+            - 128
+            - 64
+        DEVICE: cuda
+        ENCODER_NAME: resnet34
+        ENCODER_WEIGHTS: imagenet
+        FREEZE_LAYERS: 2
+        IN_CHANNELS: 1
+        INIT_FEATURES: 0
+        META_FEATURES:
+            - 100
+            - 100
+            - 100
+        NAME: unet_plus_plus
+        OUT_CHANNELS: 7
+OUTPUT_PATH:
+    value: ./output_ddh_0312_newsplit_0.01466
+TEST:
+    value:
+        BATCH_SIZE: 1
+        COMPARISON_METRICS:
+            - graf_angle_calc().graf_class_comparison
+            - landmark_metrics().get_eres
+            - landmark_metrics().get_radial_errors
+            - fhc().get_fhc
+        NETWORK: /model:1/_model_run:1_idx.pth
+        SAVE_HEATMAPS_ALONE: false
+        SAVE_HEATMAPS_ASDCM: false
+        SAVE_HEATMAPS_LANDMARKS_IMG: true
+        SAVE_HEATMAPS_NP: true
+        SAVE_IMG_LANG_PREDANDTRUE: true
+        SAVE_TXT: false
+        SDR_THRESHOLD:
+            - 7.1
+            - 14.2
+            - 28.45
+            - 56.9
+        SDR_UNITS: pixels
+        SHOW_ALL_LANDMARKS: true
+        TEST_TIME_AUG: false
+        TEST_TIME_AUG_NUM: 5
+TRAIN:
+    value:
+        BATCH_SIZE: 1
+        COMBINE_GRAF_FHC: true
+        DELAY_GUMBEL_LOSS: 100
+        EARLY_STOPPING: true
+        EPOCHS: 40
+        GAMMA: 0
+        GRAD_ACCUMULATION_STEPS: 16
+        GRAD_ACCUMULATION_STEPS_MIN: 4
+        GRAD_ACCUMULATION_STEPS_REDUCE: 10
+        L2_REG: true
+        LOSS: nll_across_batch
+        LR: 0.005
+        MOMENTUM: 0.9
+        SAVE_VAL_DCM: false
+        TAU: 1
+        TAU_DECAY: 0.01

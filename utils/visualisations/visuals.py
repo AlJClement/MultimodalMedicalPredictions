@@ -83,7 +83,6 @@ class visuals():
             prediction = prediction.detach().cpu().numpy()
         except:
             pass
-        print(prediction.shape)
         np.save(self.save_path, prediction)
 
         # #orig size
@@ -106,9 +105,6 @@ class visuals():
                     # resize = image.shape[0]/image.shape
                     data_str = str(round(row[1],5))+","+str(round(row[0],5))
                     output.write(data_str+"\n")
-                    print(data_str)
-
-        print('saving', self.save_path)
         
         fig, ax = plt.subplots(1, 1)
         ax.imshow(image, cmap='Greys_r')
@@ -199,7 +195,6 @@ class visuals():
                     if w_landmarks == True:
                         ax.imshow(image, cmap='Greys_r')
                         #add landmarks
-                        print('adding landmarks')
                         if self.dataset_name == 'oai_nolandmarks':
                             pass
                         else:
@@ -211,8 +206,6 @@ class visuals():
                             fhc_pred, fhc_true = fhc.fhc().get_fhc(predicted_points,output,target_points,image,self.pixelsize)
                             fhc_pred, fhc_true = fhc_pred[1]*100, fhc_true[1]*100
                             alpha_true, alpha_pred = round(graf_angle_calc().calculate_alpha(target_points),1), round(graf_angle_calc().calculate_alpha(predicted_points),1)
-                            print('pred alpha: ', alpha_pred)
-                            print('true alpha: ', alpha_true)
 
                             ax.text(0.02, 0.98,f"FHC = {fhc_true:.1f}%\n α = {alpha_true:.1f}°", 
                                         transform=ax.transAxes, fontsize=10, verticalalignment='top',bbox=dict(facecolor='green', alpha=0.6, edgecolor='none'))
@@ -266,7 +259,6 @@ class visuals():
             ## make subfolders for saving easier debugging
             ##check if alpah or fhc do not match and make a copy in another folder
             if 'fhc_true' in locals():
-                print(fhc_true, alpha_true)
                 try:
                     fhc_true = 'n' if fhc_true >= 50 else 'a'
                     alpha_true = 'n' if alpha_true >= 60 else 'a'

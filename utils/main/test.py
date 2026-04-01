@@ -22,6 +22,12 @@ from .validation import validation
 import torch.nn.functional as F
 from preprocessing.augmentation import Augmentation
 from .comparison_metrics.landmark_metrics import landmark_metrics
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
+import wandb
+from tqdm import tqdm
 
 
 class test():
@@ -33,6 +39,7 @@ class test():
         self.cfg=cfg
         self.img_size = cfg.DATASET.CACHED_IMAGE_SIZE
         self.logger = logger
+        self.debug_testing = bool(getattr(cfg.TEST, "DEBUG_LOGGING", False))
         self.dataset_type = cfg.DATASET.ANNOTATION_TYPE
         self.num_landmarks = cfg.DATASET.NUM_LANDMARKS
         self.label_dir = cfg.INPUT_PATHS.LABELS
@@ -79,15 +86,26 @@ class test():
             os.mkdir(self.save_testtimeaug)
         
         self.pixel_size = torch.tensor(cfg.DATASET.PIXEL_SIZE).to(cfg.MODEL.DEVICE)
+        self.pixel_size_cpu = self.pixel_size.detach().cpu()
 
         self.comparison_metrics=cfg.TEST.COMPARISON_METRICS
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         self.sdr_thresholds = cfg.TEST.SDR_THRESHOLD
         self.sdr_units = cfg.TEST.SDR_UNITS
+        self.wandb_enabled = wandb.run is not None
+        self.wandb_failure_limit = getattr(cfg.TEST, 'WANDB_NUM_FAILURE_EXAMPLES', None)
+        self.augmenter = Augmentation(self.cfg)
+        self.eval_helper = evaluation_helper.evaluation_helper()
+        self.landmark_metric_helper = landmark_metrics()
+
+    def _debug_print(self, *args, **kwargs):
+        if self.debug_testing:
+            print(*args, **kwargs)
 
     def load_network(self, model_path):
         model = model_init(self.cfg).get_net_from_conf(get_net_info=False)
-        model.load_state_dict(torch.load(model_path))
+        model.load_state_dict(torch.load(model_path, map_location=self.device))
+        model = model.to(self.device)
         model.eval()
         return model
     
@@ -175,17 +193,520 @@ class test():
         orig_size = orig_size.to('cpu').numpy()
         pred = pred_map.detach().cpu().numpy()
 
-        augmenter = Augmentation(self.cfg)
-        pred = augmenter.reverse_downsample_and_pad(orig_size, pred)
+        pred = self.augmenter.reverse_downsample_and_pad(orig_size, pred)
 
         if isinstance(target_map[0], str):
             target = target_map[0]
             pass
         else:
             target = target_map.detach().cpu().numpy()
-            target = augmenter.reverse_downsample_and_pad(orig_size, target)
+            target = self.augmenter.reverse_downsample_and_pad(orig_size, target)
 
         return pred, target
+
+    def _sanitize_wandb_key(self, key):
+        return str(key).strip().lower().replace(' ', '_').replace('/', '_')
+
+    def _to_wandb_scalar(self, value):
+        if isinstance(value, torch.Tensor):
+            value = value.detach().cpu().numpy()
+        if isinstance(value, np.ndarray):
+            if value.size == 1:
+                value = value.item()
+            else:
+                return None
+        if isinstance(value, (np.floating, np.integer)):
+            value = value.item()
+        if isinstance(value, (float, int, str, bool)) or value is None:
+            return value
+        return str(value)
+
+    def _prepare_display_image(self, image):
+        image = np.asarray(image)
+        image = np.squeeze(image)
+
+        if image.ndim == 3 and image.shape[0] in (1, 3):
+            image = np.moveaxis(image, 0, -1)
+        if image.ndim == 3 and image.shape[-1] == 1:
+            image = image[..., 0]
+
+        return image
+
+    def _prepare_heatmap(self, pred_map):
+        heatmap = np.asarray(pred_map)
+        heatmap = np.squeeze(heatmap)
+
+        if heatmap.ndim == 3:
+            heatmap = np.sum(heatmap, axis=0)
+
+        return heatmap
+
+    def _format_example_caption(self, sample_id, metric_row):
+        priority_keys = [
+            'difference alpha',
+            'alpha pred',
+            'alpha true',
+            'fhc pred',
+            'fhc true',
+            'L HKA',
+            'R HKA',
+        ]
+
+        metric_parts = []
+        for key in priority_keys:
+            if key not in metric_row:
+                continue
+            value = self._to_wandb_scalar(metric_row[key])
+            if isinstance(value, float):
+                metric_parts.append(f"{key}: {value:.3f}")
+            elif value is not None:
+                metric_parts.append(f"{key}: {value}")
+
+        if not metric_parts:
+            for key, value in metric_row.items():
+                if key == 'ID':
+                    continue
+                value = self._to_wandb_scalar(value)
+                if isinstance(value, float):
+                    metric_parts.append(f"{key}: {value:.3f}")
+                elif isinstance(value, int):
+                    metric_parts.append(f"{key}: {value}")
+                if len(metric_parts) >= 4:
+                    break
+
+        if metric_parts:
+            return f"{sample_id} | " + ", ".join(metric_parts)
+        return str(sample_id)
+
+    def _build_wandb_example(self, sample_id, image, pred_map, predicted_points, metric_row, target_points=None):
+        display_image = self._prepare_display_image(image)
+        display_heatmap = self._prepare_heatmap(pred_map)
+
+        fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+        ax.imshow(display_image, cmap='gray')
+        ax.imshow(display_heatmap, cmap='inferno', alpha=0.35)
+
+        predicted_points = np.asarray(predicted_points)
+        if predicted_points.ndim == 2 and predicted_points.shape[1] >= 2:
+            ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=10, label='pred')
+
+        if target_points is not None and self.label_dir != '':
+            target_points = np.asarray(target_points)
+            if target_points.ndim == 2 and target_points.shape[1] >= 2:
+                ax.scatter(target_points[:, 0], target_points[:, 1], color='lime', s=10, label='true')
+
+        ax.set_title(str(sample_id))
+        ax.axis('off')
+        if ax.get_legend_handles_labels()[0]:
+            ax.legend(loc='lower right')
+
+        caption = self._format_example_caption(sample_id, metric_row)
+        wandb_image = wandb.Image(fig, caption=caption)
+        plt.close(fig)
+        return wandb_image
+
+    def _build_wandb_image_from_path(self, image_path, sample_id, metric_row):
+        caption = self._format_example_caption(sample_id, metric_row)
+        return wandb.Image(image_path, caption=caption)
+
+    def _get_failure_score(self, metric_row):
+        def _float_or_none(key):
+            value = metric_row.get(key)
+            value = self._to_wandb_scalar(value)
+            if isinstance(value, (int, float)):
+                return float(value)
+            return None
+
+        class_pred = metric_row.get('class pred')
+        class_true = metric_row.get('class true')
+        if class_pred is not None and class_true is not None and class_pred != class_true:
+            alpha_diff = abs(_float_or_none('difference alpha') or 0.0)
+            return 1_000_000.0 + alpha_diff
+
+        fhc_pred = metric_row.get('fhc class pred')
+        fhc_true = metric_row.get('fhc class true')
+        if fhc_pred is not None and fhc_true is not None and fhc_pred != fhc_true:
+            fhc_diff = abs((_float_or_none('fhc pred') or 0.0) - (_float_or_none('fhc true') or 0.0))
+            return 500_000.0 + fhc_diff
+
+        alpha_diff = _float_or_none('difference alpha')
+        if alpha_diff is not None:
+            return abs(alpha_diff)
+
+        landmark_errors = []
+        for key, value in metric_row.items():
+            if 'landmark radial error' not in key:
+                continue
+            value = self._to_wandb_scalar(value)
+            if isinstance(value, (int, float)):
+                landmark_errors.append(float(value))
+        if landmark_errors:
+            return max(landmark_errors)
+
+        l_hka = _float_or_none('L HKA')
+        r_hka = _float_or_none('R HKA')
+        if l_hka is not None or r_hka is not None:
+            return max(abs(l_hka or 0.0), abs(r_hka or 0.0))
+
+        return None
+
+    def _add_failure_candidate(self, failure_examples, candidate):
+        score = candidate.get("score")
+        if score is None:
+            return
+
+        failure_examples.append(candidate)
+        if self.wandb_failure_limit is None:
+            return
+
+        failure_examples.sort(key=lambda item: item["score"], reverse=True)
+        if len(failure_examples) > int(self.wandb_failure_limit):
+            del failure_examples[self.wandb_failure_limit:]
+
+    def _add_class_agreement_summary(self, prefix, agreement_metrics, summary_metrics):
+        metric_name_map = {
+            'percision: ': 'precision',
+            'recall: ': 'recall',
+            'accuracy': 'accuracy',
+            'sensitivity': 'sensitivity',
+            'specificity': 'specificity',
+        }
+
+        for raw_name, value in agreement_metrics:
+            if raw_name in {'TN:', 'FP:', 'FN:', 'TP:'}:
+                continue
+            metric_key = metric_name_map.get(raw_name, self._sanitize_wandb_key(raw_name))
+            if isinstance(value, np.ndarray):
+                if value.size == 1:
+                    summary_metrics[f"{prefix}_{metric_key}"] = float(value.reshape(-1)[0])
+                elif value.size > 1:
+                    summary_metrics[f"{prefix}_{metric_key}_mean"] = float(np.mean(value))
+                    for idx, item in enumerate(value.reshape(-1)):
+                        summary_metrics[f"{prefix}_{metric_key}_{idx}"] = float(item)
+            elif isinstance(value, (float, int, np.floating, np.integer)):
+                summary_metrics[f"{prefix}_{metric_key}"] = float(value)
+            else:
+                summary_metrics[f"{prefix}_{metric_key}"] = str(value)
+
+    def _save_class_agreement_bar_plot(self, prefix, agreement_metrics):
+        metric_lookup = {
+            "accuracy": None,
+            "sensitivity": None,
+            "specificity": None,
+        }
+
+        for raw_name, value in agreement_metrics:
+            key = {
+                "accuracy": "accuracy",
+                "sensitivity": "sensitivity",
+                "specificity": "specificity",
+            }.get(raw_name)
+            if key is None:
+                continue
+
+            if isinstance(value, np.ndarray):
+                arr = value.reshape(-1)
+                metric_lookup[key] = float(np.mean(arr)) if arr.size > 0 else None
+            elif isinstance(value, (float, int, np.floating, np.integer)):
+                metric_lookup[key] = float(value)
+
+        labels = []
+        values = []
+        for key in ["accuracy", "sensitivity", "specificity"]:
+            val = metric_lookup[key]
+            if val is None:
+                continue
+            labels.append(key.capitalize())
+            values.append(val)
+
+        if not values:
+            return None
+
+        os.makedirs(os.path.join(self.output_path, "test"), exist_ok=True)
+        plot_path = os.path.join(self.output_path, "test", f"{prefix}_bar_metrics.png")
+
+        fig, ax = plt.subplots(figsize=(6, 4))
+        bars = ax.bar(labels, values, color=["#2f6db3", "#2a9d8f", "#e9c46a"])
+        ax.set_ylim(0, 100)
+        ax.set_ylabel("Percent")
+        ax.set_title(prefix.replace("_", " ").title())
+        ax.grid(axis="y", linestyle=":", linewidth=0.5, alpha=0.6)
+
+        for bar, value in zip(bars, values):
+            ax.text(bar.get_x() + bar.get_width() / 2, value + 1, f"{value:.1f}",
+                    ha="center", va="bottom", fontsize=10)
+
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        return plot_path
+
+    def _save_metric_bar_plot_by_point(self, comparison_df, column_prefix, metric_label, filename, color):
+        labels = []
+        values = []
+
+        for i in range(self.num_landmarks):
+            col = f'{column_prefix} p{i+1}'
+            if col not in comparison_df.columns:
+                continue
+            series = pd.to_numeric(comparison_df[col], errors='coerce').dropna()
+            if series.empty:
+                continue
+            labels.append(f"p{i+1}")
+            values.append(float(series.mean()))
+
+        if not values:
+            return None, None
+
+        os.makedirs(os.path.join(self.output_path, "test"), exist_ok=True)
+        plot_path = os.path.join(self.output_path, "test", filename)
+        mean_value = float(np.mean(values))
+
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        bars = ax.bar(labels, values, color=color)
+        ax.axhline(mean_value, color="#1d4ed8", linestyle="--", linewidth=1.5, label=f"Average = {mean_value:.2f}")
+        ax.set_ylabel(f"Mean {metric_label}")
+        ax.set_xlabel("Landmark Point")
+        ax.set_title(f"Mean {metric_label} by Landmark Point")
+        ax.grid(axis="y", linestyle=":", linewidth=0.5, alpha=0.6)
+        ax.legend(loc="upper right")
+
+        for bar, value in zip(bars, values):
+            ax.text(bar.get_x() + bar.get_width() / 2, value, f"{value:.2f}",
+                    ha="center", va="bottom", fontsize=9)
+
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        return plot_path, mean_value
+
+    def _save_ere_bar_plot(self, comparison_df):
+        return self._save_metric_bar_plot_by_point(
+            comparison_df=comparison_df,
+            column_prefix='ere',
+            metric_label='ERE',
+            filename='ere_bar_by_point.png',
+            color="#d97706",
+        )
+
+    def _save_mre_bar_plot(self, comparison_df):
+        return self._save_metric_bar_plot_by_point(
+            comparison_df=comparison_df,
+            column_prefix='landmark radial error',
+            metric_label='MRE',
+            filename='mre_bar_by_point.png',
+            color="#0f766e",
+        )
+
+    def _save_sdr_bar_plot(self, sdr_values):
+        if sdr_values is None:
+            return None, None
+
+        try:
+            values = [float(v) for v in sdr_values]
+        except (TypeError, ValueError):
+            return None, None
+
+        if not values:
+            return None, None
+
+        labels = []
+        for threshold in self.sdr_thresholds[:len(values)]:
+            if self.sdr_units == 'mm':
+                labels.append(f"{threshold:g} mm")
+            else:
+                labels.append(f"{threshold:g} px")
+
+        os.makedirs(os.path.join(self.output_path, "test"), exist_ok=True)
+        plot_path = os.path.join(self.output_path, "test", "sdr_all_landmarks.png")
+        mean_value = float(np.mean(values))
+
+        fig, ax = plt.subplots(figsize=(8, 4.5))
+        bars = ax.bar(labels, values, color="#2563eb")
+        ax.axhline(mean_value, color="#1d4ed8", linestyle="--", linewidth=1.5, label=f"Average = {mean_value:.2f}")
+        ax.set_ylim(0, 100)
+        ax.set_ylabel("SDR (%)")
+        ax.set_xlabel("Threshold")
+        ax.set_title("SDR All Landmarks")
+        ax.grid(axis="y", linestyle=":", linewidth=0.5, alpha=0.6)
+        ax.legend(loc="upper right")
+
+        for bar, value in zip(bars, values):
+            ax.text(bar.get_x() + bar.get_width() / 2, value, f"{value:.2f}",
+                    ha="center", va="bottom", fontsize=9)
+
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        return plot_path, mean_value
+
+    def _save_single_value_point_plot(self, value, ylabel, title, filename, color):
+        if value is None:
+            return None
+
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            return None
+
+        if np.isnan(numeric_value):
+            return None
+
+        os.makedirs(os.path.join(self.output_path, "test"), exist_ok=True)
+        plot_path = os.path.join(self.output_path, "test", filename)
+
+        fig, ax = plt.subplots(figsize=(4.5, 4.5))
+        ax.scatter([0], [numeric_value], color=color, s=140, zorder=3)
+        ax.axhline(0, color="black", linestyle=":", linewidth=1.0, alpha=0.7)
+        ax.set_ylabel(ylabel)
+        ax.set_title(title)
+        ax.grid(axis="y", linestyle=":", linewidth=0.5, alpha=0.6)
+        ax.set_xlim(-0.5, 0.5)
+        ax.set_xticks([0])
+        ax.set_xticklabels([title])
+
+        offset = 0.02 * max(abs(numeric_value), 1.0)
+        text_y = numeric_value + offset if numeric_value >= 0 else numeric_value - offset
+        va = "bottom" if numeric_value >= 0 else "top"
+        ax.text(
+            0,
+            text_y,
+            f"{numeric_value:.3f}",
+            ha="center",
+            va=va,
+            fontsize=10,
+        )
+
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        return plot_path
+
+    def _get_wrong_case_plot_info(self, sample_id, metric_row):
+        class_pred = metric_row.get('class pred')
+        class_true = metric_row.get('class true')
+        fhc_pred = metric_row.get('fhc pred')
+        fhc_true = metric_row.get('fhc true')
+
+        if class_pred is None or class_true is None or fhc_pred is None or fhc_true is None:
+            return None
+
+        class_wrong = class_pred != class_true
+        fhc_wrong = None
+        try:
+            fhc_wrong = ('n' if float(fhc_pred) > 0.50 else 'a') != ('n' if float(fhc_true) > 0.50 else 'a')
+        except Exception:
+            try:
+                fhc_wrong = ('n' if float(fhc_pred) > 50 else 'a') != ('n' if float(fhc_true) > 50 else 'a')
+            except Exception:
+                return None
+
+        if not class_wrong and not fhc_wrong:
+            return None
+
+        if fhc_wrong and class_wrong:
+            folder = "wrong_classes"
+        elif fhc_wrong:
+            folder = "wrong_class_fhc"
+        else:
+            folder = "wrong_class_graf"
+
+        return {
+            "category": folder,
+            "path": os.path.join(self.save_img_path, folder, f"{sample_id}.png"),
+        }
+
+    def _save_wrong_case_plot(self, sample_id, image, pred_map, target_points, predicted_points, orig_size):
+        if self.label_dir == '':
+            return None
+
+        base_path = os.path.join(self.save_img_path, sample_id)
+        visuals(base_path, self.pixel_size[0], self.cfg, orig_size).heatmaps(
+            image,
+            pred_map,
+            target_points,
+            predicted_points,
+            all_landmarks=self.save_all_landmarks,
+            with_img=True,
+        )
+        return base_path + ".png"
+
+    def _build_summary_tables(self, summary_metrics, plot_paths):
+        summary_rows = []
+        excluded_summary_keys = {"fhc pred", "fhc true", "alpha pred", "alpha true", "difference alpha"}
+        for key in sorted(summary_metrics.keys()):
+            if str(key).strip().lower() in excluded_summary_keys:
+                continue
+            value = self._to_wandb_scalar(summary_metrics[key])
+            if isinstance(value, np.ndarray):
+                value = value.tolist()
+            if value is None:
+                value = ""
+            elif isinstance(value, (list, tuple, dict)):
+                value = str(value)
+            else:
+                value = str(value)
+            summary_rows.append([str(key), value])
+
+        summary_table = wandb.Table(columns=["metric", "value"], data=summary_rows)
+
+        plot_table = wandb.Table(columns=["plot_name", "local_path", "exists"])
+        for key in sorted(plot_paths.keys()):
+            path = plot_paths[key]
+            plot_table.add_data(key, path, os.path.exists(path))
+
+        return summary_table, plot_table
+
+    def _log_wandb_results(self, summary_metrics, failure_images, categorized_wrong_case_paths, plot_paths, comparison_csv_path, comparison_df):
+        if not self.wandb_enabled:
+            return
+
+        scalar_summary = {}
+        text_summary = {}
+        excluded_summary_keys = {"fhc pred", "fhc true", "alpha pred", "alpha true", "difference alpha"}
+
+        for key, value in summary_metrics.items():
+            if str(key).strip().lower() in excluded_summary_keys:
+                continue
+            clean_key = self._sanitize_wandb_key(key)
+            value = self._to_wandb_scalar(value)
+            if isinstance(value, (float, int, bool)) or value is None:
+                scalar_summary[f"test/{clean_key}"] = value
+            elif value is not None:
+                text_summary[f"test/{clean_key}"] = str(value)
+
+        if scalar_summary:
+            wandb.log(scalar_summary)
+
+        for key, value in text_summary.items():
+            wandb.run.summary[key] = value
+
+        wandb.run.summary["test/comparison_rows"] = len(comparison_df)
+
+        if failure_images:
+            wandb.log({"test/outputs": failure_images})
+
+        if categorized_wrong_case_paths:
+            wrong_case_payload = {}
+            for category, paths in categorized_wrong_case_paths.items():
+                existing_paths = [path for path in paths if os.path.exists(path)]
+                if existing_paths:
+                    wrong_case_payload[f"test/{category}"] = [wandb.Image(path) for path in existing_paths]
+            if wrong_case_payload:
+                wandb.log(wrong_case_payload)
+
+        if plot_paths:
+            plot_payload = {}
+            for key, path in plot_paths.items():
+                if os.path.exists(path):
+                    plot_payload[f"test/plots/{key}"] = wandb.Image(path)
+            if plot_payload:
+                wandb.log(plot_payload)
+
+        if os.path.exists(comparison_csv_path):
+            artifact = wandb.Artifact("test-comparison-metrics", type="evaluation")
+            artifact.add_file(comparison_csv_path)
+            wandb.log_artifact(artifact)
     
     def plot_hka_comparisons(self, pred_l, pred_r, true_hkas, save_name="/hka_comparison.png"):
         """
@@ -235,7 +756,7 @@ class test():
             y_filt = y[good_mask]
 
             # Debug: how many points remain
-            print(f"{title}: {len(x_filt)} points after filtering")
+            self._debug_print(f"{title}: {len(x_filt)} points after filtering")
 
             # scatter the filtered points
             ax.scatter(x_filt, y_filt)
@@ -369,7 +890,7 @@ class test():
             y_filt = y[good_mask]
 
             # Debug: how many points remain
-            print(f"{title}: {len(x_filt)} points after filtering")
+            self._debug_print(f"{title}: {len(x_filt)} points after filtering")
 
             if x_filt.size == 0:
                 ax.text(0.5, 0.5, "No data after filtering", transform=ax.transAxes,
@@ -445,6 +966,9 @@ class test():
     def get_best_test_time_aug(self, data, meta_data, id):
         '''loads data, gets N number of augs, predicts all and takes the best model which is the one with lowest ere'''
         metric = 'angle_and_ere'
+        EH = self.eval_helper
+        pixels_sizes = self.pixel_size_cpu
+        aug_seq = self.augmenter
         if metric == 'ERE':
             best_metric = 10000
         elif metric == 'angle':
@@ -452,14 +976,13 @@ class test():
         elif metric == 'angle_and_ere':
             best_metric = 10000
 
-        print('ID:', id[0])
+        self._debug_print('ID:', id[0])
         for i in range(self.cfg.TEST.TEST_TIME_AUG_NUM+1):
-            print('AUG:', i)
+            self._debug_print('AUG:', i)
             if i == 0: 
                 ##do not augment
                 pred = self.net(data, meta_data)                
             else:
-                aug_seq = Augmentation(self.cfg)
                 img_np = data.detach().cpu().numpy().squeeze(0) # C, H, W
                 ## change orientation for getting augmentations
                 img_hwc = np.transpose(img_np, (1,2,0)) 
@@ -485,17 +1008,13 @@ class test():
             ###Check eres
             ## if metric = 
             if metric == 'ERE':
-                EH=evaluation_helper.evaluation_helper()
                 _pred = pred.cpu()
-                pixels_sizes=self.pixel_size.to('cpu')
                 pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
-                ere_ls = landmark_metrics().get_eres(pred_landmarks, pred.cpu(), pixelsize=pixels_sizes)
+                ere_ls = self.landmark_metric_helper.get_eres(pred_landmarks, _pred, pixelsize=pixels_sizes)
                 total_metric = sum(value for _, value in ere_ls)
 
             elif metric == 'angle':
-                EH=evaluation_helper.evaluation_helper()
                 _pred = pred.cpu()
-                pixels_sizes=self.pixel_size.to('cpu')
                 pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
                 hka = protractor_hka().hka_angles(pred_landmarks.squeeze(0), pred.squeeze(0).cpu(), pred_landmarks.squeeze(0), pred.squeeze(0).cpu(),pixelsize=pixels_sizes)
                 hka_l, hka_r = hka[0][1], hka[3][1]
@@ -508,7 +1027,7 @@ class test():
                     if abs(hka_r_tib /hka_l_tib) > 0.9 and abs(hka_r_tib /hka_l_tib) < 1.1:
                         if abs(hka_l) < 18 and abs(hka_r) < 18:
                             total_metric = abs(hka_l) + abs(hka_r)
-                            print(total_metric)
+                            self._debug_print(total_metric)
                         else:
                             total_metric = 10000
                     else:
@@ -516,9 +1035,7 @@ class test():
                 else:
                     total_metric = 10000
             elif metric == 'angle_and_ere':
-                EH=evaluation_helper.evaluation_helper()
                 _pred = pred.cpu()
-                pixels_sizes=self.pixel_size.to('cpu')
                 pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
                 hka = protractor_hka().hka_angles(pred_landmarks.squeeze(0), pred.squeeze(0).cpu(), pred_landmarks.squeeze(0), pred.squeeze(0).cpu(),pixelsize=pixels_sizes)
                 hka_l, hka_r = hka[0][1], hka[3][1]
@@ -530,11 +1047,9 @@ class test():
                     ## see if tibia length is reasonale
                     if abs(hka_r_tib /hka_l_tib) > 0.9 and abs(hka_r_tib /hka_l_tib) < 1.1:
                         if abs(hka_l) < 18 and abs(hka_r) < 18:
-                            pixels_sizes=self.pixel_size.to('cpu')
-                            pred_landmarks=EH.get_landmarks_predonly(_pred, pixels_sizes)
-                            ere_ls = landmark_metrics().get_eres(pred_landmarks, pred.cpu(), pixelsize=pixels_sizes)
+                            ere_ls = self.landmark_metric_helper.get_eres(pred_landmarks, _pred, pixelsize=pixels_sizes)
                             total_metric = sum(value for _, value in ere_ls)
-                            print(total_metric)
+                            self._debug_print(total_metric)
 
                         else:
                             total_metric = 10000
@@ -557,7 +1072,7 @@ class test():
                     best_aug_img = aug_img
                     best_affine_params = affine_params
                 except:
-                    print('best is no aug')
+                    self._debug_print('best is no aug')
 
     
         ##plot best heatmap over augmented or normal image
@@ -590,52 +1105,64 @@ class test():
             plt.close()
         except:
             if best_metric == 10000:
-                print('defaulting back to the original image as all augmentations had unreasonable angles pr femur/tibia lengths')
+                self._debug_print('defaulting back to the original image as all augmentations had unreasonable angles pr femur/tibia lengths')
                 pred = self.net(data, meta_data)                
                 best_pred = pred
             else:
-                print('the best prediction was on the original image!')
+                self._debug_print('the best prediction was on the original image!')
 
 
         return best_pred
 
     def run(self, dataloader):
-        comparison_df = pd.DataFrame([])
+        comparison_rows = []
         true_hkas = []
+        failure_candidates = []
+        wandb_summary = {}
+        wandb_plot_paths = {}
+        categorized_wrong_case_paths = {
+            "wrong_class_fhc": [],
+            "wrong_class_graf": [],
+            "wrong_classes": [],
+        }
+        EH = self.eval_helper
+        start_time = datetime.datetime.now()
+        self.net.eval()
+        progress = tqdm(dataloader, desc="Testing", leave=True, disable=self.debug_testing)
 
-        for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(dataloader):
+        with torch.inference_mode():
+            for batch_idx, (data, target, landmarks, meta, id, orig_size, orig_img) in enumerate(progress):
 
-            data = Variable(data).to(self.device)
-            try:
-                target = Variable(target).to(self.device)
-            except:
-                target = target
-                print(target)
-            meta_data = Variable(meta).to(self.device)
-            orig_size = Variable(orig_size).to(self.device)
+                data = data.to(self.device, non_blocking=True)
+                try:
+                    target = target.to(self.device, non_blocking=True)
+                except Exception:
+                    self._debug_print(target)
+                meta_data = meta.to(self.device, non_blocking=True)
+                orig_size = orig_size.to(self.device, non_blocking=True)
 
-            if self.cfg.TEST.TEST_TIME_AUG == True:
-                ###if test time aug, run the model 5 times and select the one with the lowest eres.
-                pred = self.get_best_test_time_aug(data, meta_data, id)
-            else:
-                pred = self.net(data, meta_data)
-            #predictions are heatmaps, points are taken as hottest point in each channel, which is scaled (multiplied by pixel size). 
-            EH=evaluation_helper.evaluation_helper()
-
-            #plot and caluclate values for each subject in the batch
-            for i in range(self.bs):
-                ### resize back to original for
-                _data = orig_img[i].numpy()
-
-                if self.label_dir == '':
-                    _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
-                    _predicted_points=EH.get_landmarks_predonly(_pred, pixels_sizes=self.pixel_size.to('cpu'))
-                    _predicted_points=_predicted_points.squeeze(0)
-                    _target_points = target
+                if self.cfg.TEST.TEST_TIME_AUG == True:
+                    ###if test time aug, run the model 5 times and select the one with the lowest eres.
+                    pred = self.get_best_test_time_aug(data, meta_data, id)
                 else:
-                    _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
-                    _target_points,_predicted_points=EH.get_landmarks(_pred, _target, pixels_sizes=self.pixel_size.to('cpu'))
-                    _target_points,_predicted_points= _target_points.squeeze(0),_predicted_points.squeeze(0)
+                    pred = self.net(data, meta_data)
+
+                batch_size = data.shape[0]
+
+                #plot and caluclate values for each subject in the batch
+                for i in range(batch_size):
+                ### resize back to original for
+                    _data = orig_img[i].numpy()
+
+                    if self.label_dir == '':
+                        _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
+                        _predicted_points=EH.get_landmarks_predonly(_pred, pixels_sizes=self.pixel_size_cpu)
+                        _predicted_points=_predicted_points.squeeze(0)
+                        _target_points = target
+                    else:
+                        _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
+                        _target_points,_predicted_points=EH.get_landmarks(_pred, _target, pixels_sizes=self.pixel_size_cpu)
+                        _target_points,_predicted_points= _target_points.squeeze(0),_predicted_points.squeeze(0)
 
                 # if self.label_dir == '':
                 #     #class cols is order of columns
@@ -644,66 +1171,109 @@ class test():
                 #     target_fhc = target[self.class_cols.index('FHC (%)')+1][0]
 
                 
-                if self.label_dir == '':
-                    if self.save_img_landmarks_predandtrue == True:
-                        ##
-                        visuals(self.output_path+'/test/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points[0], _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True)
-                        if self.dataset_name == 'oai_nolandmarks':
-                            true_hkas.append(_target_points[0].detach().cpu().numpy())
-                    pass
-                else:    
-                    #### if the prediction does not have ground truth landmarks
-                    if self.save_img_landmarks_predandtrue == True:
-                        visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points)
-
-                    if self.save_asdcms == True:
-                        out_dcm_dir = self.save_img_path+'/as_dcms' 
-                        if os.path.exists(out_dcm_dir)==False:
-                            os.mkdir(out_dcm_dir)
-
-                        dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
-
+                    if self.label_dir == '':
                         if self.save_img_landmarks_predandtrue == True:
-                            visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+                            visuals(self.output_path+'/test/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points[0], _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True)
+                            if self.dataset_name == 'oai_nolandmarks':
+                                true_hkas.append(_target_points[0].detach().cpu().numpy())
+                    else:
+                        if self.save_img_landmarks_predandtrue == True:
+                            visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points)
 
-                        if self.save_heatmap_land_img == True:
-                            visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points,w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
-                
-                if self.save_heatmap_land_img == True:
-                    visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks)
+                        if self.save_asdcms == True:
+                            out_dcm_dir = self.save_img_path+'/as_dcms' 
+                            if os.path.exists(out_dcm_dir)==False:
+                                os.mkdir(out_dcm_dir)
 
-                if self.save_txt == True:
-                    visuals(self.output_path+'/txt/'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_astxt(_data,_predicted_points,self.img_size,orig_size[i])
-                
-                if self.save_heatmap == True:
-                    visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
+                            dcm_loc = self.dcm_dir +'/'+ id[i][:-1]+'_'+id[i][-1]+'.dcm'
 
-                if self.save_heatmap_as_np == True:
-                    visuals(self.output_path+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(_pred.squeeze(0))
-                    # image also resizes here check**
-                    visuals(self.output_path+'/np/numpy_heatmaps_uniformSize_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
+                            if self.save_img_landmarks_predandtrue == True:
+                                visuals(out_dcm_dir+'/'+id[i], self.pixel_size[0], self.cfg,orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
 
-                save_img=False
-                if save_img ==True:
-                    plt.imshow(np.squeeze(_data), cmap='Greys_r')
-                    plt.axis('off')
-                    plt.savefig(self.save_img_path+'/'+id[i]+'.png',dpi=1200, bbox_inches='tight', pad_inches = 0)       
+                            if self.save_heatmap_land_img == True:
+                                visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points,w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
+                    
+                    if self.save_heatmap_land_img == True:
+                        visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks)
 
-                
-                id_metric_df = self.compare_metrics(id[i], _predicted_points, _pred, _target_points, _target,self.pixel_size, orig_size[i])
+                    if self.save_txt == True:
+                        visuals(self.output_path+'/txt/'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_astxt(_data,_predicted_points,self.img_size,orig_size[i])
+                    
+                    if self.save_heatmap == True:
+                        visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
 
-                if comparison_df.empty == True:
-                    comparison_df = id_metric_df
+                    if self.save_heatmap_as_np == True:
+                        visuals(self.output_path+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(_pred.squeeze(0))
+                        visuals(self.output_path+'/np/numpy_heatmaps_uniformSize_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
+
+                    id_metric_df = self.compare_metrics(id[i], _predicted_points, _pred, _target_points, _target,self.pixel_size, orig_size[i])
+                    metric_row = id_metric_df.iloc[0].to_dict()
+                    comparison_rows.append(metric_row)
+
+                    wrong_case_info = self._get_wrong_case_plot_info(id[i], metric_row)
+                    if wrong_case_info is not None:
+                        if not os.path.exists(wrong_case_info["path"]):
+                            self._save_wrong_case_plot(
+                                sample_id=id[i],
+                                image=_data,
+                                pred_map=_pred,
+                                target_points=_target_points,
+                                predicted_points=_predicted_points,
+                                orig_size=orig_size[i],
+                            )
+                        categorized_wrong_case_paths[wrong_case_info["category"]].append(wrong_case_info["path"])
+
+                    if self.wandb_enabled and (self.wandb_failure_limit is None or int(self.wandb_failure_limit) > 0):
+                        target_points_for_log = _target_points if self.label_dir != '' else None
+                        wrong_case_image_path = wrong_case_info["path"] if wrong_case_info is not None else None
+                        self._add_failure_candidate(
+                            failure_candidates,
+                            {
+                                "score": self._get_failure_score(metric_row),
+                                "sample_id": id[i],
+                                "saved_wrong_case_path": wrong_case_image_path,
+                                "image": np.array(_data, copy=True),
+                                "pred_map": _pred.detach().cpu().numpy() if isinstance(_pred, torch.Tensor) else np.array(_pred, copy=True),
+                                "predicted_points": _predicted_points.detach().cpu().numpy() if isinstance(_predicted_points, torch.Tensor) else np.array(_predicted_points, copy=True),
+                                "metric_row": dict(metric_row),
+                                "target_points": None if target_points_for_log is None else (
+                                    target_points_for_log.detach().cpu().numpy()
+                                    if isinstance(target_points_for_log, torch.Tensor)
+                                    else np.array(target_points_for_log, copy=True)
+                                ),
+                            },
+                        )
+
+                progress.set_postfix(samples=len(comparison_rows), refresh=False)
+
+        comparison_df = pd.DataFrame(comparison_rows)
+        failure_images = []
+        if self.wandb_enabled and failure_candidates:
+            for candidate in failure_candidates:
+                if candidate.get("saved_wrong_case_path") and os.path.exists(candidate["saved_wrong_case_path"]):
+                    failure_images.append(
+                        self._build_wandb_image_from_path(
+                            image_path=candidate["saved_wrong_case_path"],
+                            sample_id=candidate["sample_id"],
+                            metric_row=candidate["metric_row"],
+                        )
+                    )
                 else:
-                    comparison_df = comparison_df._append(id_metric_df, ignore_index=True)
-
-            t_s=datetime.datetime.now()
-
-        t_e=datetime.datetime.now()
-        total_time=t_e-t_s
-        print('Time taken for epoch = ', total_time)
-        comparison_df.to_csv(self.output_path+'/test/comparison_metrics.csv')
-        print('Saving Results to comparison_metrics.csv')
+                    failure_images.append(
+                        self._build_wandb_example(
+                            sample_id=candidate["sample_id"],
+                            image=candidate["image"],
+                            pred_map=candidate["pred_map"],
+                            predicted_points=candidate["predicted_points"],
+                            metric_row=candidate["metric_row"],
+                            target_points=candidate["target_points"],
+                        )
+                    )
+        total_time = datetime.datetime.now() - start_time
+        self._debug_print('Time taken for epoch = ', total_time)
+        comparison_csv_path = self.output_path+'/test/comparison_metrics.csv'
+        comparison_df.to_csv(comparison_csv_path)
+        self._debug_print('Saving Results to comparison_metrics.csv')
 
         #
         #
@@ -720,6 +1290,8 @@ class test():
             pred_l, pred_r = comparison_df['L HKA'].to_numpy(), comparison_df['R HKA'].to_numpy()
             true_hkas = np.stack(true_hkas, axis=0)
             df = self.plot_hka_comparisons(pred_l,pred_r,true_hkas)
+            wandb_plot_paths["hka_comparison"] = os.path.join(self.output_path, "hka_comparison.png")
+            wandb_plot_paths["hka_bland_altman"] = os.path.join(self.output_path, "hka_BlandA_comparison.png")
                          
         if self.label_dir == '':
             MRE = [None, None, None,None]
@@ -727,10 +1299,24 @@ class test():
         else:
             #Get mean values from comparison summary ls, landmark metrics
             comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
+            for metric_name, metric_value in comparsion_summary_ls:
+                if 'landmark radial error p' in metric_name.lower():
+                    continue
+                if 'ere p' in metric_name.lower():
+                    continue
+                if metric_name.lower() in {'alpha pred', 'alpha true', 'difference alpha'}:
+                    continue
+                wandb_summary[metric_name] = metric_value
 
         self.logger.info("MEAN VALUES (pix): {}".format(comparsion_summary_ls))
         self.logger.info("MRE: {} +/- {} pix".format(MRE[0], MRE[1]))
         self.logger.info("MRE no labrum: {} +/- {} pix".format(MRE[2], MRE[3]))
+        ere_plot_path, ere_average = self._save_ere_bar_plot(comparison_df)
+        if ere_plot_path is not None:
+            wandb_plot_paths["ere_bar_by_point"] = ere_plot_path
+        mre_plot_path, mre_average = self._save_mre_bar_plot(comparison_df)
+        if mre_plot_path is not None:
+            wandb_plot_paths["mre_bar_by_point"] = mre_plot_path
 
 
         #plot angles pred vs angles 
@@ -742,18 +1328,26 @@ class test():
 
             self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
             self.logger.info("Alpha Thresholds Normalized: {}".format(alpha_thresh_percentages_normalized))
+            wandb_summary["alpha_thresholds"] = alpha_thresh_percentages
+            wandb_summary["alpha_thresholds_normalized"] = alpha_thresh_percentages_normalized
 
             #from df get class agreement metrics TP, TN, FN, FP
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true',self.output_path)._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
             self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[4]))
             self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[5]))
             self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[6]))
+            plot_path = self._save_class_agreement_bar_plot("class_agreement_i_vs_ii_iii_iv", class_agreement)
+            if plot_path is not None:
+                wandb_plot_paths["class_agreement_i_vs_ii_iii_iv_bar"] = plot_path
 
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.output_path)._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
 
             self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[4]))
             self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[5]))
             self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[6]))
+            plot_path = self._save_class_agreement_bar_plot("class_agreement_i_ii_vs_iii_iv", class_agreement)
+            if plot_path is not None:
+                wandb_plot_paths["class_agreement_i_ii_vs_iii_iv_bar"] = plot_path
 
 
 
@@ -764,6 +1358,9 @@ class test():
 
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement FHC: {}".format(class_agreement))
+            plot_path = self._save_class_agreement_bar_plot("class_agreement_fhc", class_agreement)
+            if plot_path is not None:
+                wandb_plot_paths["class_agreement_fhc_bar"] = plot_path
 
 
             ## Concensus of FHC and Graf
@@ -771,11 +1368,17 @@ class test():
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
+            plot_path = self._save_class_agreement_bar_plot("class_agreement_graf_fhc_i_vs_ii_iii_iv", class_agreement)
+            if plot_path is not None:
+                wandb_plot_paths["class_agreement_graf_fhc_i_vs_ii_iii_iv_bar"] = plot_path
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv',self.output_path, loc='test')._get_metrics(group=True,groups=[('n'),('a')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
+            plot_path = self._save_class_agreement_bar_plot("class_agreement_graf_fhc_i_ii_vs_iii_iv", class_agreement)
+            if plot_path is not None:
+                wandb_plot_paths["class_agreement_graf_fhc_i_ii_vs_iii_iv_bar"] = plot_path
             
-            comparison_df.to_csv(self.output_path+'/test/comparison_metrics.csv')
-            print('Saving Results to comparison_metrics.csv')
+            comparison_df.to_csv(comparison_csv_path)
+            self._debug_print('Saving Results to comparison_metrics.csv')
         
         
         sdr_summary = ""
@@ -805,23 +1408,48 @@ class test():
                     #get mean
                     self.logger.info("SDR all landmarks: {},{},{},{}".format(round(sdr_summary[0],2),round(sdr_summary[1],2),round(sdr_summary[2],2),round(sdr_summary[3],2)))
                     self.logger.info("SDR all landmarks (no labrum): {},{},{},{}".format(round(sdr_summary_nolab[0],2),round(sdr_summary_nolab[1],2),round(sdr_summary_nolab[2],2),round(sdr_summary_nolab[3],2)))
+                    wandb_summary["sdr_all_landmarks"] = ",".join([str(round(x, 2)) for x in sdr_summary])
+                    wandb_summary["sdr_all_landmarks_no_labrum"] = ",".join([str(round(x, 2)) for x in sdr_summary_nolab])
+                    sdr_plot_path, sdr_plot_average = self._save_sdr_bar_plot(np.round(sdr_summary, 2))
+                    if sdr_plot_path is not None:
+                        wandb_plot_paths["sdr_all_landmarks"] = sdr_plot_path
+
+                    for threshold, value in zip(self.sdr_thresholds, sdr_summary):
+                        threshold_key = str(threshold).replace('.', '_')
+                        wandb_summary[f"sdr_all_landmarks_{threshold_key}_{self.sdr_units}"] = round(float(value), 2)
+
+                    for threshold, value in zip(self.sdr_thresholds, sdr_summary_nolab):
+                        threshold_key = str(threshold).replace('.', '_')
+                        wandb_summary[f"sdr_all_landmarks_no_labrum_{threshold_key}_{self.sdr_units}"] = round(float(value), 2)
+
+                    if 'fhc pred' in comparison_df.columns and 'fhc true' in comparison_df.columns:
+                        fhc_abs_mean_diff = round(
+                            (pd.to_numeric(comparison_df['fhc pred'], errors='coerce') - pd.to_numeric(comparison_df['fhc true'], errors='coerce'))
+                            .abs()
+                            .mean(),
+                            3,
+                        )
+                        if not np.isnan(fhc_abs_mean_diff):
+                            self.logger.info('FHC ABSOLUTE MEAN DIFF:{}'.format(fhc_abs_mean_diff))
+                            wandb_summary["fhc_abs_mean_diff"] = fhc_abs_mean_diff
                    
                    
                     #plot angles pred vs angles 
                     if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
-                                    #get mean alpha difference
-                        self.logger.info('ALPHA MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].mean(),3)))
-                        self.logger.info('ALPHA ABSOLUTE MEAN DIFF:{}'.format(round(comparison_df['difference alpha'].apply(abs).mean(),3)))
-                        #plot angles pred vs angles 
-                        if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
-                            visualisations.comparison(self.dataset_name,self.output_path,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='test')
-                            visualisations.comparison(self.dataset_name,self.output_path,'fhc').true_vs_pred_scatter(comparison_df['fhc pred'].to_numpy(),comparison_df['fhc true'].to_numpy(),loc='test')
-                        else:
-                            visualisations.comparison(self.dataset_name, self.output_path,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='test')
-
+                        alpha_abs_mean_diff = round(comparison_df['difference alpha'].apply(abs).mean(), 3)
+                        self.logger.info('ALPHA ABSOLUTE MEAN DIFF:{}'.format(alpha_abs_mean_diff))
+                        wandb_summary["alpha_abs_mean_diff"] = alpha_abs_mean_diff
 
                 except:
                     raise ValueError('Check Landmark radial errors are calcuated')
-                    
+
+        self._log_wandb_results(
+            summary_metrics=wandb_summary,
+            failure_images=failure_images,
+            categorized_wrong_case_paths=categorized_wrong_case_paths,
+            plot_paths=wandb_plot_paths,
+            comparison_csv_path=comparison_csv_path,
+            comparison_df=comparison_df,
+        )
 
         return 
