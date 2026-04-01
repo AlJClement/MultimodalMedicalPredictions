@@ -1314,9 +1314,27 @@ class test():
         ere_plot_path, ere_average = self._save_ere_bar_plot(comparison_df)
         if ere_plot_path is not None:
             wandb_plot_paths["ere_bar_by_point"] = ere_plot_path
+        ere_average_plot_path = self._save_single_value_point_plot(
+            value=ere_average,
+            ylabel="Mean ERE",
+            title="Mean ERE",
+            filename="ere_mean_point.png",
+            color="#d97706",
+        )
+        if ere_average_plot_path is not None:
+            wandb_plot_paths["ere_mean_point"] = ere_average_plot_path
         mre_plot_path, mre_average = self._save_mre_bar_plot(comparison_df)
         if mre_plot_path is not None:
             wandb_plot_paths["mre_bar_by_point"] = mre_plot_path
+        mre_average_plot_path = self._save_single_value_point_plot(
+            value=mre_average,
+            ylabel="Mean MRE",
+            title="Mean MRE",
+            filename="mre_mean_point.png",
+            color="#0f766e",
+        )
+        if mre_average_plot_path is not None:
+            wandb_plot_paths["mre_mean_point"] = mre_average_plot_path
 
 
         #plot angles pred vs angles 
