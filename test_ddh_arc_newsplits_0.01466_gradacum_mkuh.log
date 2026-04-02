@@ -32,4 +32,68 @@ FREEZEING:  unet.encoder.layer1.2.bn1.bias
 FREEZEING:  unet.encoder.layer1.2.conv2.weight
 FREEZEING:  unet.encoder.layer1.2.bn2.weight
 FREEZEING:  unet.encoder.layer1.2.bn2.bias
-Testing:   0%|          | 0/50 [00:00<?, ?it/s]Testing:   2%|▏         | 1/50 [00:08<07:15,  8.89s/it, samples=1]Testing:   4%|▍         | 2/50 [00:15<05:56,  7.43s/it, samples=2]Testing:   6%|▌         | 3/50 [00:21<05:27,  6.96s/it, samples=3]Testing:   8%|▊         | 4/50 [00:28<05:12,  6.78s/it, samples=4]Testing:  10%|█         | 5/50 [00:34<04:59,  6.65s/it, samples=5]Testing:  12%|█▏        | 6/50 [00:41<04:49,  6.57s/it, samples=6]Testing:  14%|█▍        | 7/50 [00:47<04:40,  6.53s/it, samples=7]Testing:  16%|█▌        | 8/50 [00:57<05:15,  7.50s/it, samples=8]Testing:  18%|█▊        | 9/50 [01:06<05:34,  8.15s/it, samples=9]Testing:  20%|██        | 10/50 [01:13<05:05,  7.63s/it, samples=10]Testing:  22%|██▏       | 11/50 [01:19<04:42,  7.24s/it, samples=11]Testing:  24%|██▍       | 12/50 [01:25<04:26,  7.01s/it, samples=12]Testing:  26%|██▌       | 13/50 [01:32<04:13,  6.84s/it, samples=13]Testing:  28%|██▊       | 14/50 [01:38<04:01,  6.71s/it, samples=14]Testing:  30%|███       | 15/50 [01:45<03:51,  6.60s/it, samples=15]Testing:  32%|███▏      | 16/50 [01:51<03:41,  6.53s/it, samples=16]Testing:  34%|███▍      | 17/50 [01:57<03:34,  6.50s/it, samples=17]Testing:  36%|███▌      | 18/50 [02:04<03:27,  6.49s/it, samples=18]Testing:  38%|███▊      | 19/50 [02:10<03:20,  6.47s/it, samples=19]Testing:  40%|████      | 20/50 [02:17<03:13,  6.46s/it, samples=20]Testing:  42%|████▏     | 21/50 [02:23<03:07,  6.46s/it, samples=21]Testing:  44%|████▍     | 22/50 [02:30<03:00,  6.44s/it, samples=22]Testing:  46%|████▌     | 23/50 [02:36<02:53,  6.44s/it, samples=23]Testing:  48%|████▊     | 24/50 [02:43<02:47,  6.44s/it, samples=24]Testing:  50%|█████     | 25/50 [02:49<02:40,  6.41s/it, samples=25]Testing:  52%|█████▏    | 26/50 [02:55<02:34,  6.43s/it, samples=26]Testing:  54%|█████▍    | 27/50 [03:02<02:27,  6.42s/it, samples=27]Testing:  56%|█████▌    | 28/50 [03:09<02:24,  6.59s/it, samples=28]Testing:  58%|█████▊    | 29/50 [03:18<02:37,  7.51s/it, samples=29]Testing:  60%|██████    | 30/50 [03:25<02:23,  7.19s/it, samples=30]Testing:  62%|██████▏   | 31/50 [03:32<02:14,  7.10s/it, samples=31]Testing:  64%|██████▍   | 32/50 [03:39<02:07,  7.11s/it, samples=32]Testing:  66%|██████▌   | 33/50 [03:47<02:06,  7.45s/it, samples=33]Testing:  68%|██████▊   | 34/50 [03:55<02:02,  7.63s/it, samples=34]Testing:  70%|███████   | 35/50 [04:03<01:55,  7.73s/it, samples=35]Testing:  72%|███████▏  | 36/50 [04:12<01:51,  7.94s/it, samples=36]Testing:  74%|███████▍  | 37/50 [04:21<01:48,  8.35s/it, samples=37]Testing:  76%|███████▌  | 38/50 [04:39<02:14, 11.24s/it, samples=38]Testing:  78%|███████▊  | 39/50 [04:52<02:09, 11.78s/it, samples=39]Testing:  80%|████████  | 40/50 [05:07<02:07, 12.79s/it, samples=40]Testing:  82%|████████▏ | 41/50 [05:34<02:33, 17.09s/it, samples=41]Testing:  84%|████████▍ | 42/50 [05:53<02:20, 17.56s/it, samples=42]Testing:  86%|████████▌ | 43/50 [06:13<02:07, 18.27s/it, samples=43]Testing:  88%|████████▊ | 44/50 [06:33<01:53, 18.96s/it, samples=44]Testing:  90%|█████████ | 45/50 [06:51<01:33, 18.73s/it, samples=45]Testing:  92%|█████████▏| 46/50 [07:11<01:15, 18.86s/it, samples=46]Testing:  94%|█████████▍| 47/50 [07:30<00:56, 18.90s/it, samples=47]
+Testing:   0%|          | 0/50 [00:00<?, ?it/s]Testing:   2%|▏         | 1/50 [00:08<07:15,  8.89s/it, samples=1]Testing:   4%|▍         | 2/50 [00:15<05:56,  7.43s/it, samples=2]Testing:   6%|▌         | 3/50 [00:21<05:27,  6.96s/it, samples=3]Testing:   8%|▊         | 4/50 [00:28<05:12,  6.78s/it, samples=4]Testing:  10%|█         | 5/50 [00:34<04:59,  6.65s/it, samples=5]Testing:  12%|█▏        | 6/50 [00:41<04:49,  6.57s/it, samples=6]Testing:  14%|█▍        | 7/50 [00:47<04:40,  6.53s/it, samples=7]Testing:  16%|█▌        | 8/50 [00:57<05:15,  7.50s/it, samples=8]Testing:  18%|█▊        | 9/50 [01:06<05:34,  8.15s/it, samples=9]Testing:  20%|██        | 10/50 [01:13<05:05,  7.63s/it, samples=10]Testing:  22%|██▏       | 11/50 [01:19<04:42,  7.24s/it, samples=11]Testing:  24%|██▍       | 12/50 [01:25<04:26,  7.01s/it, samples=12]Testing:  26%|██▌       | 13/50 [01:32<04:13,  6.84s/it, samples=13]Testing:  28%|██▊       | 14/50 [01:38<04:01,  6.71s/it, samples=14]Testing:  30%|███       | 15/50 [01:45<03:51,  6.60s/it, samples=15]Testing:  32%|███▏      | 16/50 [01:51<03:41,  6.53s/it, samples=16]Testing:  34%|███▍      | 17/50 [01:57<03:34,  6.50s/it, samples=17]Testing:  36%|███▌      | 18/50 [02:04<03:27,  6.49s/it, samples=18]Testing:  38%|███▊      | 19/50 [02:10<03:20,  6.47s/it, samples=19]Testing:  40%|████      | 20/50 [02:17<03:13,  6.46s/it, samples=20]Testing:  42%|████▏     | 21/50 [02:23<03:07,  6.46s/it, samples=21]Testing:  44%|████▍     | 22/50 [02:30<03:00,  6.44s/it, samples=22]Testing:  46%|████▌     | 23/50 [02:36<02:53,  6.44s/it, samples=23]Testing:  48%|████▊     | 24/50 [02:43<02:47,  6.44s/it, samples=24]Testing:  50%|█████     | 25/50 [02:49<02:40,  6.41s/it, samples=25]Testing:  52%|█████▏    | 26/50 [02:55<02:34,  6.43s/it, samples=26]Testing:  54%|█████▍    | 27/50 [03:02<02:27,  6.42s/it, samples=27]Testing:  56%|█████▌    | 28/50 [03:09<02:24,  6.59s/it, samples=28]Testing:  58%|█████▊    | 29/50 [03:18<02:37,  7.51s/it, samples=29]Testing:  60%|██████    | 30/50 [03:25<02:23,  7.19s/it, samples=30]Testing:  62%|██████▏   | 31/50 [03:32<02:14,  7.10s/it, samples=31]Testing:  64%|██████▍   | 32/50 [03:39<02:07,  7.11s/it, samples=32]Testing:  66%|██████▌   | 33/50 [03:47<02:06,  7.45s/it, samples=33]Testing:  68%|██████▊   | 34/50 [03:55<02:02,  7.63s/it, samples=34]Testing:  70%|███████   | 35/50 [04:03<01:55,  7.73s/it, samples=35]Testing:  72%|███████▏  | 36/50 [04:12<01:51,  7.94s/it, samples=36]Testing:  74%|███████▍  | 37/50 [04:21<01:48,  8.35s/it, samples=37]Testing:  76%|███████▌  | 38/50 [04:39<02:14, 11.24s/it, samples=38]Testing:  78%|███████▊  | 39/50 [04:52<02:09, 11.78s/it, samples=39]Testing:  80%|████████  | 40/50 [05:07<02:07, 12.79s/it, samples=40]Testing:  82%|████████▏ | 41/50 [05:34<02:33, 17.09s/it, samples=41]Testing:  84%|████████▍ | 42/50 [05:53<02:20, 17.56s/it, samples=42]Testing:  86%|████████▌ | 43/50 [06:13<02:07, 18.27s/it, samples=43]Testing:  88%|████████▊ | 44/50 [06:33<01:53, 18.96s/it, samples=44]Testing:  90%|█████████ | 45/50 [06:51<01:33, 18.73s/it, samples=45]Testing:  92%|█████████▏| 46/50 [07:11<01:15, 18.86s/it, samples=46]Testing:  94%|█████████▍| 47/50 [07:30<00:56, 18.90s/it, samples=47]Testing:  96%|█████████▌| 48/50 [07:50<00:38, 19.36s/it, samples=48]Testing:  98%|█████████▊| 49/50 [08:24<00:23, 23.64s/it, samples=49]Testing: 100%|██████████| 50/50 [08:44<00:00, 22.70s/it, samples=50]Testing: 100%|██████████| 50/50 [08:44<00:00, 10.49s/it, samples=50]
+---------TEST RESULTS--------
+MEAN VALUES (pix): [['alpha pred', 59.56], ['alpha true', 54.47], ['difference alpha', 5.09], ['ere p1', 20.76], ['ere p2', 15.53], ['ere p3', 27.67], ['ere p4', 8.59], ['ere p5', 37.86], ['ere p6', 36.75], ['ere p7', 15.21], ['landmark radial error p1', 11.88], ['landmark radial error p2', 16.85], ['landmark radial error p3', 13.62], ['landmark radial error p4', 6.82], ['landmark radial error p5', 45.91], ['landmark radial error p6', 77.72], ['landmark radial error p7', 27.14], ['fhc pred', 0.35], ['fhc true', 0.47]]
+MRE: 28.56 +/- 23.39 pix
+MRE no labrum: 25.67 +/- 24.08 pix
+Alpha Thresholds: 24.00%, (agreeance 20.00%, disagreeance 4.00%)	24.00%, (agreeance 20.00%, disagreeance 4.00%)	30.00%, (agreeance 22.00%, disagreeance 8.00%)	78.00%, (agreeance 50.00%, disagreeance 28.00%)	
+Alpha Thresholds Normalized: 24.00%, (agreeance 83.33%, disagreeance 16.67%)	24.00%, (agreeance 83.33%, disagreeance 16.67%)	30.00%, (agreeance 73.33%, disagreeance 26.67%)	78.00%, (agreeance 64.10%, disagreeance 35.90%)	
+Class Agreement - i vs ii/iii/iv : ['percision: ', 100.0]
+Class Agreement - i vs ii/iii/iv : ['recall: ', 57.89473684210526]
+Class Agreement - i vs ii/iii/iv : ['accuracy', 68.0]
+Class Agreement - i/ii vs iii/iv : ['percision: ', 0.0]
+Class Agreement - i/ii vs iii/iv : ['recall: ', 0.0]
+Class Agreement - i/ii vs iii/iv : ['accuracy', 100.0]
+Class Agreement FHC: [['TN:', 12], ['FP:', 14], ['FN:', 0], ['TP:', 24], ['percision: ', 63.1578947368421], ['recall: ', 100.0], ['accuracy', 72.0], ['sensitivity', 100.0], ['specificity', 46.15384615384615]]
+Class Agreement i vs ii/iii/iv GRAF&FHC: [['TN:', 8], ['FP:', 4], ['FN:', 3], ['TP:', 35], ['percision: ', 89.74358974358974], ['recall: ', 92.10526315789474], ['accuracy', 86.0], ['sensitivity', 92.10526315789474], ['specificity', 66.66666666666667]]
+Class Agreement i/ii vs iii/iv GRAF&FHC: [['TN:', 12], ['FP:', 14], ['FN:', 0], ['TP:', 24], ['percision: ', 63.1578947368421], ['recall: ', 100.0], ['accuracy', 72.0], ['sensitivity', 100.0], ['specificity', 46.15384615384615]]
+Successful Detection Rates: 7.10 pixels [7.10	 mm]: 48.00%	14.20 pixels [14.20	 mm]: 78.00%	28.45 pixels [28.45	 mm]: 92.00%	56.90 pixels [56.90	 mm]: 98.00%	 for landmark radial error p1
+Successful Detection Rates: 7.10 pixels [7.10	 mm]: 22.00%	14.20 pixels [14.20	 mm]: 58.00%	28.45 pixels [28.45	 mm]: 86.00%	56.90 pixels [56.90	 mm]: 94.00%	 for landmark radial error p2
+Successful Detection Rates: 7.10 pixels [7.10	 mm]: 52.00%	14.20 pixels [14.20	 mm]: 74.00%	28.45 pixels [28.45	 mm]: 84.00%	56.90 pixels [56.90	 mm]: 96.00%	 for landmark radial error p3
+Successful Detection Rates: 7.10 pixels [7.10	 mm]: 64.00%	14.20 pixels [14.20	 mm]: 96.00%	28.45 pixels [28.45	 mm]: 100.00%	56.90 pixels [56.90	 mm]: 100.00%	 for landmark radial error p4
+Successful Detection Rates: 7.10 pixels [7.10	 mm]: 22.00%	14.20 pixels [14.20	 mm]: 54.00%	28.45 pixels [28.45	 mm]: 58.00%	56.90 pixels [56.90	 mm]: 68.00%	 for landmark radial error p5
+Successful Detection Rates: 7.10 pixels [7.10	 mm]: 40.00%	14.20 pixels [14.20	 mm]: 46.00%	28.45 pixels [28.45	 mm]: 50.00%	56.90 pixels [56.90	 mm]: 50.00%	 for landmark radial error p6
+Successful Detection Rates: 7.10 pixels [7.10	 mm]: 18.00%	14.20 pixels [14.20	 mm]: 40.00%	28.45 pixels [28.45	 mm]: 58.00%	56.90 pixels [56.90	 mm]: 92.00%	 for landmark radial error p7
+SDR all landmarks: 38.0,63.71,75.43,85.43
+SDR all landmarks (no labrum): 40.67,65.33,78.33,88.33
+FHC ABSOLUTE MEAN DIFF:0.127
+ALPHA ABSOLUTE MEAN DIFF:8.323
+Images sizes do not match. This will causes images to be display incorrectly in the UI.
+Images sizes do not match. This will causes images to be display incorrectly in the UI.
+Images sizes do not match. This will causes images to be display incorrectly in the UI.
+Images sizes do not match. This will causes images to be display incorrectly in the UI.
+wandb: updating run metadata; uploading artifact test-comparison-metrics
+wandb: uploading artifact test-comparison-metrics; uploading output.log; uploading wandb-summary.json
+wandb: uploading artifact test-comparison-metrics
+wandb: uploading history steps 2-3, summary, console lines 53-55
+wandb: 
+wandb: Run history:
+wandb:                      test/alpha_abs_mean_diff ▁
+wandb:                        test/fhc_abs_mean_diff ▁
+wandb:            test/sdr_all_landmarks_14_2_pixels ▁
+wandb:           test/sdr_all_landmarks_28_45_pixels ▁
+wandb:            test/sdr_all_landmarks_56_9_pixels ▁
+wandb:             test/sdr_all_landmarks_7_1_pixels ▁
+wandb:  test/sdr_all_landmarks_no_labrum_14_2_pixels ▁
+wandb: test/sdr_all_landmarks_no_labrum_28_45_pixels ▁
+wandb:  test/sdr_all_landmarks_no_labrum_56_9_pixels ▁
+wandb:   test/sdr_all_landmarks_no_labrum_7_1_pixels ▁
+wandb: 
+wandb: Run summary:
+wandb:            test/alpha_abs_mean_diff 8.323
+wandb:               test/alpha_thresholds 24.00%, (agreeance 2...
+wandb:    test/alpha_thresholds_normalized 24.00%, (agreeance 8...
+wandb:                test/comparison_rows 50
+wandb:              test/fhc_abs_mean_diff 0.127
+wandb:              test/sdr_all_landmarks 38.0,63.71,75.43,85....
+wandb:  test/sdr_all_landmarks_14_2_pixels 63.71
+wandb: test/sdr_all_landmarks_28_45_pixels 75.43
+wandb:  test/sdr_all_landmarks_56_9_pixels 85.43
+wandb:   test/sdr_all_landmarks_7_1_pixels 38
+wandb:                                  +5 ...
+wandb: 
+wandb: 🚀 View run ddh_arc_newsplits_0 at: https://wandb.ai/allisonclement-university-of-oxford/MultimodalMedicalPredictions/runs/4m175g2i
+wandb: ⭐️ View project at: https://wandb.ai/allisonclement-university-of-oxford/MultimodalMedicalPredictions
+wandb: Synced 5 W&B file(s), 83 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20260402_110628-4m175g2i/logs
