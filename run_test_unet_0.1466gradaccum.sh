@@ -4,7 +4,7 @@
 #SBATCH --time=1:00:00
 #SBATCH --clusters=htc
 #SBATCH --mem-per-cpu=16G
-#SBATCH --partition=short,medium
+#SBATCH --partition=short,medium,long
 
 module load Anaconda3/2022.05
 
