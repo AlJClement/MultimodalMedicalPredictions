@@ -100,9 +100,9 @@ def main():
     test_dataset=dataloader(cfg,'testing')
     help._dataset_shape(test_dataset)
 
-    num_workers = int(getattr(cfg.TEST, "NUM_WORKERS", 4))
-    pin_memory = bool(getattr(cfg.TEST, "PIN_MEMORY", torch.cuda.is_available()))
-    persistent_workers = bool(getattr(cfg.TEST, "PERSISTENT_WORKERS", num_workers > 0))
+    num_workers = int(getattr(cfg.TEST, "NUM_WORKERS", 0))
+    pin_memory = bool(getattr(cfg.TEST, "PIN_MEMORY", False))
+    persistent_workers = bool(getattr(cfg.TEST, "PERSISTENT_WORKERS", False))
     prefetch_factor = getattr(cfg.TEST, "PREFETCH_FACTOR", None)
     dataloader_kwargs = {
         "batch_size": cfg.TEST.BATCH_SIZE,

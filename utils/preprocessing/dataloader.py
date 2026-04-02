@@ -81,7 +81,11 @@ class dataloader(Dataset):
         self.testing_path_cache = self._load_testing_path_cache()
 
         self.set = set
-        self.data, self.target, self.landmarks, self.meta, self.ids, self.orig_img_shape,  self.orig_im= self.get_numpy_dataset() 
+        self.lazy_load = self.set != 'training'
+        if self.lazy_load:
+            self.data, self.target, self.landmarks, self.meta, self.ids, self.orig_img_shape, self.orig_im = self._build_lazy_dataset()
+        else:
+            self.data, self.target, self.landmarks, self.meta, self.ids, self.orig_img_shape,  self.orig_im= self.get_numpy_dataset() 
 
         if self.set != 'training':
             self.perform_aug = False
@@ -159,6 +163,54 @@ class dataloader(Dataset):
             ann_list.append([R_HKA, L_HKA])
 
         return ann_list
+
+    def _patient_id_from_path(self, img_path):
+        if self.dataset_name == 'oai_nolandmarks':
+            return img_path.strip("/").split("/")[-3]
+        return img_path.split('/')[-1].split('.')[0]
+
+    def _resolve_sample(self, img_path, ann_paths, pat_id):
+        _im_arr, orig_shape, _im_orig = self.get_img(self.preprocess_seq, img_path)
+        self._debug_print('orig_shape:', orig_shape)
+
+        if self.dataset_name == 'oai_nolandmarks':
+            _annotation_arr = ann_paths
+            annotation_points = [0.0]
+        else:
+            _annotation_arr, annotation_points, _ = self.get_ann(ann_paths, self.preprocess_seq, _im_arr.shape, orig_shape)
+
+        if self.num_out_channels != self.num_landmarks and self.dataset_name == 'oai':
+            print('Num Landmarks does not match Num Channels')
+            _annotation_arr = [_annotation_arr[0][[0,2,5,7,9,13],:,:]]
+            annotation_points = [annotation_points[0][[0,2,5,7,9,13],:]]
+
+        try:
+            if _annotation_arr[0][0] == 0 and self.metadata_csv_classes is not None:
+                _annotation_arr = self.metaimport._get_class_arr(self.metadata_csv_classes, pat_id)
+        except Exception:
+            pass
+
+        return _im_arr, _annotation_arr, annotation_points, orig_shape, _im_orig
+
+    def _build_lazy_dataset(self):
+        img_files, annotation_files = self.get_partition()
+        if self.subset != None:
+            im_set = img_files[self.set][:self.subset]
+            ann_set = annotation_files[self.set][:self.subset]
+        else:
+            im_set = img_files[self.set]
+            ann_set = annotation_files[self.set]
+
+        id_rows = [self._patient_id_from_path(img_path) for img_path in im_set]
+        meta_rows = [self.metaimport._get_array(self.metadata_csv, pat_id) for pat_id in id_rows]
+        meta_arr = pd.concat(meta_rows, ignore_index=True)
+        meta_arr = meta_arr.drop(self.pat_id_col, axis=1)
+        meta_data_restructured = self.meta_feat_structure(np.array(meta_arr))
+        meta_data_restructured = np.expand_dims(meta_data_restructured, axis=1)
+        meta_torch = torch.from_numpy(meta_data_restructured).float()
+
+        placeholder = [None] * len(im_set)
+        return list(im_set), list(ann_set), placeholder, meta_torch, np.array(id_rows), placeholder, placeholder
 
     def _find_oai_image_path(self, id):
         cached_path = self.testing_path_cache.get(id)
@@ -605,6 +657,32 @@ class dataloader(Dataset):
         return im_torch, annotation_torch, landmark_torch, meta_torch, np.array(id_rows), orig_shape_arr, image_orig_rows 
 
     def __getitem__(self, index):
+        if self.lazy_load:
+            img_path = self.data[index]
+            ann_paths = self.target[index]
+            pat_id = self.ids[index]
+            _im_arr, _annotation_arr, annotation_points, orig_shape, _im_orig = self._resolve_sample(img_path, ann_paths, pat_id)
+
+            x = torch.from_numpy(np.expand_dims(_im_arr, axis=0)).float()
+
+            try:
+                y = torch.from_numpy(np.asarray(_annotation_arr)).float()
+                if y.ndim == 4 and y.shape[0] == 1:
+                    y = y.squeeze(0)
+            except Exception:
+                y = _annotation_arr
+                if isinstance(y, np.ndarray) and y.dtype == object:
+                    y = y.flatten().tolist()
+
+            landmarks = torch.from_numpy(np.expand_dims(np.array(annotation_points), axis=0)).float()
+            meta = self.meta[index]
+            orig_size = torch.tensor(orig_shape, dtype=torch.float32)
+            orig_img = torch.from_numpy(np.asarray(_im_orig)).float()
+
+            if self.rgb == True:
+                x = x.repeat(3,1,1)
+
+            return x, y, landmarks, meta, pat_id, orig_size, orig_img
 
         x = self.data[index]
         y = self.target[index]

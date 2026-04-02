@@ -8,8 +8,9 @@ class MetadataImport():
 
         self.pat_col_name = cfg.INPUT_PATHS.ID_COL
 
-        cfg.INPUT_PATHS.META_COLS_CLASSES.append(self.pat_col_name)
-        self.class_ls = cfg.INPUT_PATHS.META_COLS_CLASSES
+        self.class_ls = list(cfg.INPUT_PATHS.META_COLS_CLASSES)
+        if self.pat_col_name and self.pat_col_name not in self.class_ls:
+            self.class_ls.append(self.pat_col_name)
 
         self.model_name = cfg.MODEL.NAME
         self.model_features = cfg.MODEL.META_FEATURES
@@ -24,7 +25,9 @@ class MetadataImport():
             col_names.append(col_name)
 
         meta = pd.read_csv(self.metapath,dtype=object, usecols=col_names)
-        meta_class = pd.read_csv(self.metapath,dtype=object, usecols=self.class_ls)
+        meta_class = None
+        if self.class_ls:
+            meta_class = pd.read_csv(self.metapath,dtype=object, usecols=self.class_ls)
         return meta, meta_class
         
     def _get_array(self, meta_df, patid):
