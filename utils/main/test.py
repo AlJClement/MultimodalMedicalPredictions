@@ -51,6 +51,13 @@ class test():
         self.save_heatmap = cfg.TEST.SAVE_HEATMAPS_ALONE
         self.save_heatmap_as_np = cfg.TEST.SAVE_HEATMAPS_NP
         self.save_all_landmarks = cfg.TEST.SHOW_ALL_LANDMARKS
+        self.needs_orig_img = any([
+            self.save_asdcms,
+            self.save_txt,
+            self.save_heatmap_land_img,
+            self.save_img_landmarks_predandtrue,
+            self.save_heatmap,
+        ])
 
         self.loss_func = eval(cfg.TRAIN.LOSS)
         self.bs = cfg.TEST.BATCH_SIZE
@@ -1170,7 +1177,7 @@ class test():
                 #plot and caluclate values for each subject in the batch
                 for i in range(batch_size):
                 ### resize back to original for
-                    _data = orig_img[i].numpy()
+                    _data = orig_img[i].numpy() if self.needs_orig_img else None
 
                     if self.label_dir == '':
                         _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])

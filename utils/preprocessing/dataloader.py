@@ -81,6 +81,7 @@ class dataloader(Dataset):
         self.testing_path_cache = self._load_testing_path_cache()
 
         self.set = set
+        self.return_orig_img = self._should_return_orig_img()
         self.lazy_load = self.set != 'training'
         if self.lazy_load:
             self.data, self.target, self.landmarks, self.meta, self.ids, self.orig_img_shape, self.orig_im = self._build_lazy_dataset()
@@ -103,6 +104,25 @@ class dataloader(Dataset):
     def _debug_print(self, *args, **kwargs):
         if self.debug:
             print(*args, **kwargs)
+
+    def _should_return_orig_img(self):
+        if self.set == 'testing':
+            return any([
+                bool(getattr(self.cfg.TEST, "SAVE_TXT", False)),
+                bool(getattr(self.cfg.TEST, "SAVE_HEATMAPS_LANDMARKS_IMG", False)),
+                bool(getattr(self.cfg.TEST, "SAVE_IMG_LANG_PREDANDTRUE", False)),
+                bool(getattr(self.cfg.TEST, "SAVE_HEATMAPS_ALONE", False)),
+                bool(getattr(self.cfg.TEST, "SAVE_HEATMAPS_ASDCM", False)),
+            ])
+
+        if self.set == 'validation':
+            return any([
+                bool(getattr(self.cfg.TEST, "SAVE_TXT", False)),
+                bool(getattr(self.cfg.TEST, "SAVE_HEATMAPS_ALONE", False)),
+                bool(getattr(self.cfg.TRAIN, "SAVE_VAL_DCM", False)),
+            ])
+
+        return True
 
     def _load_label_number_frames(self):
         if self.labels_dir_numbers == [] or self.dataset_name != 'oai_nolandmarks':
@@ -676,8 +696,11 @@ class dataloader(Dataset):
 
             landmarks = torch.from_numpy(np.expand_dims(np.array(annotation_points), axis=0)).float()
             meta = self.meta[index]
-            orig_size = torch.tensor(orig_shape, dtype=torch.float32)
-            orig_img = torch.from_numpy(np.asarray(_im_orig)).float()
+            orig_size = torch.tensor(np.expand_dims(np.asarray(orig_shape), axis=0), dtype=torch.float32)
+            if self.return_orig_img:
+                orig_img = torch.from_numpy(np.asarray(_im_orig))
+            else:
+                orig_img = torch.empty(0, dtype=torch.uint8)
 
             if self.rgb == True:
                 x = x.repeat(3,1,1)
