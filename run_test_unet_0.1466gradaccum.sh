@@ -3,8 +3,8 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=1:00:00
 #SBATCH --clusters=htc
-#SBATCH --partition=short
-#SBATCH --mem-per-cpu=50G
+#SBATCH --mem-per-cpu=16G
+#SBATCH --partition=short,medium
 
 module load Anaconda3/2022.05
 
