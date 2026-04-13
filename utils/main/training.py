@@ -85,6 +85,7 @@ class training():
         self.grad_accumulation_steps = cfg.TRAIN.GRAD_ACCUMULATION_STEPS
         self.grad_accumulation_steps_min = cfg.TRAIN.GRAD_ACCUMULATION_STEPS_MIN ## min value to stop
         self.grad_accumulation_steps_reduce = cfg.TRAIN.GRAD_ACCUMULATION_STEPS_REDUCE
+        self.disable_grad_accumulation = self.bs != 1
 
         # AMP toggle + GradScaler (modern API). Use device type (e.g., 'cuda' or 'cpu').
         device_type = self.device.type  # 'cuda' or 'cpu'
@@ -173,6 +174,13 @@ class training():
         batches = 0
 
         accum_steps = max(1, getattr(self, "grad_accumulation_steps", 1))
+        if self.disable_grad_accumulation:
+            accum_steps = 1
+            if getattr(self, "grad_accumulation_steps", 1) > 1:
+                self._debug_print(
+                    f"Gradient accumulation disabled because BATCH_SIZE={self.bs}. "
+                    "Accumulation is only used when BATCH_SIZE == 1."
+                )
         if accum_steps > 1:
             if epoch % 50 == 0 and accum_steps > self.grad_accumulation_steps_min:
                 new_acc = max(self.grad_accumulation_steps_min, accum_steps // 2)

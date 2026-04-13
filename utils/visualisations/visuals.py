@@ -158,9 +158,8 @@ class visuals():
         _output = self.channels_thresholded(output)
         ax.imshow(_output, cmap='inferno', alpha = 0.5)
         ax.axis('off')
-        if image is None:
-            pass
-        else:
+        has_valid_image = isinstance(image, np.ndarray) and image.size > 0 and image.ndim in (2, 3)
+        if has_valid_image:
             ax.imshow(image, cmap='grey', alpha = 0.5)
 
         # ax.axis('off')
@@ -174,7 +173,8 @@ class visuals():
             pass
         else:
             if isinstance(target_points[0], tuple):
-                ax.imshow(image, cmap='Greys_r',alpha=0.4)
+                if has_valid_image:
+                    ax.imshow(image, cmap='Greys_r',alpha=0.4)
                 ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
                                                         
                 fhc_pred = fhc.fhc().get_fhc_pred(predicted_points,output, self.pixelsize)
@@ -193,7 +193,8 @@ class visuals():
             else:
                 if with_img == True:
                     if w_landmarks == True:
-                        ax.imshow(image, cmap='Greys_r')
+                        if has_valid_image:
+                            ax.imshow(image, cmap='Greys_r')
                         #add landmarks
                         if self.dataset_name == 'oai_nolandmarks':
                             pass
@@ -240,7 +241,8 @@ class visuals():
                             pass
                     else:
                         ax.scatter(predicted_points[:, 0], predicted_points[:, 1], color='red', s=5)
-                        ax.imshow(image, cmap='Greys_r',alpha=0.4)
+                        if has_valid_image:
+                            ax.imshow(image, cmap='Greys_r',alpha=0.4)
 
         # with open(self.save_path+'.txt', 'a') as output:
         #     for i in range(len(predicted_points)):

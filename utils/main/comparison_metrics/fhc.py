@@ -76,10 +76,12 @@ class fhc():
                 D = fh_2[1]-fh_1[1]
                 d = fh_2[1]-i
 
-            try:
-                FHC = (d/(D))
-            except:
-                FHC = 0
+            D = float(D)
+            d = float(d)
+            if not np.isfinite(D) or abs(D) < 1e-12 or not np.isfinite(d):
+                FHC = 0.0
+            else:
+                FHC = d / D
 
             if FHC<=0: FHC=0
             if FHC>=1: FHC=1

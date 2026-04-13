@@ -6,12 +6,11 @@ INPUT_PATHS:
   # LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
   # META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
 
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.15_0.15_0.7_0.01466_best.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
-  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  DCMS:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-  LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
- # DATASET_NAME: ddh
+  PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_best.json
+  IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+  DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+  LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
+  META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
 
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1.json  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/imgs 
@@ -51,7 +50,7 @@ MODEL:
     - 256
     - 128
     - 64
-  IN_CHANNELS: 1
+  IN_CHANNELS: 3
   ATTENTION: scse
 
   FREEZE_LAYERS: 2
@@ -70,8 +69,8 @@ DATASET:
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
     ROTATION_FACTOR: 1 #affine
-    INTENSITY_FACTOR: 1.0 #multiplicaiton factor
-    SF: 0.5 #affine scale factor
+    INTENSITY_FACTOR: 2.0 #multiplicaiton factor
+    SF: 0.7 #affine scale factor
     TRANSLATION_X: 0.2 #affine
     TRANSLATION_Y: 0.2 #affine
     SPECKLE_NOISE: 2
@@ -87,9 +86,9 @@ TRAIN:
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
-  GRAD_ACCUMULATION_STEPS: 8
-  GRAD_ACCUMULATION_STEPS_REDUCE: 5 ## num of epochs to reduce grad accum steps by half 
-  GRAD_ACCUMULATION_STEPS_MIN: 2 ## 
+  GRAD_ACCUMULATION_STEPS: 1
+  GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## unused when accumulation is disabled
+  GRAD_ACCUMULATION_STEPS_MIN: 1 ## 
 
 
 TEST:

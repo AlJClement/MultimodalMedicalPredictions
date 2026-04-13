@@ -36,6 +36,12 @@ class validation():
         self.save_txt = cfg.TEST.SAVE_TXT
         self.save_heatmap = cfg.TEST.SAVE_HEATMAPS_ALONE
         self.save_heatmap_as_np = cfg.TEST.SAVE_HEATMAPS_NP
+        self.needs_orig_img = any([
+            save_img,
+            self.save_heatmap_asdcms,
+            self.save_txt,
+            self.save_heatmap,
+        ])
 
         self.save_img_path = cfg.OUTPUT_PATH +'/validation'
         if self.save_txt == True:
@@ -273,9 +279,10 @@ class validation():
 
                 ## Save images for validation
                 if self.save_img == True:
-                    for i in range(orig_img.shape[0]):
+                    batch_size = data.shape[0]
+                    for i in range(batch_size):
                         #get original image and resize predictions to image size
-                        _data = orig_img[i].numpy()
+                        _data = orig_img[i].numpy() if self.needs_orig_img and orig_img.numel() > 0 else None
                         _pred, _target =self.resize_backto_original(pred[i], target[i], orig_size[i])
 
                         _target_points,_predicted_points=EH.get_landmarks(_pred, _target, pixels_sizes=self.pixel_size.to('cpu'))
