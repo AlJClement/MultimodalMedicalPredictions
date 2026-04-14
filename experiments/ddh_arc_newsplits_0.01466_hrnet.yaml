@@ -1,16 +1,16 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  # PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_best.json
-  # IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
-  # DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
-  # LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
-  # META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
-
   PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_best.json
   IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
   DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
   LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
   META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
+
+  # PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_best.json
+  # IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+  # DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+  # LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
+  # META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
 
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1.json  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/imgs 
@@ -82,13 +82,13 @@ OUTPUT_PATH: ./output_ddh_0316_newsplit_0.01466_hrnet
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.005
-  EPOCHS: 30
+  EPOCHS: 50
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   GAMMA: 0.0
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
-  GRAD_ACCUMULATION_STEPS: 1
-  GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## unused when accumulation is disabled
-  GRAD_ACCUMULATION_STEPS_MIN: 1 ## 
+  # GRAD_ACCUMULATION_STEPS: 1
+  # GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## unused when accumulation is disabled
+  # GRAD_ACCUMULATION_STEPS_MIN: 1 ## 
 
 
 TEST:
