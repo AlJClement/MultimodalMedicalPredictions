@@ -116,6 +116,8 @@ def main():
         if prefetch_factor is not None:
             dataloader_kwargs["prefetch_factor"] = int(prefetch_factor)
 
+    logger.info(f"Test DataLoader settings: {dataloader_kwargs}")
+
     #load data into data loader (imports all data into a dataloader)
     test_dataloader = DataLoader(test_dataset, **dataloader_kwargs)
     
