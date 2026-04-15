@@ -238,6 +238,7 @@ dependencies:
   - zlib=1.2.13=h5eee18b_0
   - zstd=1.5.5=hc292b87_0
   - pip:
+      - wandb
       - efficientnet-pytorch==0.7.1
       - imagecorruptions==1.1.2
       - jinja2==3.1.2

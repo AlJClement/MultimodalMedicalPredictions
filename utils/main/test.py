@@ -212,6 +212,44 @@ class test():
             txt_norm += "{:.2f}%, (agreeance {:.2f}%, disagreeance {:.2f}%)\t".format(val[0],100*val[1]/val[0],100*val[2]/val[0])
     
         return txt, txt_norm 
+
+    def alpha_thresholds_structured(self, df, thresholds=[1,2,5,10]):
+        df_alpha_diff = df['difference alpha']
+        df_pred_class = df['class pred']
+        df_true_class = df['class true']
+
+        if isinstance(df_alpha_diff, pd.Series):
+            alpha_diff = df_alpha_diff.to_numpy(dtype=float)
+            pred_class = df_pred_class.to_numpy()
+            true_class = df_true_class.to_numpy()
+        else:
+            alpha_diff = np.asarray(df_alpha_diff, dtype=float)
+            pred_class = np.asarray(df_pred_class)
+            true_class = np.asarray(df_true_class)
+
+        np_agree = np.where(true_class == pred_class, 1.0, 0.0)
+        np_disagree = np.where(true_class != pred_class, 1.0, 0.0)
+
+        rows = []
+        total = float(np.size(alpha_diff)) if np.size(alpha_diff) > 0 else 0.0
+
+        for threshold in thresholds:
+            mask = np.where(alpha_diff < threshold, 1.0, 0.0)
+            percentage = 100.0 * np.sum(mask) / total if total else 0.0
+            agree = 100.0 * np.sum(np_agree * mask) / total if total else 0.0
+            disagree = 100.0 * np.sum(np_disagree * mask) / total if total else 0.0
+            norm_agree = 100.0 * agree / percentage if percentage else 0.0
+            norm_disagree = 100.0 * disagree / percentage if percentage else 0.0
+            rows.append({
+                "threshold_deg": threshold,
+                "percentage": round(float(percentage), 2),
+                "agree": round(float(agree), 2),
+                "disagree": round(float(disagree), 2),
+                "norm_agree": round(float(norm_agree), 2),
+                "norm_disagree": round(float(norm_disagree), 2),
+            })
+
+        return rows
     
     def resize_backto_original(self, pred_map, target_map, orig_size):
         #resize images
@@ -682,7 +720,199 @@ class test():
 
         return summary_table, plot_table
 
-    def _log_wandb_results(self, summary_metrics, failure_images, categorized_wrong_case_paths, plot_paths, comparison_csv_path, comparison_df):
+    def _extract_classification_triplet(self, class_agreement):
+        metrics = {"accuracy": None, "precision": None, "recall": None}
+        name_map = {
+            "accuracy": "accuracy",
+            "percision:": "precision",
+            "precision:": "precision",
+            "recall:": "recall",
+        }
+
+        for item in class_agreement:
+            if len(item) < 2:
+                continue
+            raw_name = str(item[0]).strip().lower()
+            metric_name = name_map.get(raw_name)
+            if metric_name is None:
+                continue
+
+            value = item[1]
+            if isinstance(value, torch.Tensor):
+                value = value.detach().cpu().numpy()
+            if isinstance(value, np.ndarray):
+                if value.size == 0:
+                    value = None
+                elif value.size == 1:
+                    value = value.item()
+                else:
+                    value = float(np.mean(value))
+            if isinstance(value, (np.floating, np.integer)):
+                value = value.item()
+            if value is not None:
+                metrics[metric_name] = round(float(value), 2)
+
+        return metrics
+
+    def _build_experiment_summary_row(
+        self,
+        comparison_df,
+        mre_stats,
+        sdr_mm,
+        alpha_threshold_rows,
+        graf_i_vs_234,
+        graf_12_vs_34,
+        fhc_abnormal_vs_normal,
+        graf_fhc_i_vs_234,
+        graf_fhc_12_vs_34,
+    ):
+        row = {
+            "mre_mm": None,
+            "std_mm": None,
+            "mre_pix": None,
+            "std_pix": None,
+            "mre_no_labrum_pix": None,
+            "std_no_labrum_pix": None,
+            "sdr_0_5mm": None,
+            "sdr_1mm": None,
+            "sdr_2mm": None,
+            "sdr_4mm": None,
+            "mean_diff_alpha_deg": None,
+            "absolute_diff_alpha_deg": None,
+        }
+
+        pixel_size_mm = float(self.pixel_size_cpu[0].item()) if self.pixel_size_cpu.numel() > 0 else None
+        if mre_stats and mre_stats[0] is not None:
+            row["mre_pix"] = round(float(mre_stats[0]), 2)
+            row["std_pix"] = round(float(mre_stats[1]), 2)
+            if pixel_size_mm is not None:
+                row["mre_mm"] = round(float(mre_stats[0]) * pixel_size_mm, 2)
+                row["std_mm"] = round(float(mre_stats[1]) * pixel_size_mm, 2)
+        if len(mre_stats) > 2 and mre_stats[2] is not None:
+            row["mre_no_labrum_pix"] = round(float(mre_stats[2]), 2)
+            row["std_no_labrum_pix"] = round(float(mre_stats[3]), 2)
+
+        if sdr_mm is not None:
+            for threshold, value in zip([0.5, 1, 2, 4], sdr_mm):
+                if threshold == 0.5:
+                    key = "sdr_0_5mm"
+                elif threshold == 1:
+                    key = "sdr_1mm"
+                elif threshold == 2:
+                    key = "sdr_2mm"
+                else:
+                    key = "sdr_4mm"
+                row[key] = round(float(value), 2)
+
+        if 'difference alpha' in comparison_df.columns:
+            alpha_diff = pd.to_numeric(comparison_df['difference alpha'], errors='coerce').dropna()
+            if not alpha_diff.empty:
+                row["mean_diff_alpha_deg"] = round(float(alpha_diff.mean()), 2)
+                row["absolute_diff_alpha_deg"] = round(float(alpha_diff.abs().mean()), 2)
+
+        threshold_prefix_map = {
+            1: "deg_1",
+            2: "deg_2",
+            5: "deg_5",
+            10: "deg_10",
+        }
+        for threshold_row in alpha_threshold_rows or []:
+            prefix = threshold_prefix_map.get(threshold_row["threshold_deg"])
+            if prefix is None:
+                continue
+            row[f"{prefix}_percentage"] = threshold_row["percentage"]
+            row[f"{prefix}_agree"] = threshold_row["agree"]
+            row[f"{prefix}_disagree"] = threshold_row["disagree"]
+            row[f"{prefix}_norm_agree"] = threshold_row["norm_agree"]
+            row[f"{prefix}_norm_disagree"] = threshold_row["norm_disagree"]
+
+        for prefix, metrics in [
+            ("graf_1_vs_234", graf_i_vs_234),
+            ("graf_12_vs_34", graf_12_vs_34),
+            ("fhc_abnormal_vs_normal", fhc_abnormal_vs_normal),
+            ("graf_fhc_1_vs_234", graf_fhc_i_vs_234),
+            ("graf_fhc_12_vs_34", graf_fhc_12_vs_34),
+        ]:
+            metric_values = metrics or {}
+            row[f"{prefix}_accuracy"] = metric_values.get("accuracy")
+            row[f"{prefix}_precision"] = metric_values.get("precision")
+            row[f"{prefix}_recall"] = metric_values.get("recall")
+
+        return row
+
+    def _build_experiment_summary_heatmap(self, summary_row):
+        percentage_columns = [
+            "sdr_0_5mm",
+            "sdr_1mm",
+            "sdr_2mm",
+            "sdr_4mm",
+            "deg_1_percentage",
+            "deg_1_agree",
+            "deg_1_disagree",
+            "deg_1_norm_agree",
+            "deg_1_norm_disagree",
+            "deg_2_percentage",
+            "deg_2_agree",
+            "deg_2_disagree",
+            "deg_2_norm_agree",
+            "deg_2_norm_disagree",
+            "deg_5_percentage",
+            "deg_5_agree",
+            "deg_5_disagree",
+            "deg_5_norm_agree",
+            "deg_5_norm_disagree",
+            "deg_10_percentage",
+            "deg_10_agree",
+            "deg_10_disagree",
+            "deg_10_norm_agree",
+            "deg_10_norm_disagree",
+            "graf_1_vs_234_accuracy",
+            "graf_1_vs_234_precision",
+            "graf_1_vs_234_recall",
+            "graf_12_vs_34_accuracy",
+            "graf_12_vs_34_precision",
+            "graf_12_vs_34_recall",
+            "fhc_abnormal_vs_normal_accuracy",
+            "fhc_abnormal_vs_normal_precision",
+            "fhc_abnormal_vs_normal_recall",
+            "graf_fhc_1_vs_234_accuracy",
+            "graf_fhc_1_vs_234_precision",
+            "graf_fhc_1_vs_234_recall",
+            "graf_fhc_12_vs_34_accuracy",
+            "graf_fhc_12_vs_34_precision",
+            "graf_fhc_12_vs_34_recall",
+        ]
+
+        labels = []
+        values = []
+        for column in percentage_columns:
+            value = summary_row.get(column)
+            if value is None:
+                continue
+            labels.append(column)
+            values.append(float(value))
+
+        if not values:
+            return None
+
+        heatmap_values = np.array([values], dtype=float)
+        fig_width = max(12, len(values) * 0.45)
+        fig, ax = plt.subplots(figsize=(fig_width, 2.8))
+        im = ax.imshow(heatmap_values, cmap="RdYlGn", vmin=50, vmax=100, aspect="auto")
+        ax.set_xticks(np.arange(len(labels)))
+        ax.set_xticklabels(labels, rotation=75, ha="right", fontsize=8)
+        ax.set_yticks([0])
+        ax.set_yticklabels(["summary"])
+        ax.set_title("Evaluation Percentage Heatmap (50-100)")
+
+        for idx, value in enumerate(values):
+            ax.text(idx, 0, f"{value:.1f}", ha="center", va="center", fontsize=7, color="black")
+
+        fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02)
+        fig.tight_layout()
+        return wandb.Image(fig, caption="CSV-style evaluation summary heatmap")
+
+    def _log_wandb_results(self, summary_metrics, failure_images, categorized_wrong_case_paths, plot_paths, comparison_csv_path, comparison_df, evaluation_summary_table=None, evaluation_summary_heatmap=None):
         if not self.wandb_enabled:
             return
 
@@ -727,6 +957,12 @@ class test():
                     plot_payload[f"test/plots/{key}"] = wandb.Image(path)
             if plot_payload:
                 wandb.log(plot_payload)
+
+        if evaluation_summary_table is not None:
+            wandb.log({"test/evaluation_summary_table": evaluation_summary_table})
+
+        if evaluation_summary_heatmap is not None:
+            wandb.log({"test/evaluation_summary_heatmap": evaluation_summary_heatmap})
 
         if os.path.exists(comparison_csv_path):
             artifact = wandb.Artifact("test-comparison-metrics", type="evaluation")
@@ -1362,12 +1598,21 @@ class test():
             wandb_plot_paths["mre_mean_point"] = mre_average_plot_path
 
 
+        alpha_threshold_rows = None
+        graf_i_vs_234_metrics = None
+        graf_12_vs_34_metrics = None
+        fhc_abnormal_vs_normal_metrics = None
+        graf_fhc_i_vs_234_metrics = None
+        graf_fhc_12_vs_34_metrics = None
+        sdr_summary_mm = None
+
         #plot angles pred vs angles 
         if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
             if self.label_dir == '':   
                 alpha_thresh_percentages,alpha_thresh_percentages_normalized= None, None
             else:
                 alpha_thresh_percentages,alpha_thresh_percentages_normalized=self.alpha_thresholds(comparison_df)
+                alpha_threshold_rows = self.alpha_thresholds_structured(comparison_df)
 
             self.logger.info("Alpha Thresholds: {}".format(alpha_thresh_percentages))
             self.logger.info("Alpha Thresholds Normalized: {}".format(alpha_thresh_percentages_normalized))
@@ -1376,6 +1621,7 @@ class test():
 
             #from df get class agreement metrics TP, TN, FN, FP
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true',self.output_path)._get_metrics(group=True,groups=[('i'),('ii','iii/iv')])
+            graf_i_vs_234_metrics = self._extract_classification_triplet(class_agreement)
             self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[4]))
             self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[5]))
             self.logger.info("Class Agreement - i vs ii/iii/iv : {}".format(class_agreement[6]))
@@ -1384,6 +1630,7 @@ class test():
                 wandb_plot_paths["class_agreement_i_vs_ii_iii_iv_bar"] = plot_path
 
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.output_path)._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
+            graf_12_vs_34_metrics = self._extract_classification_triplet(class_agreement)
 
             self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[4]))
             self.logger.info("Class Agreement - i/ii vs iii/iv : {}".format(class_agreement[5]))
@@ -1400,6 +1647,7 @@ class test():
             comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
 
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'fhc class pred', 'fhc class true',self.output_path, loc=self.test_output_dir_name)._get_metrics(group=True,groups=[('n'),('a')])
+            fhc_abnormal_vs_normal_metrics = self._extract_classification_triplet(class_agreement)
             self.logger.info("Class Agreement FHC: {}".format(class_agreement))
             plot_path = self._save_class_agreement_bar_plot("class_agreement_fhc", class_agreement)
             if plot_path is not None:
@@ -1410,11 +1658,13 @@ class test():
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv', groups=[('i'),('ii','iii/iv')])
             comparison_df = self.validation.get_combined_agreement(comparison_df,'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', groups=[('i','ii'),('iii/iv')])
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i_ii&iii&iv', 'graf&fhc true i_ii&iii&iv',self.output_path, loc=self.test_output_dir_name)._get_metrics(group=True,groups=[('n'),('a')])
+            graf_fhc_i_vs_234_metrics = self._extract_classification_triplet(class_agreement)
             self.logger.info("Class Agreement i vs ii/iii/iv GRAF&FHC: {}".format(class_agreement))
             plot_path = self._save_class_agreement_bar_plot("class_agreement_graf_fhc_i_vs_ii_iii_iv", class_agreement)
             if plot_path is not None:
                 wandb_plot_paths["class_agreement_graf_fhc_i_vs_ii_iii_iv_bar"] = plot_path
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv',self.output_path, loc=self.test_output_dir_name)._get_metrics(group=True,groups=[('n'),('a')])
+            graf_fhc_12_vs_34_metrics = self._extract_classification_triplet(class_agreement)
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
             plot_path = self._save_class_agreement_bar_plot("class_agreement_graf_fhc_i_ii_vs_iii_iv", class_agreement)
             if plot_path is not None:
@@ -1465,6 +1715,15 @@ class test():
                         threshold_key = str(threshold).replace('.', '_')
                         wandb_summary[f"sdr_all_landmarks_no_labrum_{threshold_key}_{self.sdr_units}"] = round(float(value), 2)
 
+                    sdr_summary_mm = []
+                    for mm_threshold in [0.5, 1, 2, 4]:
+                        per_landmark_sdr = []
+                        for i in range(self.num_landmarks):
+                            col = 'landmark radial error p'+str(i+1)
+                            sdr_stats_mm, _ = landmark_overall_metrics(self.pixel_size, 'mm').get_sdr_statistics(comparison_df[col], [mm_threshold])
+                            per_landmark_sdr.append(sdr_stats_mm[0])
+                        sdr_summary_mm.append(round(float(np.mean(per_landmark_sdr)), 2))
+
                     if 'fhc pred' in comparison_df.columns and 'fhc true' in comparison_df.columns:
                         fhc_abs_mean_diff = round(
                             (pd.to_numeric(comparison_df['fhc pred'], errors='coerce') - pd.to_numeric(comparison_df['fhc true'], errors='coerce'))
@@ -1486,6 +1745,26 @@ class test():
                 except:
                     raise ValueError('Check Landmark radial errors are calcuated')
 
+        evaluation_summary_table = None
+        evaluation_summary_heatmap = None
+        if self.wandb_enabled and self.label_dir != '':
+            evaluation_summary_row = self._build_experiment_summary_row(
+                comparison_df=comparison_df,
+                mre_stats=MRE,
+                sdr_mm=sdr_summary_mm,
+                alpha_threshold_rows=alpha_threshold_rows,
+                graf_i_vs_234=graf_i_vs_234_metrics,
+                graf_12_vs_34=graf_12_vs_34_metrics,
+                fhc_abnormal_vs_normal=fhc_abnormal_vs_normal_metrics,
+                graf_fhc_i_vs_234=graf_fhc_i_vs_234_metrics,
+                graf_fhc_12_vs_34=graf_fhc_12_vs_34_metrics,
+            )
+            evaluation_summary_table = wandb.Table(
+                columns=list(evaluation_summary_row.keys()),
+                data=[[evaluation_summary_row[column] for column in evaluation_summary_row.keys()]],
+            )
+            evaluation_summary_heatmap = self._build_experiment_summary_heatmap(evaluation_summary_row)
+
         self._log_wandb_results(
             summary_metrics=wandb_summary,
             failure_images=failure_images,
@@ -1493,6 +1772,8 @@ class test():
             plot_paths=wandb_plot_paths,
             comparison_csv_path=comparison_csv_path,
             comparison_df=comparison_df,
+            evaluation_summary_table=evaluation_summary_table,
+            evaluation_summary_heatmap=evaluation_summary_heatmap,
         )
 
         return 

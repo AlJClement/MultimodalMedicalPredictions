@@ -9,9 +9,20 @@ import os
 import torch
 torch.cuda.empty_cache() 
 from main.loss import plot_all_loss
+import wandb
 import numpy as _np
 if not hasattr(_np, "bool"):
     _np.bool = bool
+
+
+def _cfg_to_dict(cfg_node):
+    if hasattr(cfg_node, "items"):
+        return {key: _cfg_to_dict(value) for key, value in cfg_node.items()}
+    if isinstance(cfg_node, (list, tuple)):
+        return [_cfg_to_dict(value) for value in cfg_node]
+    if isinstance(cfg_node, np.ndarray):
+        return cfg_node.tolist()
+    return cfg_node
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a network to detect landmarks')
@@ -19,6 +30,22 @@ def parse_args():
     parser.add_argument('--cfg',
                         help='The path to the configuration file for the experiment',
                         required=True,
+                        type=str)
+    parser.add_argument('--wandb-project',
+                        help='Optional W&B project override',
+                        required=False,
+                        type=str)
+    parser.add_argument('--wandb-group',
+                        help='Optional W&B group for collecting multiple training runs together',
+                        required=False,
+                        type=str)
+    parser.add_argument('--wandb-run-suffix',
+                        help='Optional suffix appended to the W&B run name',
+                        required=False,
+                        type=str)
+    parser.add_argument('--wandb-tags',
+                        help='Optional comma-separated W&B tags',
+                        required=False,
                         type=str)
     
     args = parser.parse_args()
@@ -40,6 +67,25 @@ def main():
     cfg = help._get_cfg()
     logger.info(cfg)
     logger.info("")
+    wandb_cfg = _cfg_to_dict(cfg)
+
+    cfg_stem = os.path.basename(cfg_name).split('.')[0]
+    run_name = cfg_stem if not args.wandb_run_suffix else f"{cfg_stem}_{args.wandb_run_suffix}"
+    run_group = args.wandb_group or cfg_stem
+    run_tags = ["train", cfg.INPUT_PATHS.DATASET_NAME, cfg.MODEL.NAME]
+    if args.wandb_tags:
+        run_tags.extend([tag.strip() for tag in args.wandb_tags.split(',') if tag.strip()])
+    run_tags = list(dict.fromkeys(run_tags))
+
+    wandb.init(
+        project=args.wandb_project or "MultimodalMedicalPredictions",
+        group=run_group,
+        job_type="train",
+        config=wandb_cfg,
+        name=run_name,
+        tags=run_tags,
+    )
+    wandb.config.update(wandb_cfg)
 
     #preprocess data (put into a numpy array)
     train_dataset=dataloader(cfg,'training')
@@ -75,27 +121,47 @@ def main():
     train = training(cfg, logger,L2_REG)
     net = train._get_network()
     validate= validation(cfg,logger,net, L2_REG)
-    
-    for epoch in range(1, max_epochs+1):  
-        train_loss = train.train_meta(train_dataloader, epoch)
-        val_loss = validate.val_meta(val_dataloader, epoch)
-        losses.append([train_loss, val_loss])
 
-    losses = np.array(losses).T
-    plot_all_loss(losses, max_epochs, cfg.OUTPUT_PATH)
+    try:
+        for epoch in range(1, max_epochs+1):  
+            train_loss = float(train.train_meta(train_dataloader, epoch))
+            val_loss = float(validate.val_meta(val_dataloader, epoch))
+            losses.append([train_loss, val_loss])
 
-    logger.info('-----------Saving Models-----------')
-    best_model=train._get_network()
-    runs = [1] #would be multiple if ensembles
+            logger.info(
+                "Epoch %s/%s - train_loss: %.6f - val_loss: %.6f",
+                epoch,
+                max_epochs,
+                train_loss,
+                val_loss,
+            )
+            wandb.log(
+                {
+                    "epoch": epoch,
+                    "train_loss": train_loss,
+                    "val_loss": val_loss,
+                },
+                step=epoch,
+            )
 
-    for model_idx in runs:
-        model_run_path = os.path.join(cfg.OUTPUT_PATH, "model:{}".format(model_idx))
-        if not os.path.exists(model_run_path):
-            os.makedirs(model_run_path)
-        #our_model = ensemble[model_idx]
-        save_model_path = os.path.join(model_run_path, "_model_run:{}_idx.pth".format(model_idx))
-        logger.info("Saving Model {}'s State Dict to {}".format(model_idx, save_model_path))
-        torch.save(best_model.state_dict(), save_model_path)
+        losses = np.array(losses).T
+        plot_all_loss(losses, max_epochs, cfg.OUTPUT_PATH)
+
+        logger.info('-----------Saving Models-----------')
+        best_model=train._get_network()
+        runs = [1] #would be multiple if ensembles
+
+        for model_idx in runs:
+            model_run_path = os.path.join(cfg.OUTPUT_PATH, "model:{}".format(model_idx))
+            if not os.path.exists(model_run_path):
+                os.makedirs(model_run_path)
+            #our_model = ensemble[model_idx]
+            save_model_path = os.path.join(model_run_path, "_model_run:{}_idx.pth".format(model_idx))
+            logger.info("Saving Model {}'s State Dict to {}".format(model_idx, save_model_path))
+            torch.save(best_model.state_dict(), save_model_path)
+    finally:
+        if wandb.run is not None:
+            wandb.finish()
 
 if __name__ == '__main__':
     main()
