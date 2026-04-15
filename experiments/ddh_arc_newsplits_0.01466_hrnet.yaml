@@ -5,7 +5,8 @@ INPUT_PATHS:
   DCMS:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
-# 
+
+
   # PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.15_0.15_0.7_0.01466_best.json
   # IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
   # DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
