@@ -35,10 +35,8 @@ class dataloader(Dataset):
         else:
             self.subset=subset
 
-        if cfg.MODEL.NAME=='hrnet':
-            self.rgb = True
-        else:
-            self.rgb = False
+        self.in_channels = int(cfg.MODEL.IN_CHANNELS)
+        self.rgb = self.in_channels == 3
         
         self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME
         self.partition_file_path = cfg.INPUT_PATHS.PARTITION
@@ -702,8 +700,8 @@ class dataloader(Dataset):
             else:
                 orig_img = torch.empty(0, dtype=torch.uint8)
 
-            if self.rgb == True:
-                x = x.repeat(3,1,1)
+            if self.in_channels > 1 and x.shape[0] == 1:
+                x = x.repeat(self.in_channels, 1, 1)
 
             return x, y, landmarks, meta, pat_id, orig_size, orig_img
 
@@ -759,10 +757,8 @@ class dataloader(Dataset):
 
         orig_size = self.orig_img_shape[index][0]
 
-        if self.rgb == True:
-            x = x.repeat(3,1,1)
-        else:
-            pass
+        if self.in_channels > 1 and x.shape[0] == 1:
+            x = x.repeat(self.in_channels, 1, 1)
 
         return x, y, landmarks, meta, id, orig_size, orig_img
 
