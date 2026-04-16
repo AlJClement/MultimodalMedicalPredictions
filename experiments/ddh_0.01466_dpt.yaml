@@ -37,7 +37,7 @@ MODEL:
   #
   META_FEATURES: [100,100,100] 
   NAME: 'dpt'
-  ENCODER_NAME: 'resnet34'
+  ENCODER_NAME: 'tu-resnet34' ##'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
@@ -49,7 +49,7 @@ MODEL:
   IN_CHANNELS: 3
   ATTENTION: scse
 
-  FREEZE_LAYERS: 1
+  FREEZE_LAYERS: 2
 
 DATASET:
   IMAGE_EXT: ".jpg"
