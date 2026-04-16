@@ -6,7 +6,7 @@ import segmentation_models_pytorch as smp
 
 class dpt(nn.Module):
     def __init__(self, cfg):
-        super(dpta, self).__init__()
+        super().__init__()
 
         self.in_channels = cfg.MODEL.IN_CHANNELS
         self.out_channels = cfg.MODEL.OUT_CHANNELS
@@ -29,7 +29,7 @@ class dpt(nn.Module):
         x = torch.softmax(x, dim=-1)
         return x.view(b, c, h, w)
 
-    def forward(self, im):
+    def forward(self, im, meta=None):
         x = self.dpt(im)  # [B, C, H, W]
 
         # Make sure output matches input spatial size
