@@ -2,10 +2,10 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=11:50:00
-#SBATCH --gres=gpu:1
 #SBATCH --clusters=htc
 #SBATCH --mem-per-cpu=50G
 #SBATCH --partition=short
+#SBATCH --gres=gpu:v100:1
 
 module load Anaconda3
 
