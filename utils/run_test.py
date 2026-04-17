@@ -19,6 +19,11 @@ def _cfg_to_dict(cfg_node):
     return cfg_node
 
 
+def _resolve_cfg_name(cfg_arg):
+    cfg_basename = os.path.basename(str(cfg_arg).strip())
+    return os.path.splitext(cfg_basename)[0]
+
+
 def _collect_dataset_tags(cfg):
     tags = set()
     candidates = [
@@ -69,17 +74,16 @@ def parse_args():
 def main():
     args = parse_args()
     cfg_name = args.cfg
+    resolved_cfg_name = _resolve_cfg_name(cfg_name)
 
     # print the arguments into the log
-    help = helper(cfg_name, 'test')
+    help = helper(resolved_cfg_name, 'test')
     logger = help.setup_logger()
     cfg = help._get_cfg()
     wandb_cfg = _cfg_to_dict(cfg)
 
-    cfg_stem = os.path.basename(cfg_name).split('.')[0]
-    test_track_name = args.wandb_project or f"{cfg_stem}_test"
-    run_name = cfg_stem if not args.wandb_run_suffix else f"{cfg_stem}_{args.wandb_run_suffix}"
-    run_group = args.wandb_group or cfg_stem
+    run_name = resolved_cfg_name if not args.wandb_run_suffix else f"{resolved_cfg_name}_{args.wandb_run_suffix}"
+    run_group = args.wandb_group or resolved_cfg_name
     run_tags = ["test", cfg.INPUT_PATHS.DATASET_NAME, cfg.MODEL.NAME]
     run_tags.extend(_collect_dataset_tags(cfg))
     if args.wandb_tags:
@@ -87,7 +91,7 @@ def main():
     run_tags = list(dict.fromkeys(run_tags))
     
     wandb.init(
-        project="MultimodalMedicalPredictions",
+        project=args.wandb_project or "MultimodalMedicalPredictions",
         group=run_group,
         job_type="test",
         config=wandb_cfg,

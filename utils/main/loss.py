@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import torch.nn as nn
+import os
 from . import evaluation_helper
 import math
 from . import comparison_metrics
@@ -300,6 +301,24 @@ def plot_all_loss(losses, max_epochs, save_path):
     plt.legend(['Train', 'Validation'])
 
     plt.savefig(save_path+'/loss_fig.png')
+    plt.close()
+
+
+def plot_metric_history(values, save_path, filename, ylabel, legend_label=None):
+    values = np.asarray(values, dtype=float)
+    epochs = np.arange(1, len(values) + 1)
+    valid_mask = np.isfinite(values)
+
+    plt.figure()
+    if np.any(valid_mask):
+        plt.plot(epochs[valid_mask], values[valid_mask])
+    plt.xlabel('Epoch')
+    plt.ylabel(ylabel)
+    if legend_label is not None and np.any(valid_mask):
+        plt.legend([legend_label])
+
+    plt.savefig(os.path.join(save_path, filename))
+    plt.close()
 
 class L2RegLoss(nn.Module):
     def __init__(self, main_loss_str, lam=0.01, mu=1):

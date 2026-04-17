@@ -8,7 +8,7 @@ import numpy as np
 import os
 import torch
 torch.cuda.empty_cache() 
-from main.loss import plot_all_loss
+from main.loss import plot_all_loss, plot_metric_history
 import wandb
 import numpy as _np
 if not hasattr(_np, "bool"):
@@ -23,6 +23,11 @@ def _cfg_to_dict(cfg_node):
     if isinstance(cfg_node, np.ndarray):
         return cfg_node.tolist()
     return cfg_node
+
+
+def _resolve_cfg_name(cfg_arg):
+    cfg_basename = os.path.basename(str(cfg_arg).strip())
+    return os.path.splitext(cfg_basename)[0]
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a network to detect landmarks')
@@ -54,9 +59,10 @@ def parse_args():
 def main():
     args = parse_args()
     cfg_name = args.cfg
+    resolved_cfg_name = _resolve_cfg_name(cfg_name)
 
     # print the arguments into the log
-    help = helper(cfg_name, 'training')
+    help = helper(resolved_cfg_name, 'training')
     logger = help.setup_logger()
     logger.info("-----------Arguments-----------")
     logger.info(vars(args))
@@ -69,9 +75,8 @@ def main():
     logger.info("")
     wandb_cfg = _cfg_to_dict(cfg)
 
-    cfg_stem = os.path.basename(cfg_name).split('.')[0]
-    run_name = cfg_stem if not args.wandb_run_suffix else f"{cfg_stem}_{args.wandb_run_suffix}"
-    run_group = args.wandb_group or cfg_stem
+    run_name = resolved_cfg_name if not args.wandb_run_suffix else f"{resolved_cfg_name}_{args.wandb_run_suffix}"
+    run_group = args.wandb_group or resolved_cfg_name
     run_tags = ["train", cfg.INPUT_PATHS.DATASET_NAME, cfg.MODEL.NAME]
     if args.wandb_tags:
         run_tags.extend([tag.strip() for tag in args.wandb_tags.split(',') if tag.strip()])
@@ -115,6 +120,8 @@ def main():
     val_dataloader = DataLoader(val_dataset, **dataloader_kwargs)
 
     losses = []
+    val_mres = []
+    val_mres_no_labrum = []
     max_epochs = cfg.TRAIN.EPOCHS
     L2_REG = cfg.TRAIN.L2_REG
 
@@ -126,26 +133,43 @@ def main():
         for epoch in range(1, max_epochs+1):  
             train_loss = float(train.train_meta(train_dataloader, epoch))
             val_loss = float(validate.val_meta(val_dataloader, epoch))
+            val_mre = float(getattr(validate, "last_mre", float("nan")))
+            val_mre_no_labrum = float(getattr(validate, "last_mre_no_labrum", float("nan")))
             losses.append([train_loss, val_loss])
+            val_mres.append(val_mre)
+            val_mres_no_labrum.append(val_mre_no_labrum)
 
             logger.info(
-                "Epoch %s/%s - train_loss: %.6f - val_loss: %.6f",
+                "Epoch %s/%s - train_loss: %.6f - val_loss: %.6f - val_mre: %.4f",
                 epoch,
                 max_epochs,
                 train_loss,
                 val_loss,
+                val_mre,
             )
             wandb.log(
                 {
                     "epoch": epoch,
                     "train_loss": train_loss,
                     "val_loss": val_loss,
+                    "val_mre": val_mre,
                 },
                 step=epoch,
             )
+            if np.isfinite(val_mre_no_labrum):
+                wandb.log({"val_mre_no_labrum": val_mre_no_labrum}, step=epoch)
 
         losses = np.array(losses).T
         plot_all_loss(losses, max_epochs, cfg.OUTPUT_PATH)
+        plot_metric_history(val_mres, cfg.OUTPUT_PATH, "mre_fig.png", "MRE (pixels)", legend_label="Validation")
+        if any(np.isfinite(np.asarray(val_mres_no_labrum, dtype=float))):
+            plot_metric_history(
+                val_mres_no_labrum,
+                cfg.OUTPUT_PATH,
+                "mre_no_labrum_fig.png",
+                "MRE No Labrum (pixels)",
+                legend_label="Validation",
+            )
 
         logger.info('-----------Saving Models-----------')
         best_model=train._get_network()

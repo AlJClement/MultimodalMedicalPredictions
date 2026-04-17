@@ -11,4 +11,4 @@ module load Anaconda3
 
 source activate /data/coml-oxmedis/kebl7678/yenv
 #run python code
-python ./utils/run_training.py --cfg ddh_arc_newsplits_0.01499_hrnet
+python ./utils/run_training.py --cfg ddh_0.01499_hrnet

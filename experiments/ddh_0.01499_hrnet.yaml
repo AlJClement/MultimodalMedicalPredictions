@@ -1,10 +1,17 @@
 INPUT_PATHS:
   DATASET_NAME: ddh
-  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.15_0.15_0.7_0.01466_best.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+  # PARTITION: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/partition_0.7_0.15_0.15_0.01499_best.json
+  # IMAGES: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+  # DCMS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/img
+  # LABELS: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/txt
+  # META_PATH: /experiments/datasets-in-use/multimodal-datasets/ddh_march24/final_selection_June5th/meta_allusable.csv
+
+  PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.7_0.15_0.15_0.01499_best.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   DCMS:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv 
+  META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+#  # DATASET_NAME: ddh
 
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1.json  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/imgs 
@@ -17,10 +24,8 @@ INPUT_PATHS:
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/partition_0_0_1_1.00000.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   # LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
-  # META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/CS_MKUHv3.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv  # IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
-  # LABELS: /experiments/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
-  # META_PATH: /experiments/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
-
+  # META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/CS_MKUHv3.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+ 
   ID_COL: Accession Number
   META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
   # META_COLS_CLASSES: ['Type', 'alpha (degrees)', 'FHC (%)'] ## must have these to be considered in calculations
@@ -36,8 +41,8 @@ MODEL:
 
   #
   META_FEATURES: [100,100,100] 
-  NAME: 'dpt'
-  ENCODER_NAME: 'tu-resnet34' ##'resnet34'
+  NAME: 'hrnet'
+  ENCODER_NAME: 'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
@@ -49,7 +54,7 @@ MODEL:
   IN_CHANNELS: 3
   ATTENTION: scse
 
-  FREEZE_LAYERS: 0
+  FREEZE_LAYERS: 1
 
 DATASET:
   IMAGE_EXT: ".jpg"
@@ -60,7 +65,7 @@ DATASET:
   FLIP_AXIS: True
   CACHED_IMAGE_SIZE: [512,512]
   PIXEL_SIZE: [0.0700711,0.0700711]
-  #PIXEL_SIZE: [1.0,1.0]
+  # PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
@@ -74,19 +79,17 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0417_dpt_0.1466
+OUTPUT_PATH: ./output_ddh_0417_hrnet_0.1499
 TRAIN:
   BATCH_SIZE: 8
-  LR: 0.0001
-  EPOCHS: 10
+  LR: 0.005
+  EPOCHS: 15
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
-  L2_REG: False
   GAMMA: 0.0
-  USE_AMP: False
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
-  # GRAD_ACCUMULATION_STEPS: 1
-  # GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## unused when accumulation is disabled
-  # GRAD_ACCUMULATION_STEPS_MIN: 1 ## 
+  # GRAD_ACCUMULATION_STEPS: 8
+  # GRAD_ACCUMULATION_STEPS_REDUCE: 5 ## num of epochs to reduce grad accum steps by half 
+  # GRAD_ACCUMULATION_STEPS_MIN: 2 ## 
 
 
 TEST:
@@ -98,10 +101,6 @@ TEST:
     - fhc().get_fhc
   SDR_THRESHOLD: [7.1, 14.2, 28.45, 56.9]
   SDR_UNITS: pixels
-  NUM_WORKERS: 8
-  PIN_MEMORY: True
-  PERSISTENT_WORKERS: True
-  PREFETCH_FACTOR: 2
   
   PLOT: False
   SAVE_HEATMAPS_LANDMARKS_IMG: False

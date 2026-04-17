@@ -36,6 +36,7 @@ class validation():
         self.save_txt = cfg.TEST.SAVE_TXT
         self.save_heatmap = cfg.TEST.SAVE_HEATMAPS_ALONE
         self.save_heatmap_as_np = cfg.TEST.SAVE_HEATMAPS_NP
+        self.plot = cfg.TEST.PLOT
         self.needs_orig_img = any([
             save_img,
             self.save_heatmap_asdcms,
@@ -109,6 +110,10 @@ class validation():
         self.num_output_channels = cfg.MODEL.OUT_CHANNELS
 
         self.fhc_calc = fhc()
+        self.last_mre = float("nan")
+        self.last_mre_std = float("nan")
+        self.last_mre_no_labrum = float("nan")
+        self.last_mre_no_labrum_std = float("nan")
         if 'diff' in cfg.TRAIN.LOSS:
             self.add_gumbel = True
             self.gamma = cfg.TRAIN.GAMMA
@@ -405,6 +410,10 @@ class validation():
 
         #Get mean values from comparison summary ls, landmark metrics
         comparsion_summary_ls, MRE = self.comparison_summary(comparison_df)
+        self.last_mre = float(MRE[0]) if len(MRE) > 0 else float("nan")
+        self.last_mre_std = float(MRE[1]) if len(MRE) > 1 else float("nan")
+        self.last_mre_no_labrum = float(MRE[2]) if len(MRE) > 2 else float("nan")
+        self.last_mre_no_labrum_std = float(MRE[3]) if len(MRE) > 3 else float("nan")
         self.logger.info("MEAN VALUES (pix): {}".format(comparsion_summary_ls))
         self.logger.info("MRE: {} +/- {} pix".format(MRE[0], MRE[1]))
         if self.dataset_name == 'ddh':
@@ -469,7 +478,7 @@ class validation():
                 raise ValueError('Check Landmark radial errors are calcuated')
 
         #plot angles pred vs angles 
-        if 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
+        if self.plot and 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
             visualisations.comparison(self.dataset_name,self.outputpath,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
             visualisations.comparison(self.dataset_name,self.outputpath,'fhc').true_vs_pred_scatter(comparison_df['fhc pred'].to_numpy(),comparison_df['fhc true'].to_numpy(),loc='validation')
 

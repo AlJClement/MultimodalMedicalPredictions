@@ -1,14 +1,15 @@
 #!/bin/sh
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=12:00:00
-#SBATCH --gres=gpu:1
+#SBATCH --time=11:50:00
 #SBATCH --clusters=htc
 #SBATCH --mem-per-cpu=50G
 #SBATCH --partition=short
+#SBATCH --gres=gpu:v100:1
 
 module load Anaconda3
 
 source activate /data/coml-oxmedis/kebl7678/yenv
+
 #run python code
-python ./utils/run_training.py --cfg ddh_0.01466_hrnet
+python ./utils/run_training.py --cfg ddh_0.01466_dpt_swin
