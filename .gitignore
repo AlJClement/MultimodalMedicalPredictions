@@ -3,9 +3,10 @@
 *.png
 *.txt
 *.out
-*.swp
+*.sw*
 *.pyc
 
+data/
 output/
 .vscode/
 june5th
