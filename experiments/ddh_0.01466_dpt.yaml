@@ -82,6 +82,7 @@ TRAIN:
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   L2_REG: False
   GAMMA: 0.0
+  USE_AMP: False
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
   # GRAD_ACCUMULATION_STEPS: 1
   # GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## unused when accumulation is disabled

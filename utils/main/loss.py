@@ -9,9 +9,17 @@ from . import comparison_metrics
 # dimensions are [B, C, W, H]
 # the log is done within this loss function whereas normally it would be a log softmax
 # why? - i think because think about log graph would be really steep
+def _safe_log_probs(output, eps=1e-12):
+    return torch.log(output.double().clamp(min=eps))
+
+
+def _heatmap_nll(output, target, eps=1e-12):
+    nll = target * _safe_log_probs(output, eps=eps)
+    return -torch.mean(torch.sum(nll, dim=(2, 3)))
+
+
 def nll_across_batch_mse_wclass(output, target, pred_alphas, target_alphas, class_output, class_target,gamma=0.1,add_weights=True):
-    nll = target * torch.log(output.double())
-    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = _heatmap_nll(output, target)
     classes = {'i':0,'ii':1,'iii/iv':2}
 
     ###get pred as torch
@@ -61,18 +69,16 @@ def nll_across_batch_mse_wclass(output, target, pred_alphas, target_alphas, clas
     return nll_img*(1-gamma)+ mse_class*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
 
 def nll_across_batch_nll_walpha(output, target, alpha_output, alpha_target, gamma):
-    nll = target * torch.log(output.double())
-    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = _heatmap_nll(output, target)
 
-    nll = torch.FloatTensor(alpha_target)*torch.log(torch.FloatTensor(alpha_output).double())
+    nll = torch.FloatTensor(alpha_target) * _safe_log_probs(torch.FloatTensor(alpha_output))
     nll_alpha = -torch.mean(torch.sum(nll))
 
     return nll_img*(1-gamma)+ nll_alpha*gamma #-torch.mean(torch.sum(nll, dim=(2, 3)))
 
 
 def nll_across_batch_mse_walpha(output, target, alpha_output, alpha_target, gamma):
-    nll = target * torch.log(output.double())
-    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = _heatmap_nll(output, target)
         
     mse = torch.pow(torch.FloatTensor(alpha_target )- torch.FloatTensor(alpha_output).double(), 2)
     mse_alpha=torch.mean(torch.sum(mse))
@@ -80,8 +86,7 @@ def nll_across_batch_mse_walpha(output, target, alpha_output, alpha_target, gamm
     return nll_img*(1-gamma)+mse_alpha*gamma
 
 def nll_across_batch_mse_walphafhc(output, target, alpha_output, alpha_target, fhc_out, fhc_target, gamma):
-    nll = target * torch.log(output.double())
-    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = _heatmap_nll(output, target)
     
     mse_alpha = torch.pow(torch.FloatTensor(alpha_target)- torch.FloatTensor(alpha_output).double(), 2)
     mse_alpha=torch.mean(torch.sum(mse_alpha))
@@ -109,8 +114,7 @@ def get_normalized_vectors(P1, P2):
     return torch.stack(vectors)
 
 def nll_across_batch_cosinelandmarkvector(output, target, gamma):
-    nll = target * torch.log(output.double())
-    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = _heatmap_nll(output, target)
 
     pixelsize=1
     target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel=False)            
@@ -138,8 +142,7 @@ def nll_across_batch_cosinelandmarkvector(output, target, gamma):
     return nll_img*(1-gamma)+(cosine_sim_il*g_a)+(cosine_sim_br*g_a)+cosine_sim_fhc*g
 
 def nll_across_batch_cosinelandmarkvectorOAI(output, target, gamma):
-    nll = target * torch.log(output.double())
-    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = _heatmap_nll(output, target)
 
     pixelsize=1
     target_points,predicted_points=evaluation_helper.evaluation_helper().get_landmarks(output, target, pixelsize, gumbel=True)            
@@ -212,8 +215,7 @@ def nll_across_batch_OAIanglediff(output, target, gamma, cfg, gumbel=True):
 
     add_loss_after_iter = cfg.TRAIN.DELAY_GUMBEL_LOSS
 
-    nll = target * torch.log(output.double())
-    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = _heatmap_nll(output, target)
 
     if int(nll_across_batch_OAImrediff.calls/2) >= add_loss_after_iter:
         pixelsize=1
@@ -254,8 +256,7 @@ def nll_across_batch_OAImrediff(output, target, gamma, cfg=None,gumbel=True):
     #print('CALLS: ', nll_across_batch_OAImrediff.calls)
     add_loss_after_iter = cfg.TRAIN.DELAY_GUMBEL_LOSS
 
-    nll = target * torch.log(output.double())
-    nll_img = -torch.mean(torch.sum(nll, dim=(2, 3)))
+    nll_img = _heatmap_nll(output, target)
 
     if int(nll_across_batch_OAImrediff.calls/2) > add_loss_after_iter:
         pixelsize=1
@@ -278,11 +279,11 @@ def nll_across_batch_OAImrediff(output, target, gamma, cfg=None,gumbel=True):
 nll_across_batch_OAImrediff.calls = 0
 
 def nll_across_batch(output, target):
-    nll = target * torch.log(output.double())
-    return -torch.mean(torch.sum(nll, dim=(2, 3)))
+    return _heatmap_nll(output, target)
 
 def bce_across_batch(output, target):
-    bce = target * torch.log(output.double()) + (1 - target) * torch.log(1 - output.double())
+    output = output.double().clamp(min=1e-12, max=1.0 - 1e-12)
+    bce = target * torch.log(output) + (1 - target) * torch.log1p(-output)
     return -torch.mean(torch.sum(bce, dim=(2, 3)))
 
 def mse_across_batch(output, target):

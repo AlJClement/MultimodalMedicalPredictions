@@ -21,13 +21,12 @@ class dpt(nn.Module):
             activation=None,
         )
 
-        self.bn = nn.BatchNorm2d(self.out_channels)
-
     def two_d_softmax(self, x):
         b, c, h, w = x.shape
-        x = x.view(b, c, -1)
+        x = x.reshape(b, c, -1).float()
+        x = x - x.amax(dim=-1, keepdim=True)
         x = torch.softmax(x, dim=-1)
-        return x.view(b, c, h, w)
+        return x.reshape(b, c, h, w)
 
     def forward(self, im, meta=None):
         x = self.dpt(im)  # [B, C, H, W]
@@ -36,5 +35,4 @@ class dpt(nn.Module):
         if x.shape[-2:] != im.shape[-2:]:
             x = F.interpolate(x, size=im.shape[-2:], mode="bilinear", align_corners=False)
 
-        x = self.bn(x)
         return self.two_d_softmax(x)

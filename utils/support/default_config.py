@@ -76,6 +76,7 @@ C.TRAIN.GAMMA = 0.0
 C.TRAIN.COMBINE_GRAF_FHC=False
 C.TRAIN.SAVE_VAL_DCM=False
 C.TRAIN.MOMENTUM = 0.9
+C.TRAIN.USE_AMP = True
 C.TRAIN.DELAY_GUMBEL_LOSS = 100 ##number of iterations (each batch iter) of just NLL before you switch to gumbel
 C.TRAIN.TAU=1.0 ## each iter will decay tau by this amount 
 C.TRAIN.TAU_DECAY=0.01 ## each iter will decay tau by this amount 
