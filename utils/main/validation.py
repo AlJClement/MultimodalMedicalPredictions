@@ -121,6 +121,83 @@ class validation():
     def _get_optimizer(self,net):
         optim = torch.optim.SGD(net.parameters(), lr = self.lr, momentum=self.momentum)
         return optim
+
+    def _compute_loss(
+        self,
+        pred,
+        target,
+        pred_alphas=None,
+        target_alphas=None,
+        pred_classes=None,
+        target_classes=None,
+        pred_fhc=None,
+        target_fhc=None,
+    ):
+        if self.l2_reg:
+            if self.add_class_loss:
+                return self.loss_func(
+                    pred,
+                    target,
+                    self.net,
+                    self.gamma,
+                    pred_alphas=pred_alphas,
+                    target_alphas=target_alphas,
+                    class_output=pred_classes,
+                    class_target=target_classes,
+                )
+            if self.add_alphafhc_loss:
+                return self.loss_func(
+                    pred,
+                    target,
+                    self.net,
+                    self.gamma,
+                    pred_alphas=pred_alphas,
+                    target_alphas=target_alphas,
+                    pred_fhc=pred_fhc,
+                    target_fhc=target_fhc,
+                )
+            if self.add_landmark_loss:
+                return self.loss_func(pred, target, self.net, self.gamma)
+            if self.add_alpha_loss:
+                return self.loss_func(
+                    pred,
+                    target,
+                    self.net,
+                    self.gamma,
+                    pred_alphas=pred_alphas,
+                    target_alphas=target_alphas,
+                )
+            if self.add_gumbel:
+                return self.loss_func(pred, target, self.net, self.gamma, self.cfg)
+            return self.loss_func(pred, target, self.net, self.gamma)
+
+        if self.add_class_loss:
+            return self.loss_func(
+                pred,
+                target,
+                pred_alphas,
+                target_alphas,
+                pred_classes,
+                target_classes,
+                self.gamma,
+            )
+        if self.add_alphafhc_loss:
+            return self.loss_func(
+                pred,
+                target,
+                pred_alphas,
+                target_alphas,
+                pred_fhc,
+                target_fhc,
+                self.gamma,
+            )
+        if self.add_landmark_loss:
+            return self.loss_func(pred, target, self.gamma)
+        if self.add_alpha_loss:
+            return self.loss_func(pred, target, pred_alphas, target_alphas, self.gamma)
+        if self.add_gumbel:
+            return self.loss_func(pred, target, self.gamma, self.cfg)
+        return self.loss_func(pred, target)
     
     
     def compare_metrics(self, id, pred, pred_map, true, true_map, pixelsize, orig_size):
@@ -257,25 +334,19 @@ class validation():
                 if self.add_alphafhc_loss==True:
                     pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred,target,self.pixel_size)
 
-                ## calculate loss
-                if self.l2_reg==True:
-                    if self.add_class_loss==True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net,self.gamma, pred_alphas, target_alphas,pred_classes, target_classes)
-                    elif self.add_alphafhc_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
-                    elif self.add_landmark_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma)
-                    elif self.add_alpha_loss== True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, pred_alphas, target_alphas)
-                    elif self.add_gumbel == True:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, self.cfg)
-                    else:
-                        loss = self.loss_func(pred.to(self.device), target.to(self.device), self.net, self.gamma, cfg=self.cfg      )
-                else:
-                    raise ValueError('only implemented for l2 reg right now')
+                loss = self._compute_loss(
+                    pred.to(self.device),
+                    target.to(self.device),
+                    pred_alphas=pred_alphas if (self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss) else None,
+                    target_alphas=target_alphas if (self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss) else None,
+                    pred_classes=pred_classes if self.add_class_loss else None,
+                    target_classes=target_classes if self.add_class_loss else None,
+                    pred_fhc=pred_fhc if self.add_alphafhc_loss else None,
+                    target_fhc=target_fhc if self.add_alphafhc_loss else None,
+                )
                 
                 ## Update loss
-                total_loss += loss
+                total_loss += float(loss.item())
 
                 ## Save images for validation
                 if self.save_img == True:
@@ -330,7 +401,6 @@ class validation():
         comparison_df.to_csv(self.outputpath+'/comparison_metrics.csv')
         print('Saving Results to comparison_metrics.csv')
         av_loss = total_loss / batches
-        av_loss = av_loss.cpu().detach().numpy()
         print('Validation Set Average Loss: {:.4f}'.format(av_loss,  flush=True))
 
         #Get mean values from comparison summary ls, landmark metrics

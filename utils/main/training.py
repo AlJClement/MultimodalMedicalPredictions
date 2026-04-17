@@ -147,6 +147,83 @@ class training():
                 param.requires_grad = False
         return net
 
+    def _compute_loss(
+        self,
+        pred,
+        target,
+        pred_alphas=None,
+        target_alphas=None,
+        pred_classes=None,
+        target_classes=None,
+        pred_fhc=None,
+        target_fhc=None,
+    ):
+        if self.l2_reg:
+            if self.add_class_loss:
+                return self.loss_func(
+                    pred,
+                    target,
+                    self.net,
+                    self.gamma,
+                    pred_alphas=pred_alphas,
+                    target_alphas=target_alphas,
+                    class_output=pred_classes,
+                    class_target=target_classes,
+                )
+            if self.add_alphafhc_loss:
+                return self.loss_func(
+                    pred,
+                    target,
+                    self.net,
+                    self.gamma,
+                    pred_alphas=pred_alphas,
+                    target_alphas=target_alphas,
+                    pred_fhc=pred_fhc,
+                    target_fhc=target_fhc,
+                )
+            if self.add_landmark_loss:
+                return self.loss_func(pred, target, self.net, self.gamma)
+            if self.add_alpha_loss:
+                return self.loss_func(
+                    pred,
+                    target,
+                    self.net,
+                    self.gamma,
+                    pred_alphas=pred_alphas,
+                    target_alphas=target_alphas,
+                )
+            if self.add_gumbel:
+                return self.loss_func(pred, target, self.net, self.gamma, self.cfg)
+            return self.loss_func(pred, target, self.net, self.gamma)
+
+        if self.add_class_loss:
+            return self.loss_func(
+                pred,
+                target,
+                pred_alphas,
+                target_alphas,
+                pred_classes,
+                target_classes,
+                self.gamma,
+            )
+        if self.add_alphafhc_loss:
+            return self.loss_func(
+                pred,
+                target,
+                pred_alphas,
+                target_alphas,
+                pred_fhc,
+                target_fhc,
+                self.gamma,
+            )
+        if self.add_landmark_loss:
+            return self.loss_func(pred, target, self.gamma)
+        if self.add_alpha_loss:
+            return self.loss_func(pred, target, pred_alphas, target_alphas, self.gamma)
+        if self.add_gumbel:
+            return self.loss_func(pred, target, self.gamma, self.cfg)
+        return self.loss_func(pred, target)
+
 
     def train_meta(self, dataloader, epoch, val_dataloader=None):
         """
@@ -223,27 +300,16 @@ class training():
                 if self.add_alphafhc_loss:
                     pred_fhc, target_fhc = self.fhc_calc.get_fhc_batches(pred, target, self.pixel_size)
 
-                # compute main loss (preserves your branching)
-                if self.l2_reg:
-                    if self.add_class_loss:
-                        loss = self.loss_func(pred, target, self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes)
-                    elif self.add_alphafhc_loss:
-                        loss = self.loss_func(pred, target, self.net, self.gamma, pred_alphas, target_alphas, pred_classes, target_classes, pred_fhc, target_fhc)
-                    elif self.add_landmark_loss:
-                        loss = self.loss_func(pred, target, self.net, self.gamma)
-                    elif self.add_alpha_loss:
-                        loss = self.loss_func(pred, target, self.net, self.gamma, pred_alphas, target_alphas)
-                    elif self.add_gumbel:
-                        loss = self.loss_func(pred, target, self.net, self.gamma, self.cfg)
-                    else:
-                        loss = self.loss_func(pred, target, self.net, self.gamma)
-                else:
-                    if self.add_class_loss:
-                        loss = self.loss_func(pred, target, self.net, pred_alphas, target_alphas, pred_classes, target_classes, self.gamma)
-                    elif self.add_alpha_loss:
-                        loss = self.loss_func(pred, target, self.net, pred_alphas, target_alphas, self.gamma)
-                    else:
-                        loss = self.loss_func(pred, target, self.net)
+                loss = self._compute_loss(
+                    pred,
+                    target,
+                    pred_alphas=pred_alphas if (self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss) else None,
+                    target_alphas=target_alphas if (self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss) else None,
+                    pred_classes=pred_classes if self.add_class_loss else None,
+                    target_classes=target_classes if self.add_class_loss else None,
+                    pred_fhc=pred_fhc if self.add_alphafhc_loss else None,
+                    target_fhc=target_fhc if self.add_alphafhc_loss else None,
+                )
 
             # sanity checks on loss
             if not isinstance(loss, torch.Tensor):
@@ -421,27 +487,16 @@ class training():
                         if self.add_alphafhc_loss:
                             v_pred_fhc, v_target_fhc = self.fhc_calc.get_fhc_batches(v_pred, v_target, self.pixel_size)
 
-                        # compute val loss using same branches
-                        if self.l2_reg:
-                            if self.add_class_loss:
-                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma, v_pred_alphas, v_target_alphas, v_pred_classes, v_target_classes)
-                            elif self.add_alphafhc_loss:
-                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma, v_pred_alphas, v_target_alphas, v_pred_classes, v_target_classes, v_pred_fhc, v_target_fhc)
-                            elif self.add_landmark_loss:
-                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma)
-                            elif self.add_alpha_loss:
-                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma, v_pred_alphas, v_target_alphas)
-                            elif self.add_gumbel:
-                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma, self.cfg)
-                            else:
-                                v_loss = self.loss_func(v_pred, v_target, self.net, self.gamma)
-                        else:
-                            if self.add_class_loss:
-                                v_loss = self.loss_func(v_pred, v_target, self.net, v_pred_alphas, v_target_alphas, v_pred_classes, v_target_classes, self.gamma)
-                            elif self.add_alpha_loss:
-                                v_loss = self.loss_func(v_pred, v_target, self.net, v_pred_alphas, v_target_alphas, self.gamma)
-                            else:
-                                v_loss = self.loss_func(v_pred, v_target, self.net)
+                        v_loss = self._compute_loss(
+                            v_pred,
+                            v_target,
+                            pred_alphas=v_pred_alphas if (self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss) else None,
+                            target_alphas=v_target_alphas if (self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss) else None,
+                            pred_classes=v_pred_classes if self.add_class_loss else None,
+                            target_classes=v_target_classes if self.add_class_loss else None,
+                            pred_fhc=v_pred_fhc if self.add_alphafhc_loss else None,
+                            target_fhc=v_target_fhc if self.add_alphafhc_loss else None,
+                        )
 
                     total_val_loss += float(v_loss.item())
                     val_batches += 1
