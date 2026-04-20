@@ -21,7 +21,9 @@ def _cfg_to_dict(cfg_node):
 
 def _resolve_cfg_name(cfg_arg):
     cfg_basename = os.path.basename(str(cfg_arg).strip())
-    return os.path.splitext(cfg_basename)[0]
+    if cfg_basename.lower().endswith(".yaml"):
+        return cfg_basename[:-5]
+    return cfg_basename
 
 
 def _collect_dataset_tags(cfg):
