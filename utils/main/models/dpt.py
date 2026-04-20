@@ -12,16 +12,32 @@ class dpt(nn.Module):
         self.out_channels = cfg.MODEL.OUT_CHANNELS
         self.im_size = cfg.DATASET.CACHED_IMAGE_SIZE
         self.device = cfg.MODEL.DEVICE
+        self.encoder_name = str(cfg.MODEL.ENCODER_NAME)
 
-        self.dpt = smp.DPT(
+        dpt_kwargs = dict(
             encoder_name=cfg.MODEL.ENCODER_NAME,
             encoder_weights=cfg.MODEL.ENCODER_WEIGHTS,
             in_channels=cfg.MODEL.IN_CHANNELS,
             classes=cfg.MODEL.OUT_CHANNELS,
             activation=None,
-            dynamic_img_size=cfg.MODEL.DYNAMIC_IMG_SIZE,
         )
+        if self._supports_dynamic_img_size() and bool(getattr(cfg.MODEL, "DYNAMIC_IMG_SIZE", True)):
+            dpt_kwargs["dynamic_img_size"] = True
+
+        self.dpt = smp.DPT(**dpt_kwargs)
         self._configure_dynamic_input_size()
+
+    def _supports_dynamic_img_size(self):
+        encoder_name = self.encoder_name.lower()
+        dynamic_families = (
+            "swin",
+            "vit",
+            "deit",
+            "beit",
+            "eva",
+            "samvit",
+        )
+        return any(family in encoder_name for family in dynamic_families)
 
     def _configure_dynamic_input_size(self):
         if not getattr(self.dpt, "encoder", None):
