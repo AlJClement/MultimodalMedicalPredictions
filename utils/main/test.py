@@ -72,7 +72,8 @@ class test():
 
         self.output_path = cfg.OUTPUT_PATH
         self.net = self.load_network(self.output_path+cfg.TEST.NETWORK)
-        self.test_output_dir_name = self._resolve_test_output_dir_name(cfg)
+        self.base_test_output_dir_name = self._resolve_test_output_dir_name(cfg)
+        self.test_output_dir_name = self.base_test_output_dir_name
         self.test_output_path = os.path.join(cfg.OUTPUT_PATH, self.test_output_dir_name)
         self.save_img_path = self.test_output_path
         if self.save_txt == True:
@@ -105,6 +106,7 @@ class test():
         self.augmenter = Augmentation(self.cfg)
         self.eval_helper = evaluation_helper.evaluation_helper()
         self.landmark_metric_helper = landmark_metrics()
+        self._prepare_run_paths(self.base_test_output_dir_name)
 
     def _resolve_test_output_dir_name(self, cfg):
         candidate_text = " ".join([
@@ -126,6 +128,17 @@ class test():
     def _debug_print(self, *args, **kwargs):
         if self.debug_testing:
             print(*args, **kwargs)
+
+    def _prepare_run_paths(self, output_dir_name):
+        self.test_output_dir_name = output_dir_name
+        self.test_output_path = os.path.join(self.output_path, self.test_output_dir_name)
+        self.save_img_path = self.test_output_path
+
+        os.makedirs(self.save_img_path, exist_ok=True)
+        os.makedirs(self.save_img_path + '-time-aug/', exist_ok=True)
+
+        self.save_testtimeaug = self.save_img_path + '-time-aug/test-time-aug'
+        os.makedirs(self.save_testtimeaug, exist_ok=True)
 
     def load_network(self, model_path):
         model = model_init(self.cfg).get_net_from_conf(get_net_info=False)
@@ -912,7 +925,7 @@ class test():
         fig.tight_layout()
         return wandb.Image(fig, caption="CSV-style evaluation summary heatmap")
 
-    def _log_wandb_results(self, summary_metrics, failure_images, categorized_wrong_case_paths, plot_paths, comparison_csv_path, comparison_df, evaluation_summary_table=None, evaluation_summary_heatmap=None):
+    def _log_wandb_results(self, summary_metrics, failure_images, categorized_wrong_case_paths, plot_paths, comparison_csv_path, comparison_df, evaluation_summary_table=None, evaluation_summary_heatmap=None, wandb_namespace="test"):
         if not self.wandb_enabled:
             return
 
@@ -926,9 +939,9 @@ class test():
             clean_key = self._sanitize_wandb_key(key)
             value = self._to_wandb_scalar(value)
             if isinstance(value, (float, int, bool)) or value is None:
-                scalar_summary[f"test/{clean_key}"] = value
+                scalar_summary[f"{wandb_namespace}/{clean_key}"] = value
             elif value is not None:
-                text_summary[f"test/{clean_key}"] = str(value)
+                text_summary[f"{wandb_namespace}/{clean_key}"] = str(value)
 
         if scalar_summary:
             wandb.log(scalar_summary)
@@ -936,17 +949,17 @@ class test():
         for key, value in text_summary.items():
             wandb.run.summary[key] = value
 
-        wandb.run.summary["test/comparison_rows"] = len(comparison_df)
+        wandb.run.summary[f"{wandb_namespace}/comparison_rows"] = len(comparison_df)
 
         if failure_images:
-            wandb.log({"test/outputs": failure_images})
+            wandb.log({f"{wandb_namespace}/outputs": failure_images})
 
         if categorized_wrong_case_paths:
             wrong_case_payload = {}
             for category, paths in categorized_wrong_case_paths.items():
                 existing_paths = [path for path in paths if os.path.exists(path)]
                 if existing_paths:
-                    wrong_case_payload[f"test/{category}"] = [wandb.Image(path) for path in existing_paths]
+                    wrong_case_payload[f"{wandb_namespace}/{category}"] = [wandb.Image(path) for path in existing_paths]
             if wrong_case_payload:
                 wandb.log(wrong_case_payload)
 
@@ -954,18 +967,18 @@ class test():
             plot_payload = {}
             for key, path in plot_paths.items():
                 if os.path.exists(path):
-                    plot_payload[f"test/plots/{key}"] = wandb.Image(path)
+                    plot_payload[f"{wandb_namespace}/plots/{key}"] = wandb.Image(path)
             if plot_payload:
                 wandb.log(plot_payload)
 
         if evaluation_summary_table is not None:
-            wandb.log({"test/evaluation_summary_table": evaluation_summary_table})
+            wandb.log({f"{wandb_namespace}/evaluation_summary_table": evaluation_summary_table})
 
         if evaluation_summary_heatmap is not None:
-            wandb.log({"test/evaluation_summary_heatmap": evaluation_summary_heatmap})
+            wandb.log({f"{wandb_namespace}/evaluation_summary_heatmap": evaluation_summary_heatmap})
 
         if os.path.exists(comparison_csv_path):
-            artifact = wandb.Artifact("test-comparison-metrics", type="evaluation")
+            artifact = wandb.Artifact(f"{wandb_namespace}-comparison-metrics", type="evaluation")
             artifact.add_file(comparison_csv_path)
             wandb.log_artifact(artifact)
     
@@ -1375,7 +1388,11 @@ class test():
 
         return best_pred
 
-    def run(self, dataloader):
+    def run(self, dataloader, use_tta=None, output_dir_name=None, wandb_namespace="test"):
+        use_tta = self.cfg.TEST.TEST_TIME_AUG if use_tta is None else bool(use_tta)
+        output_dir_name = output_dir_name or self.base_test_output_dir_name
+        self._prepare_run_paths(output_dir_name)
+
         comparison_rows = []
         true_hkas = []
         failure_candidates = []
@@ -1402,7 +1419,7 @@ class test():
                 meta_data = meta.to(self.device, non_blocking=True)
                 orig_size = orig_size.to(self.device, non_blocking=True)
 
-                if self.cfg.TEST.TEST_TIME_AUG == True:
+                if use_tta:
                     ###if test time aug, run the model 5 times and select the one with the lowest eres.
                     pred = self.get_best_test_time_aug(data, meta_data, id)
                 else:
@@ -1543,6 +1560,7 @@ class test():
         #
 
         self.logger.info("---------TEST RESULTS--------")
+        self.logger.info("Test mode: %s", "tta" if use_tta else "standard")
 
         ### if oai
         if self.dataset_name == 'oai_nolandmarks':
@@ -1641,7 +1659,7 @@ class test():
 
 
 
-        if self.combine_graf_fhc==True:
+        if self.combine_graf_fhc==True and self.dataset_name == 'ddh':
         # #add fhc cols for normal and abnormal (n and a)
             comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
             comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
@@ -1774,6 +1792,7 @@ class test():
             comparison_df=comparison_df,
             evaluation_summary_table=evaluation_summary_table,
             evaluation_summary_heatmap=evaluation_summary_heatmap,
+            wandb_namespace=wandb_namespace,
         )
 
         return 

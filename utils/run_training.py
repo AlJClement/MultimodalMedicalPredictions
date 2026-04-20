@@ -137,6 +137,8 @@ def main():
     try:
         for epoch in range(1, max_epochs+1):  
             train_loss = float(train.train_meta(train_dataloader, epoch))
+            train_mre = float(getattr(train, "last_mre", float("nan")))
+            train_mre_std = float(getattr(train, "last_mre_std", float("nan")))
             val_loss = float(validate.val_meta(val_dataloader, epoch))
             val_mre = float(getattr(validate, "last_mre", float("nan")))
             val_mre_no_labrum = float(getattr(validate, "last_mre_no_labrum", float("nan")))
@@ -156,11 +158,14 @@ def main():
                 {
                     "epoch": epoch,
                     "train_loss": train_loss,
+                    "train_mre": train_mre,
                     "val_loss": val_loss,
                     "val_mre": val_mre,
                 },
                 step=epoch,
             )
+            if np.isfinite(train_mre_std):
+                wandb.log({"train_mre_std": train_mre_std}, step=epoch)
             if np.isfinite(val_mre_no_labrum):
                 wandb.log({"val_mre_no_labrum": val_mre_no_labrum}, step=epoch)
 

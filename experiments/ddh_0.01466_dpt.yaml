@@ -14,13 +14,12 @@ INPUT_PATHS:
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
   # LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
   # META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
+  
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/partition_0_0_1_1.00000.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   # LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   # META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/CS_MKUHv3.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv  # IMAGES: /experiments/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
-  # LABELS: /experiments/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
-  # META_PATH: /experiments/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
-
+ 
   ID_COL: Accession Number
   META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
   # META_COLS_CLASSES: ['Type', 'alpha (degrees)', 'FHC (%)'] ## must have these to be considered in calculations
@@ -74,7 +73,7 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0417_dpt_0.1466
+OUTPUT_PATH: ./output_ddh_0420_dpt_0.1466
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.0001

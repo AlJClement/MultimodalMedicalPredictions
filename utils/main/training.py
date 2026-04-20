@@ -15,6 +15,7 @@ from torch.cuda.amp import GradScaler as AMPGradScaler
 
 import matplotlib
 import matplotlib.pyplot as plt
+import numpy as np
 matplotlib.use("Agg")
 
 class training():
@@ -123,6 +124,8 @@ class training():
                 # initialize internal ES trackers (persist across epochs)
         self._es_best = None
         self._es_wait = 0
+        self.last_mre = float("nan")
+        self.last_mre_std = float("nan")
 
         pass
 
@@ -249,6 +252,7 @@ class training():
         self.net.train()
         total_loss = 0.0
         batches = 0
+        train_radial_errors = []
 
         accum_steps = max(1, getattr(self, "grad_accumulation_steps", 1))
         if self.disable_grad_accumulation:
@@ -310,6 +314,19 @@ class training():
                     pred_fhc=pred_fhc if self.add_alphafhc_loss else None,
                     target_fhc=target_fhc if self.add_alphafhc_loss else None,
                 )
+
+            if self.cfg.DATASET.ANNOTATION_TYPE == "LANDMARKS":
+                with torch.no_grad():
+                    target_points, predicted_points = evaluation_helper().get_landmarks(
+                        pred.detach(),
+                        target.detach(),
+                        pixels_sizes=self.pixel_size,
+                    )
+                    batch_errors = torch.norm(
+                        (predicted_points - target_points).float(),
+                        dim=2,
+                    )
+                    train_radial_errors.extend(batch_errors.reshape(-1).detach().cpu().tolist())
 
             # sanity checks on loss
             if not isinstance(loss, torch.Tensor):
@@ -460,7 +477,16 @@ class training():
             self._debug_print("optimizer.step() at final leftover batch")
 
         av_loss = total_loss / batches
+        if train_radial_errors:
+            train_radial_errors = np.asarray(train_radial_errors, dtype=float)
+            self.last_mre = float(np.mean(train_radial_errors))
+            self.last_mre_std = float(np.std(train_radial_errors))
+        else:
+            self.last_mre = float("nan")
+            self.last_mre_std = float("nan")
         print(f"\nTraining Set Average loss: {av_loss:.6f}", flush=True)
+        if np.isfinite(self.last_mre):
+            print(f"Training Set MRE: {self.last_mre:.4f} +/- {self.last_mre_std:.4f} pix", flush=True)
         epoch_end = datetime.datetime.now()
         print('Time taken for epoch = ', epoch_end - epoch_start)
 

@@ -46,6 +46,48 @@ def _collect_dataset_tags(cfg):
     return sorted(tags)
 
 
+def _sanitize_namespace(text):
+    text = str(text).strip().lower()
+    safe = []
+    for ch in text:
+        if ch.isalnum():
+            safe.append(ch)
+        else:
+            safe.append("_")
+    return "".join(safe).strip("_") or "test"
+
+
+def _build_eval_cfgs(cfg):
+    eval_datasets = getattr(cfg.TEST, "EVAL_DATASETS", [])
+    if not eval_datasets:
+        return [(None, cfg)]
+
+    eval_cfgs = []
+    for idx, dataset_cfg in enumerate(eval_datasets):
+        run_cfg = cfg.clone()
+        run_cfg.defrost()
+
+        dataset_name = dataset_cfg.get("DATASET_NAME", getattr(run_cfg.INPUT_PATHS, "DATASET_NAME", ""))
+        partition = dataset_cfg.get("PARTITION", getattr(run_cfg.INPUT_PATHS, "PARTITION", ""))
+        images = dataset_cfg.get("IMAGES", getattr(run_cfg.INPUT_PATHS, "IMAGES", ""))
+        labels = dataset_cfg.get("LABELS", getattr(run_cfg.INPUT_PATHS, "LABELS", ""))
+        meta_path = dataset_cfg.get("META_PATH", getattr(run_cfg.INPUT_PATHS, "META_PATH", ""))
+        dcms = dataset_cfg.get("DCMS", getattr(run_cfg.INPUT_PATHS, "DCMS", ""))
+        alias = dataset_cfg.get("NAME") or dataset_cfg.get("ALIAS") or dataset_name or f"eval_{idx+1}"
+
+        run_cfg.INPUT_PATHS.DATASET_NAME = dataset_name
+        run_cfg.INPUT_PATHS.PARTITION = partition
+        run_cfg.INPUT_PATHS.IMAGES = images
+        run_cfg.INPUT_PATHS.LABELS = labels
+        run_cfg.INPUT_PATHS.META_PATH = meta_path
+        run_cfg.INPUT_PATHS.DCMS = dcms
+        run_cfg.freeze()
+
+        eval_cfgs.append((alias, run_cfg))
+
+    return eval_cfgs
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a network to detect landmarks')
 
@@ -102,33 +144,55 @@ def main():
     )
     wandb.config.update(wandb_cfg)  # ensure all config parameters are logged
 
-    #preprocess data (put into a numpy array)
-    test_dataset=dataloader(cfg,'testing')
-    help._dataset_shape(test_dataset)
-
-    num_workers = int(getattr(cfg.TEST, "NUM_WORKERS", 0))
-    pin_memory = bool(getattr(cfg.TEST, "PIN_MEMORY", False))
-    persistent_workers = bool(getattr(cfg.TEST, "PERSISTENT_WORKERS", False))
-    prefetch_factor = getattr(cfg.TEST, "PREFETCH_FACTOR", None)
-    dataloader_kwargs = {
-        "batch_size": cfg.TEST.BATCH_SIZE,
-        "shuffle": False,
-        "drop_last": True,
-        "num_workers": num_workers,
-        "pin_memory": pin_memory,
-    }
-    if num_workers > 0:
-        dataloader_kwargs["persistent_workers"] = persistent_workers
-        if prefetch_factor is not None:
-            dataloader_kwargs["prefetch_factor"] = int(prefetch_factor)
-
-    logger.info(f"Test DataLoader settings: {dataloader_kwargs}")
-
-    #load data into data loader (imports all data into a dataloader)
-    test_dataloader = DataLoader(test_dataset, **dataloader_kwargs)
-    
     try:
-        test(cfg,logger).run(test_dataloader)
+        eval_cfgs = _build_eval_cfgs(cfg)
+        num_workers = int(getattr(cfg.TEST, "NUM_WORKERS", 0))
+        pin_memory = bool(getattr(cfg.TEST, "PIN_MEMORY", False))
+        persistent_workers = bool(getattr(cfg.TEST, "PERSISTENT_WORKERS", False))
+        prefetch_factor = getattr(cfg.TEST, "PREFETCH_FACTOR", None)
+        dataloader_kwargs = {
+            "batch_size": cfg.TEST.BATCH_SIZE,
+            "shuffle": False,
+            "drop_last": True,
+            "num_workers": num_workers,
+            "pin_memory": pin_memory,
+        }
+        if num_workers > 0:
+            dataloader_kwargs["persistent_workers"] = persistent_workers
+            if prefetch_factor is not None:
+                dataloader_kwargs["prefetch_factor"] = int(prefetch_factor)
+
+        logger.info(f"Test DataLoader settings: {dataloader_kwargs}")
+
+        for alias, eval_cfg in eval_cfgs:
+            log_name = alias or "default"
+            logger.info("Running test evaluation for %s", log_name)
+            test_dataset = dataloader(eval_cfg, 'testing')
+            help._dataset_shape(test_dataset)
+            test_dataloader = DataLoader(test_dataset, **dataloader_kwargs)
+            tester = test(eval_cfg, logger)
+
+            if alias is None:
+                output_dir_name = tester.base_test_output_dir_name
+                wandb_namespace = "test"
+            else:
+                output_dir_name = _sanitize_namespace(alias)
+                wandb_namespace = f"test_{_sanitize_namespace(alias)}"
+            tester.run(
+                test_dataloader,
+                use_tta=False,
+                output_dir_name=output_dir_name,
+                wandb_namespace=wandb_namespace,
+            )
+
+            if bool(getattr(eval_cfg.TEST, "TEST_TIME_AUG", False)):
+                logger.info("Running test-time augmentation evaluation for %s", log_name)
+                tester.run(
+                    test_dataloader,
+                    use_tta=True,
+                    output_dir_name=f"{output_dir_name}_tta",
+                    wandb_namespace=f"{wandb_namespace}_tta",
+                )
     finally:
         if wandb.run is not None:
             wandb.finish()
