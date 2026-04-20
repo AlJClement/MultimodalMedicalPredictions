@@ -432,7 +432,7 @@ class validation():
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'class pred', 'class true', self.outputpath, loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
             self.logger.info("Class Agreement GRAF: {}".format(class_agreement))
 
-        if self.combine_graf_fhc==True:
+        if self.combine_graf_fhc==True and self.dataset_name == 'ddh':
         # #add fhc cols for normal and abnormal (n and a)
             comparison_df['fhc class pred']=comparison_df['fhc pred'].apply(lambda x: 'n' if x > .50 else 'a')
             comparison_df['fhc class true']=comparison_df['fhc true'].apply(lambda x: 'n' if x > .50 else 'a')
@@ -480,7 +480,8 @@ class validation():
         #plot angles pred vs angles 
         if self.plot and 'graf_angle_calc().graf_class_comparison' in self.cfg.TEST.COMPARISON_METRICS:
             visualisations.comparison(self.dataset_name,self.outputpath,'graf').true_vs_pred_scatter(comparison_df['alpha pred'].to_numpy(),comparison_df['alpha true'].to_numpy(),loc='validation')
-            visualisations.comparison(self.dataset_name,self.outputpath,'fhc').true_vs_pred_scatter(comparison_df['fhc pred'].to_numpy(),comparison_df['fhc true'].to_numpy(),loc='validation')
+            if self.dataset_name == 'ddh':
+                visualisations.comparison(self.dataset_name,self.outputpath,'fhc').true_vs_pred_scatter(comparison_df['fhc pred'].to_numpy(),comparison_df['fhc true'].to_numpy(),loc='validation')
 
 
         return av_loss
