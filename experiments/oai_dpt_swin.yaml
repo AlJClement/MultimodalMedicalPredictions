@@ -36,7 +36,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,512]
+  CACHED_IMAGE_SIZE: [384,384]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -44,6 +44,7 @@ DATASET:
     ROTATION_FACTOR: 1 #affine
     INTENSITY_FACTOR: 1.0 #multiplicaiton factor
     SF: 0.1 #affine scale factor
+  
     TRANSLATION_X: 0.1 #affine
     TRANSLATION_Y: 0.1 #affine
     SPECKLE_NOISE: 0
