@@ -31,6 +31,21 @@ def _resolve_cfg_name(cfg_arg):
         return cfg_basename[:-5]
     return cfg_basename
 
+
+def _configure_wandb_dirs(output_path):
+    base_dir = os.path.join(os.getcwd(), "wandb")
+    defaults = {
+        "WANDB_CONFIG_DIR": os.path.join(base_dir, "config"),
+        "WANDB_DATA_DIR": os.path.join(base_dir, "data"),
+        "WANDB_CACHE_DIR": os.path.join(base_dir, "cache"),
+        "WANDB_DIR": os.path.join(base_dir, "runs"),
+    }
+
+    for env_key, default_path in defaults.items():
+        target_path = os.environ.get(env_key, default_path)
+        os.makedirs(target_path, exist_ok=True)
+        os.environ.setdefault(env_key, target_path)
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a network to detect landmarks')
 
@@ -73,6 +88,7 @@ def main():
     # print the configuration into the log
     logger.info("-----------Configuration-----------")
     cfg = help._get_cfg()
+    _configure_wandb_dirs(cfg.OUTPUT_PATH)
     logger.info(cfg)
     logger.info("")
     wandb_cfg = _cfg_to_dict(cfg)
