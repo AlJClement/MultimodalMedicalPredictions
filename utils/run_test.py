@@ -38,8 +38,10 @@ def _configure_wandb_dirs(output_path):
 
     for env_key, default_path in defaults.items():
         target_path = os.environ.get(env_key, default_path)
+        if not target_path or str(target_path).strip() in {"/path", "/path/"} or str(target_path).startswith("/path/"):
+            target_path = default_path
         os.makedirs(target_path, exist_ok=True)
-        os.environ.setdefault(env_key, target_path)
+        os.environ[env_key] = target_path
 
 
 def _configure_model_cache_dirs():
@@ -54,8 +56,10 @@ def _configure_model_cache_dirs():
 
     for env_key, default_path in defaults.items():
         target_path = os.environ.get(env_key, default_path)
+        if not target_path or str(target_path).strip() in {"/path", "/path/"} or str(target_path).startswith("/path/"):
+            target_path = default_path
         os.makedirs(target_path, exist_ok=True)
-        os.environ.setdefault(env_key, target_path)
+        os.environ[env_key] = target_path
 
 
 def _collect_dataset_tags(cfg):
