@@ -5,7 +5,7 @@ class MetadataImport():
     def __init__(self, cfg) -> None:
         self.metapath = cfg.INPUT_PATHS.META_PATH
         self.cols_dict =  cfg.INPUT_PATHS.META_COLS      
-        self.dataset_name = cfg.DATASET.NAME  
+        self.dataset_name = cfg.INPUT_PATHS.DATASET_NAME  
 
         self.pat_col_name = cfg.INPUT_PATHS.ID_COL
 
