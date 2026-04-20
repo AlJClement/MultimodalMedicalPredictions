@@ -1239,7 +1239,7 @@ class test():
 
     def get_best_test_time_aug(self, data, meta_data, id):
         '''loads data, gets N number of augs, predicts all and takes the best model which is the one with lowest ere'''
-        metric = 'angle_and_ere'
+        metric = str(getattr(self.cfg.TEST, "TTA_SELECTION_METRIC", "ERE")).strip() or "ERE"
         EH = self.eval_helper
         pixels_sizes = self.pixel_size_cpu
         aug_seq = self.augmenter

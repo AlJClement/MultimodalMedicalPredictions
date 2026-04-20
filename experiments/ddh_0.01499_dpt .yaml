@@ -50,6 +50,7 @@ MODEL:
   ATTENTION: scse
 
   FREEZE_LAYERS: 0
+  DYNAMIC_IMG_SIZE: true
 
 DATASET:
   IMAGE_EXT: ".jpg"
