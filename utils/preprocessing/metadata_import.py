@@ -4,7 +4,8 @@ import numpy as np
 class MetadataImport():
     def __init__(self, cfg) -> None:
         self.metapath = cfg.INPUT_PATHS.META_PATH
-        self.cols_dict =  cfg.INPUT_PATHS.META_COLS        
+        self.cols_dict =  cfg.INPUT_PATHS.META_COLS      
+        self.dataset_name = cfg.DATASET.NAME  
 
         self.pat_col_name = cfg.INPUT_PATHS.ID_COL
 
@@ -32,13 +33,15 @@ class MetadataImport():
         
     def _get_array(self, meta_df, patid):
         pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid.split('_')[0]]
-        if pat_meta_arr.empty:
-            pat_id_rnoh=patid.split('_')[1]
-            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
-        if pat_meta_arr.empty:
+        if self.dataset_name == 'oai' and pat_meta_arr.empty:
             ##oai
             pat_id_oai = patid.split('-')[0]
             pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_oai]
+        
+        if pat_meta_arr.empty:
+            pat_id_rnoh=patid.split('_')[1]
+            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
+
         if pat_meta_arr.empty:
             #retuve
             pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
