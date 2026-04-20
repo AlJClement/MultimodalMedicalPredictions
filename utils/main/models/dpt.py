@@ -19,6 +19,7 @@ class dpt(nn.Module):
             in_channels=cfg.MODEL.IN_CHANNELS,
             classes=cfg.MODEL.OUT_CHANNELS,
             activation=None,
+            dynamic_img_size=cfg.MODEL.DYNAMIC_IMG_SIZE,
         )
 
     def two_d_softmax(self, x):
