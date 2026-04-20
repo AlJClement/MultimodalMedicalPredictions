@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --time=11:50:00
@@ -6,13 +6,10 @@
 #SBATCH --mem-per-cpu=50G
 #SBATCH --partition=short
 #SBATCH --gres=gpu:v100:1
-module load Anaconda3/2025.06-1
 
-source /apps/system/easybuild/software/Anaconda3/2025.06-1/etc/profile.d/conda.sh
-conda activate /data/coml-oxmedis/kebl7678/yenv
+module load Anaconda3/2025.06-1
+source activate /data/coml-oxmedis/kebl7678/yenv
 
 echo "Python: $(which python)"
+echo "CONDA_PREFIX: $CONDA_PREFIX"
 python -c "import torch; print(torch.__version__)"
-
-
-python ./utils/run_training.py --cfg ddh_0.01466_dpt
