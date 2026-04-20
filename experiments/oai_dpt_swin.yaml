@@ -14,7 +14,7 @@ MODEL:
   #
   META_FEATURES: [100,100,100] 
   NAME: 'dpt'
-  ENCODER_NAME: 'tu-swin_base_patch4_window7_224' ##'resnet34'
+  ENCODER_NAME: 'tu-swinv2_base_window12to24_192to384' ##'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
@@ -36,7 +36,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [512,1024]
+  CACHED_IMAGE_SIZE: [512,512]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
@@ -53,7 +53,7 @@ DATASET:
 
 
 
-OUTPUT_PATH: ./output_OAI_0417_dpt_swin
+OUTPUT_PATH: ./output_OAI_0420_swin
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.0001
@@ -75,7 +75,6 @@ TEST:
   SDR_THRESHOLD: [10, 20, 40, 80]
   SDR_UNITS: pixels
   
-  PLOT: False
   SAVE_HEATMAPS_LANDMARKS_IMG: True
   SAVE_IMG_LANG_PREDANDTRUE: True
   SAVE_HEATMAPS_NP: True

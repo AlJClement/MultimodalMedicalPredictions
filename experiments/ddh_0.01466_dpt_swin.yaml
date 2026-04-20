@@ -37,7 +37,7 @@ MODEL:
   #
   META_FEATURES: [100,100,100] 
   NAME: 'dpt'
-  ENCODER_NAME: 'tu-swin_base_patch4_window7_224' ##'resnet34'
+  ENCODER_NAME: 'tu-swinv2_base_window12to24_192to384' ##'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
@@ -74,7 +74,7 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0417_dpt_0.1466
+OUTPUT_PATH: ./output_ddh_0420_dpt_0.1466
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.0001
