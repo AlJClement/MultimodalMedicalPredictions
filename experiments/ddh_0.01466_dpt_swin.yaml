@@ -37,7 +37,7 @@ MODEL:
   #
   META_FEATURES: [100,100,100] 
   NAME: 'dpt'
-  ENCODER_NAME: 'tu-swinv2_base_window12to24_192to384' ##'resnet34'
+  ENCODER_NAME: 'tu-swinv2_base_window12to24_192to384.ms_in22k_ft_in1k' #'tu-swinv2_base_window12to24_192to384' ##'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:

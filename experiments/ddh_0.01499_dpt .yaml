@@ -74,7 +74,7 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0417_dpt_0.1499
+OUTPUT_PATH: ./output_ddh_0420_dpt_0.1499
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.0001
