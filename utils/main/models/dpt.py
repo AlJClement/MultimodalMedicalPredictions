@@ -85,6 +85,11 @@ class dpt(nn.Module):
 
         return None
 
+    def _sync_encoder_device(self, device):
+        encoder = getattr(self.dpt, "encoder", None)
+        if encoder is not None:
+            encoder.to(device)
+
     def two_d_softmax(self, x):
         b, c, h, w = x.shape
         x = x.reshape(b, c, -1).float()
@@ -95,6 +100,7 @@ class dpt(nn.Module):
     def forward(self, im, meta=None):
         if getattr(self.dpt, "encoder", None):
             self._set_module_input_size(self.dpt.encoder, tuple(im.shape[-2:]))
+            self._sync_encoder_device(im.device)
         try:
             x = self.dpt(im)  # [B, C, H, W]
         except AssertionError as exc:
@@ -106,6 +112,7 @@ class dpt(nn.Module):
                 raise
 
             resized_im = F.interpolate(im, size=target_size, mode="bilinear", align_corners=False)
+            self._sync_encoder_device(resized_im.device)
             x = self.dpt(resized_im)
 
         # Make sure output matches input spatial size
