@@ -8,6 +8,7 @@ import os
 import torch
 torch.cuda.empty_cache() 
 import wandb
+import pandas as pd
 
 def _cfg_to_dict(cfg_node):
     if hasattr(cfg_node, "items"):
@@ -33,6 +34,22 @@ def _configure_wandb_dirs(output_path):
         "WANDB_DATA_DIR": os.path.join(base_dir, "data"),
         "WANDB_CACHE_DIR": os.path.join(base_dir, "cache"),
         "WANDB_DIR": os.path.join(base_dir, "runs"),
+    }
+
+    for env_key, default_path in defaults.items():
+        target_path = os.environ.get(env_key, default_path)
+        os.makedirs(target_path, exist_ok=True)
+        os.environ.setdefault(env_key, target_path)
+
+
+def _configure_model_cache_dirs():
+    base_dir = os.path.join(os.getcwd(), "model_cache")
+    defaults = {
+        "HF_HOME": os.path.join(base_dir, "hf_home"),
+        "HUGGINGFACE_HUB_CACHE": os.path.join(base_dir, "hub"),
+        "TRANSFORMERS_CACHE": os.path.join(base_dir, "transformers"),
+        "TORCH_HOME": os.path.join(base_dir, "torch"),
+        "TIMM_HOME": os.path.join(base_dir, "timm"),
     }
 
     for env_key, default_path in defaults.items():
@@ -140,6 +157,7 @@ def main():
     logger = help.setup_logger()
     cfg = help._get_cfg()
     _configure_wandb_dirs(cfg.OUTPUT_PATH)
+    _configure_model_cache_dirs()
     wandb_cfg = _cfg_to_dict(cfg)
 
     run_name = resolved_cfg_name if not args.wandb_run_suffix else f"{resolved_cfg_name}_{args.wandb_run_suffix}"
@@ -162,6 +180,7 @@ def main():
 
     try:
         eval_cfgs = _build_eval_cfgs(cfg)
+        aggregate_summary_rows = []
         num_workers = int(getattr(cfg.TEST, "NUM_WORKERS", 0))
         pin_memory = bool(getattr(cfg.TEST, "PIN_MEMORY", False))
         persistent_workers = bool(getattr(cfg.TEST, "PERSISTENT_WORKERS", False))
@@ -182,7 +201,7 @@ def main():
 
         for alias, eval_cfg in eval_cfgs:
             log_name = alias or "default"
-            logger.info("Running test evaluation for %s", log_name)
+            logger.info("Running %s standard evaluation", log_name)
             test_dataset = dataloader(eval_cfg, 'testing')
             help._dataset_shape(test_dataset)
             test_dataloader = DataLoader(test_dataset, **dataloader_kwargs)
@@ -194,21 +213,49 @@ def main():
             else:
                 output_dir_name = _sanitize_namespace(alias)
                 wandb_namespace = f"test_{_sanitize_namespace(alias)}"
-            tester.run(
+            result = tester.run(
                 test_dataloader,
                 use_tta=False,
                 output_dir_name=output_dir_name,
                 wandb_namespace=wandb_namespace,
             )
+            if result and result.get("summary_row") is not None:
+                summary_row = dict(result["summary_row"])
+                summary_row["test_set"] = log_name
+                summary_row["mode"] = "standard"
+                aggregate_summary_rows.append(summary_row)
 
             if bool(getattr(eval_cfg.TEST, "TEST_TIME_AUG", False)):
-                logger.info("Running test-time augmentation evaluation for %s", log_name)
-                tester.run(
+                logger.info("Running %s test-time augmentation evaluation", log_name)
+                result = tester.run(
                     test_dataloader,
                     use_tta=True,
                     output_dir_name=f"{output_dir_name}_tta",
                     wandb_namespace=f"{wandb_namespace}_tta",
                 )
+                if result and result.get("summary_row") is not None:
+                    summary_row = dict(result["summary_row"])
+                    summary_row["test_set"] = log_name
+                    summary_row["mode"] = "tta"
+                    aggregate_summary_rows.append(summary_row)
+
+        if aggregate_summary_rows:
+            summary_df = pd.DataFrame(aggregate_summary_rows)
+            first_columns = ["test_set", "mode"]
+            other_columns = [col for col in summary_df.columns if col not in first_columns]
+            summary_df = summary_df[first_columns + other_columns]
+
+            summary_csv_path = os.path.join(cfg.OUTPUT_PATH, "test_evaluation_summary.csv")
+            summary_df.to_csv(summary_csv_path, index=False)
+            logger.info("Saved aggregate test summary to %s", summary_csv_path)
+
+            wandb.log({
+                "test/evaluation_summary_csv": wandb.Table(dataframe=summary_df)
+            })
+
+            artifact = wandb.Artifact("test-evaluation-summary", type="evaluation")
+            artifact.add_file(summary_csv_path)
+            wandb.log_artifact(artifact)
     finally:
         if wandb.run is not None:
             wandb.finish()

@@ -1795,4 +1795,10 @@ class test():
             wandb_namespace=wandb_namespace,
         )
 
-        return 
+        return {
+            "summary_row": evaluation_summary_row if self.label_dir != '' else None,
+            "comparison_csv_path": comparison_csv_path,
+            "output_dir": self.test_output_dir_name,
+            "wandb_namespace": wandb_namespace,
+            "use_tta": bool(use_tta),
+        }

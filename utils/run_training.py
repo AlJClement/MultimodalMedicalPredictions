@@ -46,6 +46,22 @@ def _configure_wandb_dirs(output_path):
         os.makedirs(target_path, exist_ok=True)
         os.environ.setdefault(env_key, target_path)
 
+
+def _configure_model_cache_dirs():
+    base_dir = os.path.join(os.getcwd(), "model_cache")
+    defaults = {
+        "HF_HOME": os.path.join(base_dir, "hf_home"),
+        "HUGGINGFACE_HUB_CACHE": os.path.join(base_dir, "hub"),
+        "TRANSFORMERS_CACHE": os.path.join(base_dir, "transformers"),
+        "TORCH_HOME": os.path.join(base_dir, "torch"),
+        "TIMM_HOME": os.path.join(base_dir, "timm"),
+    }
+
+    for env_key, default_path in defaults.items():
+        target_path = os.environ.get(env_key, default_path)
+        os.makedirs(target_path, exist_ok=True)
+        os.environ.setdefault(env_key, target_path)
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a network to detect landmarks')
 
@@ -89,6 +105,7 @@ def main():
     logger.info("-----------Configuration-----------")
     cfg = help._get_cfg()
     _configure_wandb_dirs(cfg.OUTPUT_PATH)
+    _configure_model_cache_dirs()
     logger.info(cfg)
     logger.info("")
     wandb_cfg = _cfg_to_dict(cfg)
