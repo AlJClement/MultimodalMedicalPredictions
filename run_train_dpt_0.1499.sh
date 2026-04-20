@@ -6,8 +6,8 @@
 #SBATCH --mem-per-cpu=50G
 #SBATCH --partition=short
 
-module load Anaconda3
 
+module load Anaconda3/2022.05 
 source activate /data/coml-oxmedis/kebl7678/yenv
 
 #run python code
