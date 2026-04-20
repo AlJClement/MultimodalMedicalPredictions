@@ -80,6 +80,9 @@ def main():
     run_name = resolved_cfg_name if not args.wandb_run_suffix else f"{resolved_cfg_name}_{args.wandb_run_suffix}"
     run_group = args.wandb_group or resolved_cfg_name
     run_tags = ["train", cfg.INPUT_PATHS.DATASET_NAME, cfg.MODEL.NAME]
+    encoder_name = str(getattr(cfg.MODEL, "ENCODER_NAME", "")).strip()
+    if encoder_name:
+        run_tags.append(encoder_name)
     if args.wandb_tags:
         run_tags.extend([tag.strip() for tag in args.wandb_tags.split(',') if tag.strip()])
     run_tags = list(dict.fromkeys(run_tags))

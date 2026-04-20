@@ -14,7 +14,7 @@ MODEL:
   #
   META_FEATURES: [100,100,100] 
   NAME: 'dpt'
-  ENCODER_NAME: 'tu-swinv2_base_window12to24_192to384.ms_in22k_ft_in1k'  ##'resnet34' ''"tu-swinv2_cr_small_224"
+  ENCODER_NAME: 'tu-swin_tiny_patch4_window7_224' #tu-swinv2_base_window12to24_192to384.ms_in22k_ft_in1k'  ##'resnet34' ''"tu-swinv2_cr_small_224"
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
@@ -36,7 +36,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
-  CACHED_IMAGE_SIZE: [384,384]
+  CACHED_IMAGE_SIZE: [512,512]
   PIXEL_SIZE: [1.0,1.0]
 
   AUGMENTATION:
