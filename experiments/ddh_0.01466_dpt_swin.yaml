@@ -58,7 +58,7 @@ DATASET:
   COMBINE_REVIEWERS: False 
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: True
-  CACHED_IMAGE_SIZE: [512,512]
+  CACHED_IMAGE_SIZE: [384,384]
   PIXEL_SIZE: [0.0700711,0.0700711]
   #PIXEL_SIZE: [1.0,1.0]
 
@@ -76,7 +76,7 @@ DATASET:
 
 OUTPUT_PATH: ./output_ddh_0420_dpt_0.1466
 TRAIN:
-  BATCH_SIZE: 6
+  BATCH_SIZE: 8
   LR: 0.0001
   EPOCHS: 10
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
