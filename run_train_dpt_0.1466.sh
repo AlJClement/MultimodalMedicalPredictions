@@ -7,9 +7,7 @@
 #SBATCH --partition=short
 #SBATCH --gres=gpu:v100:1
 
-module load Anaconda3/2025.06-1
+module load Anaconda3/2022.05
 source activate /data/coml-oxmedis/kebl7678/yenv
 
-echo "Python: $(which python)"
-echo "CONDA_PREFIX: $CONDA_PREFIX"
-python -c "import torch; print(torch.__version__)"
+python ./utils/run_training.py --cfg oai_dpt_swin
