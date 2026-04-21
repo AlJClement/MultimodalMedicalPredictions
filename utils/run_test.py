@@ -112,6 +112,9 @@ def _build_eval_cfgs(cfg):
         dcms = dataset_cfg.get("DCMS", getattr(run_cfg.INPUT_PATHS, "DCMS", ""))
         alias = dataset_cfg.get("NAME") or dataset_cfg.get("ALIAS") or dataset_name or f"eval_{idx+1}"
 
+        if dataset_name == "oai_nolandmarks" and labels_numbers and not str(dataset_cfg.get("LABELS", "")).strip():
+            labels = ""
+
         run_cfg.INPUT_PATHS.DATASET_NAME = dataset_name
         run_cfg.INPUT_PATHS.PARTITION = partition
         run_cfg.INPUT_PATHS.IMAGES = images
