@@ -107,6 +107,7 @@ def _build_eval_cfgs(cfg):
         partition = dataset_cfg.get("PARTITION", getattr(run_cfg.INPUT_PATHS, "PARTITION", ""))
         images = dataset_cfg.get("IMAGES", getattr(run_cfg.INPUT_PATHS, "IMAGES", ""))
         labels = dataset_cfg.get("LABELS", getattr(run_cfg.INPUT_PATHS, "LABELS", ""))
+        labels_numbers = dataset_cfg.get("LABELS_NUMBERS", getattr(run_cfg.INPUT_PATHS, "LABELS_NUMBERS", []))
         meta_path = dataset_cfg.get("META_PATH", getattr(run_cfg.INPUT_PATHS, "META_PATH", ""))
         dcms = dataset_cfg.get("DCMS", getattr(run_cfg.INPUT_PATHS, "DCMS", ""))
         alias = dataset_cfg.get("NAME") or dataset_cfg.get("ALIAS") or dataset_name or f"eval_{idx+1}"
@@ -115,6 +116,7 @@ def _build_eval_cfgs(cfg):
         run_cfg.INPUT_PATHS.PARTITION = partition
         run_cfg.INPUT_PATHS.IMAGES = images
         run_cfg.INPUT_PATHS.LABELS = labels
+        run_cfg.INPUT_PATHS.LABELS_NUMBERS = labels_numbers
         run_cfg.INPUT_PATHS.META_PATH = meta_path
         run_cfg.INPUT_PATHS.DCMS = dcms
         run_cfg.freeze()

@@ -212,12 +212,13 @@ class dataloader(Dataset):
 
     def _build_lazy_dataset(self):
         img_files, annotation_files = self.get_partition()
+        partition_key = self._resolve_partition_key(img_files)
         if self.subset != None:
-            im_set = img_files[self.set][:self.subset]
-            ann_set = annotation_files[self.set][:self.subset]
+            im_set = img_files[partition_key][:self.subset]
+            ann_set = annotation_files[partition_key][:self.subset]
         else:
-            im_set = img_files[self.set]
-            ann_set = annotation_files[self.set]
+            im_set = img_files[partition_key]
+            ann_set = annotation_files[partition_key]
 
         id_rows = [self._patient_id_from_path(img_path) for img_path in im_set]
         meta_rows = [self.metaimport._get_array(self.metadata_csv, pat_id) for pat_id in id_rows]
@@ -229,6 +230,20 @@ class dataloader(Dataset):
 
         placeholder = [None] * len(im_set)
         return list(im_set), list(ann_set), placeholder, meta_torch, np.array(id_rows), placeholder, placeholder
+
+    def _resolve_partition_key(self, partition_dict):
+        if self.set in partition_dict:
+            return self.set
+
+        if self.set == 'testing':
+            fallback_keys = ['test', 'validation', 'val']
+            for key in fallback_keys:
+                if key in partition_dict:
+                    self._debug_print(f"Falling back from 'testing' to '{key}' partition")
+                    return key
+
+        available = list(partition_dict.keys())
+        raise KeyError(f"Partition '{self.set}' not found. Available partitions: {available}")
 
     def _find_oai_image_path(self, id):
         cached_path = self.testing_path_cache.get(id)

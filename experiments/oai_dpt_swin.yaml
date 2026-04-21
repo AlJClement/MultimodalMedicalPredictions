@@ -70,13 +70,14 @@ TRAIN:
 TEST:
   NETWORK: /model:1/_model_run:1_idx.pth
   COMPARISON_METRICS: 
-    - landmark_metrics().get_eres
-    - landmark_metrics().get_radial_errors
+    # - landmark_metrics().get_eres
+    # - landmark_metrics().get_radial_errors
     - protractor_hka().hka_angles
   SDR_THRESHOLD: [10, 20, 40, 80]
   SDR_UNITS: pixels
   TEST_TIME_AUG: True
   TEST_TIME_AUG_NUM: 10
+  WANDB_NUM_FAILURE_EXAMPLES: 10
   NUM_WORKERS: 8
   PIN_MEMORY: True
   PERSISTENT_WORKERS: True
