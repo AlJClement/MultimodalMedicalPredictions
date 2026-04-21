@@ -10,4 +10,4 @@
 module load Anaconda3/2022.05 
 source activate /data/coml-oxmedis/kebl7678/yenv
 
-python ./utils/run_training.py --cfg oai_dpt_swin
+python ./utils/run_training.py --cfg ddh_0.01466_dpt

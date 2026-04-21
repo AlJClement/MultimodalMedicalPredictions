@@ -41,7 +41,7 @@ DATASET:
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
-    ROTATION_FACTOR: 1 #affine
+    ROTATION_FACTOR: 1 #affineddh
     INTENSITY_FACTOR: 1.0 #multiplicaiton factor
     SF: 0.1 #affine scale factor
   
@@ -77,6 +77,20 @@ TEST:
   SDR_UNITS: pixels
   TEST_TIME_AUG: True
   TEST_TIME_AUG_NUM: 10
+  NUM_WORKERS: 8
+  PIN_MEMORY: True
+  PERSISTENT_WORKERS: True
+  PREFETCH_FACTOR: 2
+  EVAL_DATASETS:
+    - NAME: oai_all
+      DATASET_NAME: oai
+      META_PATH:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv 
+      DCMS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/dcms
+      PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.95_0.05_duplicatesforbatchsize8.json
+      IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+      LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/txt
+      META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
+    
   
   SAVE_HEATMAPS_LANDMARKS_IMG: True
   SAVE_IMG_LANG_PREDANDTRUE: True
