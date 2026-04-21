@@ -400,28 +400,30 @@ class dataloader(Dataset):
     def get_img(self, seq, img_path:str):
         self._debug_print(img_path)
         '''loads images as arr'''
-        try:
-            #assumes file is jpg
-            image = io.imread(img_path, as_gray=True)
-        except:
-            #if its saved as png
-            try:
-                image = io.imread(img_path[:-4]+'.png', as_gray=True)
-            except:
-                #add _ between L/R and series number
-                if self.dataset_name== 'ddh':
-                    new_name = img_path.split('/')[-1][:-5]+img_path.split('/')[-1][-5:-4]+'.png'                    
-                    image = io.imread(img_path.rsplit('/',1)[0]+'/'+new_name, as_gray=True)
-                if self.dataset_name == 'hand':
-                    #check if its in a subdirectory (Data Hand Atlas)
-                    parent=Path(img_path[:-4]).parent
-                    new_name = glob.glob(str(parent)+'/**/*/'+img_path.split('/')[-1])
-                    image = io.imread(new_name[0], as_gray=True)
+        image = None
+        attempted_paths = [img_path, img_path[:-4] + '.png']
 
-                # if self.dataset_name == 'oai':
-                #     #check if its in a subdirectory (OAI)
-                #     pass
-                
+        if self.dataset_name == 'ddh':
+            new_name = img_path.split('/')[-1][:-5] + img_path.split('/')[-1][-5:-4] + '.png'
+            attempted_paths.append(img_path.rsplit('/', 1)[0] + '/' + new_name)
+
+        if self.dataset_name == 'hand':
+            parent = Path(img_path[:-4]).parent
+            hand_matches = glob.glob(str(parent) + '/**/*/' + img_path.split('/')[-1])
+            attempted_paths.extend(hand_matches)
+
+        for candidate_path in attempted_paths:
+            try:
+                image = io.imread(candidate_path, as_gray=True)
+                break
+            except Exception:
+                continue
+
+        if image is None:
+            raise FileNotFoundError(
+                f"Could not load image for dataset '{self.dataset_name}'. "
+                f"Original path: {img_path}. Tried: {attempted_paths}"
+            )
 
         # Augment image
         image_resized = seq(image=image)
