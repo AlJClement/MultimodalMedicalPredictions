@@ -253,19 +253,24 @@ class dataloader(Dataset):
         BASE = Path(self.img_dir)
         selected_path = None
 
-        for d in BASE.rglob(id):
-            if not d.is_dir():
-                continue
-            for img in d.rglob("*_1x1.jpg"):
+        candidates = list(BASE.rglob(f"{id}*.jpg"))
+        candidates.extend(list(BASE.rglob(f"{id}*.png")))
+
+        for img in sorted(candidates):
+            try:
                 with Image.open(img) as im:
                     w, h = im.size
                     self._debug_print(im.size)
                     if w == 440 and h == 535:
                         self._debug_print(f"{img} {w}x{h}")
                         selected_path = img.as_posix()
+                        break
                     if h > 2 * w:
                         self._debug_print(f"{img} {w}x{h}")
                         selected_path = img.as_posix()
+                        break
+            except Exception:
+                continue
 
         if selected_path is None:
             raise FileNotFoundError(f"Could not find cached testing image for {id}")
