@@ -33,7 +33,7 @@ class MetadataImport():
         
     def _get_array(self, meta_df, patid):
         pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid.split('_')[0]]
-        if self.dataset_name == 'oai' and pat_meta_arr.empty:
+        if self.dataset_name == 'oai':
             ##oai
             pat_id_oai = patid.split('-')[0]
             pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_oai]
