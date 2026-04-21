@@ -39,16 +39,17 @@ class MetadataImport():
             ##oai
             pat_id_oai = patid.split('-')[0]
             pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_oai]
-        
-        if pat_meta_arr.empty:
-            pat_id_rnoh=patid.split('_')[1]
-            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
+        else:
+            
+            if pat_meta_arr.empty:
+                pat_id_rnoh=patid.split('_')[1]
+                pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
 
-        if pat_meta_arr.empty:
-            #retuve
-            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
-        if pat_meta_arr.empty:
-                raise ValueError('no meta data found for: ', patid)
+            if pat_meta_arr.empty:
+                #retuve
+                pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
+            if pat_meta_arr.empty:
+                    raise ValueError('no meta data found for: ', patid)
         return pat_meta_arr
     
     def _get_class_arr(self, meta_df, patid):
