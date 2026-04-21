@@ -361,7 +361,11 @@ class dataloader(Dataset):
                                     ann_list = self._get_oai_label_numbers(id)
                                         
                                     if self.dataset_name == 'oai_nolandmarks':
-                                        img = self._find_oai_image_path(id)
+                                        try:
+                                            img = self._find_oai_image_path(id)
+                                        except FileNotFoundError:
+                                            self._debug_print(f"Skipping OAI ID with no matching image: {id}")
+                                            continue
                                         self._debug_print(f"loaded already, {img}")
                                         img_file_dic[i].append(img)
 
