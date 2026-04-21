@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import pydicom
 import numpy as np
 
-input_path = Path('/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/longlegxray_1.E.1')
+input_path = Path('/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/longlegxray_1.C.2')#.E.1')
 output_path = Path('/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/jpg')
 
 output_path.mkdir(parents=True, exist_ok=True)
