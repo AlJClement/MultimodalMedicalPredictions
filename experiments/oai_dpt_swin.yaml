@@ -89,7 +89,7 @@ TEST:
       DCMS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/dcms
       PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.95_0.05_duplicatesforbatchsize8.json
       IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
-      LABELS_NUMBERS: [/experiments/datasets-in-use/xray-longlegs-land/Knee X-Ray Image Assessments/Alignment_SAS/FLXR_KneeAlign_Duryea01.txt, /experiments/datasets-in-use/xray-longlegs-land/Knee X-Ray Image Assessments/Alignment_SAS/flxr_kneealign_cooke01.txt]
+      LABELS_NUMBERS: [/data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/FLXR_KneeAlign_Duryea01.txt, /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/flxr_kneealign_cooke01.txt]
       META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
     
   
