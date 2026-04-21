@@ -37,7 +37,8 @@ DATASET:
   SIGMA: 1 #if sigma is NONE no guassian applied
   FLIP_AXIS: False
   CACHED_IMAGE_SIZE: [384,384]
-  PIXEL_SIZE: [1.0,1.0]
+  PIXEL_SIZE: [0.34,0.34]
+
 
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
