@@ -50,6 +50,11 @@ class MetadataImport():
                 pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
             if pat_meta_arr.empty:
                     raise ValueError('no meta data found for: ', patid)
+        if pat_meta_arr.empty:
+            placeholder_row = {col: "" for col in meta_df.columns}
+            placeholder_row[self.pat_col_name] = patid.split('-')[0]
+            pat_meta_arr = pd.DataFrame([placeholder_row], columns=meta_df.columns)
+            print('WARNING: no meta data found for', patid, '- using empty placeholder row')
         return pat_meta_arr
     
     def _get_class_arr(self, meta_df, patid):
