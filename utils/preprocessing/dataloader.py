@@ -412,6 +412,15 @@ class dataloader(Dataset):
             hand_matches = glob.glob(str(parent) + '/**/*/' + img_path.split('/')[-1])
             attempted_paths.extend(hand_matches)
 
+        if 'oai' in self.dataset_name:
+            img_path_obj = Path(img_path)
+            stem = img_path_obj.stem
+            parent = img_path_obj.parent
+            oai_matches = sorted(parent.glob(f"{stem}-*{img_path_obj.suffix}"))
+            if img_path_obj.suffix.lower() != ".png":
+                oai_matches.extend(sorted(parent.glob(f"{stem}-*.png")))
+            attempted_paths.extend([match.as_posix() for match in oai_matches])
+
         for candidate_path in attempted_paths:
             try:
                 image = io.imread(candidate_path, as_gray=True)

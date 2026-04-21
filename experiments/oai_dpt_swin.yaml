@@ -1,7 +1,7 @@
 INPUT_PATHS:
   DATASET_NAME: oai
   PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/partition_0.95_0.05_duplicatesforbatchsize8.json
-  IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+  IMAGES: /data/coml-oxmedis/datasets-in-use/xray-longlegs-land/jpg  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/txt
   META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/oai/MeasInventory.csv #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/multimodal.csv
  
