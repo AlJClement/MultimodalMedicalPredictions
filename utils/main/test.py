@@ -129,6 +129,30 @@ class test():
         if self.debug_testing:
             print(*args, **kwargs)
 
+    def _prepare_tta_preview_image(self, image):
+        image = np.asarray(image)
+        image = np.squeeze(image)
+
+        if image.ndim == 3:
+            if image.shape[-1] == 1:
+                image = image[:, :, 0]
+            else:
+                image = image[:, :, 0]
+
+        image = image.astype(np.float32)
+        finite_mask = np.isfinite(image)
+        if not np.any(finite_mask):
+            return np.zeros_like(image, dtype=np.float32)
+
+        min_val = np.min(image[finite_mask])
+        max_val = np.max(image[finite_mask])
+        if max_val > min_val:
+            image = (image - min_val) / (max_val - min_val)
+        else:
+            image = np.zeros_like(image, dtype=np.float32)
+
+        return image
+
     def _prepare_run_paths(self, output_dir_name):
         self.test_output_dir_name = output_dir_name
         self.test_output_path = os.path.join(self.output_path, self.test_output_dir_name)
@@ -1373,13 +1397,13 @@ class test():
                 raise ValueError("best prediction used the original image")
             if self.net.__class__.__name__ == 'hrnet':
                 best_aug_img = best_aug_img.squeeze(0)
-            if best_aug_img.ndim == 3 and best_aug_img.shape[-1] == 1:
-                best_aug_img = best_aug_img[:, :, 0]
-            axes[0].imshow(best_aug_img, cmap="gray")
+            aug_preview = self._prepare_tta_preview_image(best_aug_img)
+            orig_preview = self._prepare_tta_preview_image(img_hwc)
+            axes[0].imshow(aug_preview, cmap="gray", vmin=0.0, vmax=1.0)
             axes[0].set_title("Augmented")
             axes[0].axis("off")
 
-            axes[1].imshow(img_hwc[:, :, 0], cmap="gray")
+            axes[1].imshow(orig_preview, cmap="gray", vmin=0.0, vmax=1.0)
             axes[1].set_title("Original")
             axes[1].axis("off")
 
