@@ -2,12 +2,12 @@
 
 from pathlib import Path
 from PIL import Image, ImageFile
-import traceback
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-BASE_PATH = Path("/data/coml-oxmedis/datasets-in-use/oai/1.C.2")
-OUTPUT_PATH = Path("/data/coml-oxmedis/datasets-in-use/oai/jpg_checked")
+BASE_PATH = Path("/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/1.C.2")
+OUTPUT_PATH = Path("/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/jpg_checked")
+
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
 TARGET_WIDTH = 3000
@@ -16,7 +16,7 @@ WIDTH_TOL = 300
 HEIGHT_TOL = 150
 
 
-def is_about_size(width: int, height: int) -> bool:
+def is_about_size(width, height):
     return (
         abs(width - TARGET_WIDTH) <= WIDTH_TOL
         and abs(height - TARGET_HEIGHT) <= HEIGHT_TOL
@@ -26,42 +26,45 @@ def is_about_size(width: int, height: int) -> bool:
 def main():
     total_saved = 0
 
-    for patient_dir in BASE_PATH.iterdir():
-        if not patient_dir.is_dir():
+    for img_path in BASE_PATH.rglob("*_1x1.jpg"):
+        if not img_path.is_file():
             continue
 
-        images = list(patient_dir.rglob("*_1x1.jpg"))
-        count = len(images)
-        print(f"\nPatient: {patient_dir.name} | count={count}")
+        try:
+            # Expect structure: BASE / patient / date / file
+            rel = img_path.relative_to(BASE_PATH)
+            parts = rel.parts
 
-        if count == 0:
-            continue
+            if len(parts) < 3:
+                continue  # skip unexpected structure
 
-        for img_path in images:
-            try:
-                with Image.open(img_path) as img:
-                    img.load()  # force full read
-                    width, height = img.size
+            patient_id = parts[0]
+            study_date = parts[1]
+            filename = img_path.stem
 
-                if not is_about_size(width, height):
-                    continue
+            with Image.open(img_path) as img:
+                img.load()
+                width, height = img.size
 
-                out_name = f"{patient_dir.name}_{img_path.stem}.jpg"
-                out_file = OUTPUT_PATH / out_name
+            if not is_about_size(width, height):
+                continue
 
-                if out_file.exists():
-                    print(f"  Skipped (exists): {out_file}")
-                    continue
+            # ✅ Build flattened filename
+            out_name = f"{patient_id}-{study_date}-{filename}.jpg"
+            out_file = OUTPUT_PATH / out_name
 
-                with Image.open(img_path) as img:
-                    img.save(out_file)
+            if out_file.exists():
+                print(f"Skipped (exists): {out_file}")
+                continue
 
-                print(f"  Saved: {out_file} ({width}x{height})")
-                total_saved += 1
+            with Image.open(img_path) as img:
+                img.save(out_file)
 
-            except Exception:
-                print(f"  ERROR reading: {img_path}")
-                traceback.print_exc()
+            print(f"Saved: {out_file} ({width}x{height})")
+            total_saved += 1
+
+        except Exception as e:
+            print(f"ERROR: {img_path} -> {e}")
 
     print("\nDone.")
     print(f"Total saved: {total_saved}")
