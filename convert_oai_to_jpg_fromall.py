@@ -1,47 +1,63 @@
+#!/usr/bin/env python3
+
 from pathlib import Path
-import matplotlib.pyplot as plt
-import pydicom
-import numpy as np
+from PIL import Image
 
-input_path = Path('/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/longlegxray_1.C.2')
-output_path = Path('/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/jpg')
+BASE_PATH = Path("/data/coml-oxmedis/datasets-in-use/oai/1.C.2")
+OUTPUT_PATH = Path("/data/coml-oxmedis/datasets-in-use/oai/jpg_checked")
 
-output_path.mkdir(parents=True, exist_ok=True)
+OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
-for f in input_path.rglob('*'):
-    if not f.is_file():
-        continue
+# Size filter (set to None to disable)
+TARGET_WIDTH = 3000
+TARGET_HEIGHT = 1000
+WIDTH_TOL = 300
+HEIGHT_TOL = 150
 
-    try:
-        out_file = output_path / (f.stem + '.jpg')
 
-        # ✅ Skip if already exists
-        if out_file.exists():
-            print(f"Skipped (exists): {out_file}")
+def is_about_size(width: int, height: int) -> bool:
+    return (
+        abs(width - TARGET_WIDTH) <= WIDTH_TOL
+        and abs(height - TARGET_HEIGHT) <= HEIGHT_TOL
+    )
+
+
+def main() -> None:
+    for folder in BASE_PATH.iterdir():
+        if not folder.is_dir():
             continue
 
-        ds = pydicom.dcmread(f, force=True)
-
-        if not hasattr(ds, "pixel_array"):
+        images = list(folder.rglob("*_1x1.jpg"))
+        if len(images) <= 1:
             continue
 
-        img = ds.pixel_array.astype(float)
+        print(f"\nFolder: {folder} | count={len(images)}")
 
-        # avoid division by zero
-        if img.max() == img.min():
-            continue
+        for img_path in images:
+            try:
+                out_file = OUTPUT_PATH / img_path.name
 
-        img = (img - img.min()) / (img.max() - img.min())
+                # ✅ Skip if output already exists
+                if out_file.exists():
+                    print(f"  Skipped (exists): {out_file}")
+                    continue
 
-        plt.imshow(img, cmap='gray')
-        plt.axis('off')
+                with Image.open(img_path) as img:
+                    width, height = img.size
 
-        plt.savefig(out_file, bbox_inches='tight', pad_inches=0)
-        plt.close()
+                # Optional size filter
+                if not is_about_size(width, height):
+                    continue
 
-        print(f"Processed: {f}")
+                # Save (or copy) the image
+                with Image.open(img_path) as img:
+                    img.save(out_file)
 
-    except Exception:
-        continue
+                print(f"  Saved: {out_file} ({width}x{height})")
 
-print("Done.")
+            except Exception as e:
+                print(f"  ERROR: {img_path} -> {e}")
+
+
+if __name__ == "__main__":
+    main()

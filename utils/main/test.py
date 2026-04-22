@@ -1073,7 +1073,8 @@ class test():
             ax.set_aspect("equal", adjustable="box")
 
         plt.tight_layout()
-        plt.savefig(self.output_path + save_name, dpi=300)
+        plot_path = self.output_path + save_name
+        plt.savefig(plot_path, dpi=300)
 
         # --- Bland-Altman grid with consistent scales across subplots ---
         # First pass: collect ranges to compute global limits
@@ -1234,7 +1235,8 @@ class test():
             ax.set_aspect("auto")
 
         plt.tight_layout()
-        plt.savefig(self.output_path + save_name.replace('hka','hka_BlandA_'), dpi=300)
+        bland_altman_path = self.output_path + save_name.replace('hka', 'hka_BlandA_', 1)
+        plt.savefig(bland_altman_path, dpi=300)
         return df
 
     def get_best_test_time_aug(self, data, meta_data, id):
@@ -1549,9 +1551,10 @@ class test():
                     )
         total_time = datetime.datetime.now() - start_time
         self._debug_print('Time taken for epoch = ', total_time)
-        comparison_csv_path = os.path.join(self.test_output_path, 'comparison_metrics.csv')
+        file_suffix = '_test-time-aug' if use_tta else ''
+        comparison_csv_path = os.path.join(self.test_output_path, f'comparison_metrics{file_suffix}.csv')
         comparison_df.to_csv(comparison_csv_path)
-        self._debug_print('Saving Results to comparison_metrics.csv')
+        self._debug_print(f'Saving Results to {os.path.basename(comparison_csv_path)}')
 
         #
         #
@@ -1568,9 +1571,10 @@ class test():
             # (when there is nan drop the value)
             pred_l, pred_r = comparison_df['L HKA'].to_numpy(), comparison_df['R HKA'].to_numpy()
             true_hkas = np.stack(true_hkas, axis=0)
-            df = self.plot_hka_comparisons(pred_l,pred_r,true_hkas)
-            wandb_plot_paths["hka_comparison"] = os.path.join(self.output_path, "hka_comparison.png")
-            wandb_plot_paths["hka_bland_altman"] = os.path.join(self.output_path, "hka_BlandA_comparison.png")
+            hka_plot_name = f"/hka_comparison{file_suffix}.png"
+            df = self.plot_hka_comparisons(pred_l, pred_r, true_hkas, save_name=hka_plot_name)
+            wandb_plot_paths["hka_comparison"] = os.path.join(self.output_path, f"hka_comparison{file_suffix}.png")
+            wandb_plot_paths["hka_bland_altman"] = os.path.join(self.output_path, f"hka_BlandA_comparison{file_suffix}.png")
                          
         if self.label_dir == '':
             MRE = [None, None, None,None]
@@ -1689,7 +1693,7 @@ class test():
                 wandb_plot_paths["class_agreement_graf_fhc_i_ii_vs_iii_iv_bar"] = plot_path
             
             comparison_df.to_csv(comparison_csv_path)
-            self._debug_print('Saving Results to comparison_metrics.csv')
+            self._debug_print(f'Saving Results to {os.path.basename(comparison_csv_path)}')
         
         
         sdr_summary = ""
