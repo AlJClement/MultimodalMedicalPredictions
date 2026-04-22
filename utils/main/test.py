@@ -1245,6 +1245,11 @@ class test():
         EH = self.eval_helper
         pixels_sizes = self.pixel_size_cpu
         aug_seq = self.augmenter
+        img_np = data.detach().cpu().numpy().squeeze(0) # C, H, W
+        img_hwc = np.transpose(img_np, (1, 2, 0))
+        best_pred = None
+        best_aug_img = None
+        best_affine_params = None
         if metric == 'ERE':
             best_metric = 10000
         elif metric == 'angle':
@@ -1259,9 +1264,6 @@ class test():
                 ##do not augment
                 pred = self.net(data, meta_data)                
             else:
-                img_np = data.detach().cpu().numpy().squeeze(0) # C, H, W
-                ## change orientation for getting augmentations
-                img_hwc = np.transpose(img_np, (1,2,0)) 
                 ### get augment and prediction with augment     
                 pred, aug_img, affine_params = aug_seq.tta_predict_with_config(self.net, img_hwc, meta_data, device=torch.device("cuda"))
 
@@ -1344,17 +1346,20 @@ class test():
 
                 ##update best prediction
                 best_pred = pred
-                try:
+                if i > 0:
                     best_aug_img = aug_img
                     best_affine_params = affine_params
-                except:
-                    self._debug_print('best is no aug')
+                    print(f"TTA selected augmented candidate for {id[0]} at aug {i} with {metric}={float(total_metric):.4f}", flush=True)
+                else:
+                    best_aug_img = None
+                    best_affine_params = None
+                    print(f"TTA selected original image for {id[0]} with {metric}={float(total_metric):.4f}", flush=True)
 
     
         ##plot best heatmap over augmented or normal image
         plt.ioff()
         plt.imshow(img_hwc[:, :, 0], cmap="gray")
-        agg_np = pred.cpu().numpy()
+        agg_np = best_pred.cpu().numpy()
         combined = np.sum(agg_np, axis=1)
         plt.imshow(combined[0])
         plt.savefig(self.save_testtimeaug+'/'+id[0]+'.jpg')
@@ -1364,13 +1369,17 @@ class test():
         fig, axes = plt.subplots(1, 2, figsize=(8, 5))
         ## try
         try:
+            if best_aug_img is None:
+                raise ValueError("best prediction used the original image")
             if self.net.__class__.__name__ == 'hrnet':
                 best_aug_img = best_aug_img.squeeze(0)
-            axes[0].imshow(best_aug_img[:, :], cmap="gray")
+            if best_aug_img.ndim == 3 and best_aug_img.shape[-1] == 1:
+                best_aug_img = best_aug_img[:, :, 0]
+            axes[0].imshow(best_aug_img, cmap="gray")
             axes[0].set_title("Augmented")
             axes[0].axis("off")
 
-            axes[1].imshow(img_hwc[:, :], cmap="gray")
+            axes[1].imshow(img_hwc[:, :, 0], cmap="gray")
             axes[1].set_title("Original")
             axes[1].axis("off")
 
