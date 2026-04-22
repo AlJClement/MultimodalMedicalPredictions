@@ -8,55 +8,66 @@ OUTPUT_PATH = Path("/data/coml-oxmedis/datasets-in-use/oai/jpg_checked")
 
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
-# Size filter (set to None to disable)
 TARGET_WIDTH = 3000
 TARGET_HEIGHT = 1000
 WIDTH_TOL = 300
 HEIGHT_TOL = 150
 
 
-def is_about_size(width: int, height: int) -> bool:
+def is_about_size(width, height):
     return (
         abs(width - TARGET_WIDTH) <= WIDTH_TOL
         and abs(height - TARGET_HEIGHT) <= HEIGHT_TOL
     )
 
 
-def main() -> None:
-    for folder in BASE_PATH.iterdir():
-        if not folder.is_dir():
+def main():
+    total_saved = 0
+
+    for patient_dir in BASE_PATH.iterdir():
+        if not patient_dir.is_dir():
             continue
 
-        images = list(folder.rglob("*_1x1.jpg"))
-        if len(images) <= 1:
-            continue
+        # 🔍 Find images in this patient folder
+        images = list(patient_dir.rglob("*_1x1.jpg"))
+        count = len(images)
 
-        print(f"\nFolder: {folder} | count={len(images)}")
+        print(f"\nPatient: {patient_dir.name} | count={count}")
+
+        # ✅ Only proceed if at least 1 (or change to >1 if you want)
+        if count == 0:
+            continue
 
         for img_path in images:
             try:
-                out_file = OUTPUT_PATH / img_path.name
+                with Image.open(img_path) as img:
+                    width, height = img.size
 
-                # ✅ Skip if output already exists
+                # Apply size filter
+                if not is_about_size(width, height):
+                    continue
+
+                # Unique output name per patient
+                out_name = f"{patient_dir.name}_{img_path.stem}.jpg"
+                out_file = OUTPUT_PATH / out_name
+
+                # Skip if already saved
                 if out_file.exists():
                     print(f"  Skipped (exists): {out_file}")
                     continue
 
-                with Image.open(img_path) as img:
-                    width, height = img.size
-
-                # Optional size filter
-                if not is_about_size(width, height):
-                    continue
-
-                # Save (or copy) the image
+                # Save image
                 with Image.open(img_path) as img:
                     img.save(out_file)
 
                 print(f"  Saved: {out_file} ({width}x{height})")
+                total_saved += 1
 
             except Exception as e:
                 print(f"  ERROR: {img_path} -> {e}")
+
+    print("\nDone.")
+    print(f"Total saved: {total_saved}")
 
 
 if __name__ == "__main__":
