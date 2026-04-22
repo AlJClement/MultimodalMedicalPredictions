@@ -1,6 +1,7 @@
 import argparse
 from support import helper
 from torch.utils.data import DataLoader
+from torch.utils.data._utils.collate import default_collate
 from preprocessing import dataloader
 from main import test
 import numpy as np
@@ -129,6 +130,19 @@ def _build_eval_cfgs(cfg):
     return eval_cfgs
 
 
+def _test_collate_fn(batch):
+    data, target, landmarks, meta, sample_id, orig_size, orig_img = zip(*batch)
+    return (
+        default_collate(data),
+        default_collate(target),
+        default_collate(landmarks),
+        default_collate(meta),
+        list(sample_id),
+        default_collate(orig_size),
+        list(orig_img),
+    )
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a network to detect landmarks')
 
@@ -200,6 +214,7 @@ def main():
             "drop_last": True,
             "num_workers": num_workers,
             "pin_memory": pin_memory,
+            "collate_fn": _test_collate_fn,
         }
         if num_workers > 0:
             dataloader_kwargs["persistent_workers"] = persistent_workers
