@@ -184,7 +184,7 @@ class dataloader(Dataset):
 
     def _patient_id_from_path(self, img_path):
         if self.dataset_name == 'oai_nolandmarks':
-            return img_path.strip("/").split("/")[-3]
+            return Path(img_path).stem.split('-')[0]
         return img_path.split('/')[-1].split('.')[0]
 
     def _resolve_sample(self, img_path, ann_paths, pat_id):

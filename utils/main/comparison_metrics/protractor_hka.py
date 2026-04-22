@@ -4,6 +4,16 @@ import torch
 class protractor_hka():
     def __init__(self):
         pass
+
+    def _pixelsize_xy(self, pixelsize):
+            if isinstance(pixelsize, torch.Tensor):
+                pixelsize = pixelsize.detach().cpu().numpy()
+            pixelsize = np.asarray(pixelsize, dtype=float).reshape(-1)
+            if pixelsize.size == 0:
+                return np.array([1.0, 1.0], dtype=float)
+            if pixelsize.size == 1:
+                return np.array([pixelsize[0], pixelsize[0]], dtype=float)
+            return np.array([pixelsize[0], pixelsize[1]], dtype=float)
     
     def hka_angles(self, pred, pred_map, true, true_map, pixelsize, HKA_only=False):
             '''Claculates left and right angles of HKA, assuming the layout of txt points is 
@@ -12,6 +22,7 @@ class protractor_hka():
             # a   centre of the ankle
             # all distances are used squared as late as possible to avoid multiple sqrt
             '''
+            pixel_scale = self._pixelsize_xy(pixelsize)
             ## 7 landmarks only for left leg
             if pred.shape[0] == 6:
                 i_1, i_2, i_3 = 0,1,2
@@ -39,8 +50,8 @@ class protractor_hka():
                     k_coords=int(coords[i_2][0]),int(coords[i_2][1])
                     a_coords=int(coords[i_3][0]),int(coords[i_3][1])
 
-                fk=tuple(np.subtract(k_coords , f_coords))
-                ka=tuple(np.subtract(a_coords , k_coords))
+                fk = np.subtract(k_coords, f_coords).astype(float) * pixel_scale
+                ka = np.subtract(a_coords, k_coords).astype(float) * pixel_scale
                 
                 dot = fk[0] * ka[0] + fk[1] * ka[1]
                 fk_lengthsq = fk[0]**2 + fk[1]**2
@@ -98,8 +109,8 @@ class protractor_hka():
                     k_coords=int(coords[i_2][0]),int(coords[i_2][1])
                     a_coords=int(coords[i_3][0]),int(coords[i_3][1])
 
-                fk=tuple(np.subtract(k_coords , f_coords))
-                ka=tuple(np.subtract(a_coords , k_coords))
+                fk = np.subtract(k_coords, f_coords).astype(float) * pixel_scale
+                ka = np.subtract(a_coords, k_coords).astype(float) * pixel_scale
                 
                 dot = fk[0] * ka[0] + fk[1] * ka[1]
                 fk_lengthsq = fk[0]**2 + fk[1]**2
