@@ -10,7 +10,7 @@ from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-BASE_PATH = Path("/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/1.C.2")
+BASE_PATH = Path("/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/1.E.1")
 OUTPUT_PATH = Path("/data/coml-oxmedis/datasets-in-use/xray-longlegs-land/jpg_checked")
 OUTPUT_PATH.mkdir(parents=True, exist_ok=True)
 
