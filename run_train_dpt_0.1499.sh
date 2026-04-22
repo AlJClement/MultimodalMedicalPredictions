@@ -4,7 +4,6 @@
 #SBATCH --time=11:50:00
 #SBATCH --clusters=htc
 #SBATCH --mem-per-cpu=50G
-#SBATCH --partition=short
 #SBATCH --gres=gpu:v100:1
 
 

@@ -8,6 +8,7 @@
 #SBATCH --gres=gpu:a100:1
 
 
+
 module load Anaconda3/2022.05
 source activate /data/coml-oxmedis/kebl7678/yenv
 #run python code
