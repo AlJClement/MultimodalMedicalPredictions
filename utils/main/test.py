@@ -1519,6 +1519,7 @@ class test():
 
                     if self.save_heatmap_as_np == True:
                         np_output_dir = self.output_path+'/np_test-time-aug' if use_tta else self.output_path+'/np'
+                        print(f"Saving numpy heatmaps to {np_output_dir}", flush=True)
                         visuals(np_output_dir+'/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(_pred.squeeze(0))
                         visuals(np_output_dir+'/numpy_heatmaps_uniformSize_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
 
