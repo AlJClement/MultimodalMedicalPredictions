@@ -102,22 +102,18 @@ TEST:
   PIN_MEMORY: True
   PERSISTENT_WORKERS: True
   PREFETCH_FACTOR: 2
-  TEST_TIME_AUG: True
+  TEST_TIME_AUG: TRUE_ONLY
   TEST_TIME_AUG_NUM: 10
   EVAL_DATASETS:
-    - NAME: ddh_rnoh
+    - NAME: ddh_all
       DATASET_NAME: ddh
-      PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/partition_stanmore_test.json
-      IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
-      LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
-      META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
-    - NAME: ddh_mkuh
-      DATASET_NAME: ddh
-      PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/partition_0_0_1_1.00000.json
-      IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/imgs
-      LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/txt
-      META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/CS_MKUHv3.csv
-  
+      PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.15_0.15_0.7_0.01466_best.json #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
+      IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/imgs #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+      DCMS:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
+      LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
+      META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv 
+
+      
   
   PLOT: False
   SAVE_HEATMAPS_LANDMARKS_IMG: False

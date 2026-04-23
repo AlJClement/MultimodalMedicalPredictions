@@ -130,6 +130,17 @@ def _build_eval_cfgs(cfg):
     return eval_cfgs
 
 
+def _resolve_tta_mode(value):
+    if isinstance(value, str):
+        mode = value.strip().upper()
+        if mode == "TRUE_ONLY":
+            return "tta_only"
+        if mode in {"TRUE", "1", "YES", "ON"}:
+            return "both"
+        return "disabled"
+    return "both" if bool(value) else "disabled"
+
+
 def _test_collate_fn(batch):
     data, target, landmarks, meta, sample_id, orig_size, orig_img = zip(*batch)
     return (
@@ -225,11 +236,11 @@ def main():
 
         for alias, eval_cfg in eval_cfgs:
             log_name = alias or "default"
-            logger.info("Running %s standard evaluation", log_name)
             test_dataset = dataloader(eval_cfg, 'testing')
             help._dataset_shape(test_dataset)
             test_dataloader = DataLoader(test_dataset, **dataloader_kwargs)
             tester = test(eval_cfg, logger)
+            tta_mode = _resolve_tta_mode(getattr(eval_cfg.TEST, "TEST_TIME_AUG", False))
 
             if alias is None:
                 output_dir_name = tester.base_test_output_dir_name
@@ -237,19 +248,22 @@ def main():
             else:
                 output_dir_name = _sanitize_namespace(alias)
                 wandb_namespace = f"test_{_sanitize_namespace(alias)}"
-            result = tester.run(
-                test_dataloader,
-                use_tta=False,
-                output_dir_name=output_dir_name,
-                wandb_namespace=wandb_namespace,
-            )
-            if result and result.get("summary_row") is not None:
-                summary_row = dict(result["summary_row"])
-                summary_row["test_set"] = log_name
-                summary_row["mode"] = "standard"
-                aggregate_summary_rows.append(summary_row)
 
-            if bool(getattr(eval_cfg.TEST, "TEST_TIME_AUG", False)):
+            if tta_mode != "tta_only":
+                logger.info("Running %s standard evaluation", log_name)
+                result = tester.run(
+                    test_dataloader,
+                    use_tta=False,
+                    output_dir_name=output_dir_name,
+                    wandb_namespace=wandb_namespace,
+                )
+                if result and result.get("summary_row") is not None:
+                    summary_row = dict(result["summary_row"])
+                    summary_row["test_set"] = log_name
+                    summary_row["mode"] = "standard"
+                    aggregate_summary_rows.append(summary_row)
+
+            if tta_mode in {"both", "tta_only"}:
                 logger.info("Running %s test-time augmentation evaluation", log_name)
                 result = tester.run(
                     test_dataloader,
