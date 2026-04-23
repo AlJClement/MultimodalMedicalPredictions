@@ -37,7 +37,7 @@ MODEL:
   #
   META_FEATURES: [100,100,100] 
   NAME: 'dpt'
-  ENCODER_NAME: 'tu-swinv2_base_window12to24_192to384.ms_in22k_ft_in1k' ##'resnet34'
+  ENCODER_NAME: 'tu-maxvit_xlarge_tf_512.in21k_ft_in1k' ##'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
@@ -65,16 +65,16 @@ DATASET:
   AUGMENTATION:
   #all of the defined parameters allow for a range of the factors below
     ROTATION_FACTOR: 1 #affine
-    INTENSITY_FACTOR: 2.0 #multiplicaiton factor
+    INTENSITY_FACTOR: 1.0 #multiplicaiton factor
     SF: 0.8 #affine scale factor
     TRANSLATION_X: 0.2 #affine
     TRANSLATION_Y: 0.2 #affine
     SPECKLE_NOISE: 2
-    COARSE_SALTANDPEPPER: 0.50 #percent of all pixels that will be dropped
+    COARSE_SALTANDPEPPER: 0.20 #percent of all pixels that will be dropped
 
-    SOME_OF: 4 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
+    SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0423_dpt_0.1499_aughigh
+OUTPUT_PATH: ./output_ddh_0423_dpt_0.1499_vit
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.0001
