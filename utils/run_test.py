@@ -141,6 +141,14 @@ def _resolve_tta_mode(value):
     return "both" if bool(value) else "disabled"
 
 
+def _get_eval_tta_mode(cfg):
+    mode_value = getattr(cfg.TEST, "TEST_TIME_AUG_MODE", "disabled")
+    mode = _resolve_tta_mode(mode_value)
+    if mode != "disabled":
+        return mode
+    return _resolve_tta_mode(getattr(cfg.TEST, "TEST_TIME_AUG", False))
+
+
 def _test_collate_fn(batch):
     data, target, landmarks, meta, sample_id, orig_size, orig_img = zip(*batch)
     return (
@@ -240,7 +248,7 @@ def main():
             help._dataset_shape(test_dataset)
             test_dataloader = DataLoader(test_dataset, **dataloader_kwargs)
             tester = test(eval_cfg, logger)
-            tta_mode = _resolve_tta_mode(getattr(eval_cfg.TEST, "TEST_TIME_AUG", False))
+            tta_mode = _get_eval_tta_mode(eval_cfg)
 
             if alias is None:
                 output_dir_name = tester.base_test_output_dir_name
