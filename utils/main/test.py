@@ -83,6 +83,8 @@ class test():
         if self.save_heatmap_as_np == True:
             if not os.path.isdir(self.output_path+'/np/'):
                 os.makedirs(self.output_path+'/np/')
+            if not os.path.isdir(self.output_path+'/np_test-time-aug/'):
+                os.makedirs(self.output_path+'/np_test-time-aug/')
     
         if not os.path.exists(self.save_img_path):
             os.mkdir(self.save_img_path)
@@ -1516,8 +1518,9 @@ class test():
                         visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
 
                     if self.save_heatmap_as_np == True:
-                        visuals(self.output_path+'/np/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(_pred.squeeze(0))
-                        visuals(self.output_path+'/np/numpy_heatmaps_uniformSize_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
+                        np_output_dir = self.output_path+'/np_test-time-aug' if use_tta else self.output_path+'/np'
+                        visuals(np_output_dir+'/numpy_heatmaps_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(_pred.squeeze(0))
+                        visuals(np_output_dir+'/numpy_heatmaps_uniformSize_'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_np(pred[i])
 
                     id_metric_df = self.compare_metrics(id[i], _predicted_points, _pred, _target_points, _target,self.pixel_size, orig_size[i])
                     metric_row = id_metric_df.iloc[0].to_dict()
