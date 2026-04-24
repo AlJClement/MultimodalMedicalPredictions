@@ -4,7 +4,7 @@
 #SBATCH --time=12:00:00
 #SBATCH --clusters=htc
 #SBATCH --mem-per-cpu=50G
-#SBATCH --partition=small
+#SBATCH --partition=short
 #SBATCH --gres=gpu:a100:1
 
 module load Anaconda3/2022.05 
