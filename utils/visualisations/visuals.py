@@ -121,7 +121,7 @@ class visuals():
 
         return
     
-    def heatmaps(self, image, output, target_points=None, predicted_points=None, w_landmarks=True, all_landmarks=True, with_img = True, as_dcm=False, dcm_loc='', resize_to_orig=True,save_high_res=True):
+    def heatmaps(self, image, output, target_points=None, predicted_points=None, w_landmarks=True, all_landmarks=True, with_img = True, as_dcm=False, dcm_loc='', resize_to_orig=True,save_high_res=True, extra_text=None):
         fig, ax = plt.subplots(1, 1)
         
         try:
@@ -253,6 +253,23 @@ class visuals():
         #         print(data_str)
 
         #     print('saving', self.save_path)
+
+        if extra_text:
+            if isinstance(extra_text, (list, tuple)):
+                text_block = "\n".join(str(line) for line in extra_text if str(line).strip())
+            else:
+                text_block = str(extra_text)
+            if text_block.strip():
+                ax.text(
+                    0.02,
+                    0.02,
+                    text_block,
+                    transform=ax.transAxes,
+                    fontsize=7,
+                    verticalalignment='bottom',
+                    color='white',
+                    bbox=dict(facecolor='black', alpha=0.65, edgecolor='none'),
+                )
 
         if as_dcm == True:
             #put array into dcm version

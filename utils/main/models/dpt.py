@@ -13,6 +13,10 @@ class dpt(nn.Module):
         self.im_size = cfg.DATASET.CACHED_IMAGE_SIZE
         self.device = cfg.MODEL.DEVICE
         self.encoder_name = str(cfg.MODEL.ENCODER_NAME)
+        self.channel_type = str(getattr(cfg.MODEL, "CHANNEL_TYPE", "none")).strip().lower()
+        self.meta_cols = list(getattr(cfg.INPUT_PATHS, "META_COLS", []))
+        self.meta_feature_widths = list(getattr(cfg.MODEL, "META_FEATURES", []))
+        self.meta_attention_indices = self._resolve_attention_feature_indices()
 
         dpt_kwargs = dict(
             encoder_name=cfg.MODEL.ENCODER_NAME,
@@ -26,6 +30,15 @@ class dpt(nn.Module):
 
         self.dpt = smp.DPT(**dpt_kwargs)
         self._configure_dynamic_input_size()
+        self.latest_channel_attention = None
+
+        self.meta_channel_attention = None
+        if self.channel_type == "multimodal":
+            attention_dim = max(1, len(self.meta_attention_indices))
+            self.meta_channel_attention = nn.Sequential(
+                nn.Linear(attention_dim, self.in_channels),
+                nn.Sigmoid(),
+            )
 
     def _supports_dynamic_img_size(self):
         encoder_name = self.encoder_name.lower()
@@ -106,6 +119,113 @@ class dpt(nn.Module):
         if encoder is not None:
             encoder.to(device)
 
+    def _resolve_attention_feature_indices(self):
+        if not self.meta_cols:
+            return []
+
+        matched_indices = []
+        used_indices = set()
+        feature_names = [
+            str(list(col_spec.items())[0][0]).strip().lower()
+            for col_spec in self.meta_cols
+        ]
+        desired_groups = (
+            ("age",),
+            ("sex", "gender"),
+            ("laterality", "side", "left", "right"),
+        )
+
+        for group in desired_groups:
+            for idx, name in enumerate(feature_names):
+                if idx in used_indices:
+                    continue
+                if any(token in name for token in group):
+                    matched_indices.append(idx)
+                    used_indices.add(idx)
+                    break
+
+        for idx in range(len(feature_names)):
+            if len(matched_indices) >= 3:
+                break
+            if idx not in used_indices:
+                matched_indices.append(idx)
+                used_indices.add(idx)
+
+        return matched_indices
+
+    def _reshape_meta(self, meta):
+        if meta is None:
+            return None
+
+        if not torch.is_tensor(meta):
+            meta = torch.as_tensor(meta, dtype=torch.float32, device=next(self.parameters()).device)
+
+        meta = meta.float()
+        if meta.ndim == 3 and meta.shape[1] == 1:
+            meta = meta.squeeze(1)
+        elif meta.ndim > 2:
+            meta = meta.reshape(meta.shape[0], -1)
+
+        return meta
+
+    def _summarize_meta_features(self, meta):
+        meta = self._reshape_meta(meta)
+        if meta is None:
+            return None
+
+        if meta.ndim == 1:
+            meta = meta.unsqueeze(0)
+
+        if not self.meta_cols or not self.meta_feature_widths:
+            return meta[:, : min(3, meta.shape[-1])]
+
+        summaries = []
+        start = 0
+        for idx, _col_spec in enumerate(self.meta_cols):
+            if idx >= len(self.meta_feature_widths):
+                break
+            width = int(self.meta_feature_widths[idx])
+            if width <= 0:
+                continue
+            end = min(start + width, meta.shape[-1])
+            if end <= start:
+                break
+            summaries.append(meta[:, start:end].mean(dim=-1, keepdim=True))
+            start = end
+
+        if not summaries:
+            return meta[:, : min(3, meta.shape[-1])]
+
+        return torch.cat(summaries, dim=-1)
+
+    def _apply_multimodal_channel_attention(self, im, meta):
+        if self.meta_channel_attention is None:
+            return im
+
+        meta_summary = self._summarize_meta_features(meta)
+        if meta_summary is None or meta_summary.numel() == 0:
+            return im
+
+        if self.meta_attention_indices:
+            available_indices = [idx for idx in self.meta_attention_indices if idx < meta_summary.shape[-1]]
+            if available_indices:
+                meta_summary = meta_summary[:, available_indices]
+
+        if meta_summary.shape[-1] == 0:
+            return im
+
+        expected_dim = self.meta_channel_attention[0].in_features
+        if meta_summary.shape[-1] < expected_dim:
+            pad = meta_summary.new_zeros((meta_summary.shape[0], expected_dim - meta_summary.shape[-1]))
+            meta_summary = torch.cat((meta_summary, pad), dim=-1)
+        elif meta_summary.shape[-1] > expected_dim:
+            meta_summary = meta_summary[:, :expected_dim]
+
+        attention = self.meta_channel_attention(meta_summary.to(device=im.device, dtype=im.dtype))
+        self.latest_channel_attention = attention.detach().cpu()
+        attention = attention.unsqueeze(-1).unsqueeze(-1)
+        return im * attention
+
     def two_d_softmax(self, x):
         b, c, h, w = x.shape
         x = x.reshape(b, c, -1).float()
@@ -114,6 +234,10 @@ class dpt(nn.Module):
         return x.reshape(b, c, h, w)
 
     def forward(self, im, meta=None):
+        self.latest_channel_attention = None
+        if self.channel_type == "multimodal":
+            im = self._apply_multimodal_channel_attention(im, meta)
+
         if getattr(self.dpt, "encoder", None):
             self._set_module_input_size(self.dpt.encoder, tuple(im.shape[-2:]))
             self._sync_encoder_device(im.device)

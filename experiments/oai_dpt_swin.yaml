@@ -17,6 +17,7 @@ MODEL:
   ENCODER_NAME: tu-swinv2_base_window12to24_192to384.ms_in22k_ft_in1k  ##'resnet34' ''"tu-swinv2_cr_small_224"
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
+  CHANNEL_TYPE: 'none'
   DECODER_CHANNELS:
     - 256
     - 256

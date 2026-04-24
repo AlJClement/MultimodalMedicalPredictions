@@ -19,6 +19,7 @@ from .comparison_metrics import *
 from .comparison_metrics import fhc
 import torch.nn.functional as F
 from preprocessing.augmentation import Augmentation
+from preprocessing.metadata_import import MetadataImport
 class validation():
     def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
@@ -95,6 +96,13 @@ class validation():
             self.optimizer = self._get_optimizer(self.net)
         self.device = torch.device(cfg.MODEL.DEVICE)
         self.combine_graf_fhc=cfg.TRAIN.COMBINE_GRAF_FHC
+        self.meta_cols = list(cfg.INPUT_PATHS.META_COLS)
+        self.channel_type = str(getattr(cfg.MODEL, "CHANNEL_TYPE", "none")).strip().lower()
+        self.metadata_lookup = None
+        self.metadata_csv = None
+        if cfg.INPUT_PATHS.META_PATH and self.meta_cols:
+            self.metadata_lookup = MetadataImport(cfg)
+            self.metadata_csv, _ = self.metadata_lookup.load_csv()
 
         self.evaluation = evaluation_helper
         self.save_img = save_img
@@ -121,6 +129,37 @@ class validation():
             self.tau_decay = cfg.TRAIN.TAU_DECAY
         else:
             self.add_gumbel = False
+
+    def _get_metadata_overlay_lines(self, pat_id, attention_values=None):
+        lines = []
+        if self.metadata_lookup is not None and self.metadata_csv is not None:
+            try:
+                meta_row = self.metadata_lookup._get_array(self.metadata_csv, pat_id)
+                if not meta_row.empty:
+                    row_dict = meta_row.iloc[0].to_dict()
+                    for col_spec in self.meta_cols:
+                        col_name, _encoding = list(col_spec.items())[0]
+                        lines.append(f"{col_name}: {row_dict.get(col_name, '')}")
+            except Exception as exc:
+                lines.append(f"meta lookup failed: {exc}")
+
+        if attention_values is not None:
+            formatted_attention = ", ".join(f"c{i+1}={val:.3f}" for i, val in enumerate(attention_values))
+            lines.append(f"attention: {formatted_attention}")
+
+        return lines
+
+    def _get_latest_attention_for_sample(self, sample_idx):
+        net_ref = getattr(self.net, "module", self.net)
+        latest_attention = getattr(net_ref, "latest_channel_attention", None)
+        if latest_attention is None:
+            return None
+        try:
+            if latest_attention.ndim == 2 and sample_idx < latest_attention.shape[0]:
+                return latest_attention[sample_idx].tolist()
+        except Exception:
+            return None
+        return None
 
     
     def _get_optimizer(self,net):
@@ -372,8 +411,28 @@ class validation():
                                 os.mkdir(validation_dir)
 
 
-                            visuals(validation_dir+'/'+id[i], self.pixel_size[0],self.cfg).heatmaps(_data ,_pred,_target_points, _predicted_points)
-                            visuals(validation_dir+'/heatmap_'+id[i], self.pixel_size[0],self.cfg).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False)
+                            overlay_lines = None
+                            if self.channel_type == "multimodal":
+                                overlay_lines = self._get_metadata_overlay_lines(
+                                    id[i],
+                                    self._get_latest_attention_for_sample(i),
+                                )
+
+                            visuals(validation_dir+'/'+id[i], self.pixel_size[0],self.cfg).heatmaps(
+                                _data,
+                                _pred,
+                                _target_points,
+                                _predicted_points,
+                                extra_text=overlay_lines,
+                            )
+                            visuals(validation_dir+'/heatmap_'+id[i], self.pixel_size[0],self.cfg).heatmaps(
+                                _data,
+                                _pred,
+                                _target_points,
+                                _predicted_points,
+                                w_landmarks=False,
+                                extra_text=overlay_lines,
+                            )
 
                             if self.save_heatmap_asdcms == True:
                                 out_dcm_dir = self.outputpath+'/as_dcms' 
