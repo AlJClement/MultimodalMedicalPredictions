@@ -47,6 +47,7 @@ MODEL:
     - 128
     - 64
   IN_CHANNELS: 3
+  CHANNEL_TYPE: multimodal
   ATTENTION: scse
 
   FREEZE_LAYERS: 0
@@ -74,7 +75,7 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0420_dpt_0.1466
+OUTPUT_PATH: ./output_ddh_0424_dptmmgate_0.1466
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.0001
