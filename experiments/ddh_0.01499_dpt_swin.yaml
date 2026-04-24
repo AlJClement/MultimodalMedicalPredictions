@@ -74,11 +74,11 @@ DATASET:
 
     SOME_OF: 4 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0420_dpt_0.1499_aughigh
+OUTPUT_PATH: ./output_ddh_0423_dpt_0.1499_aughigh
 TRAIN:
-  BATCH_SIZE: 8
+  BATCH_SIZE: 16
   LR: 0.0001
-  EPOCHS: 10
+  EPOCHS: 5
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   L2_REG: False
   GAMMA: 0.0

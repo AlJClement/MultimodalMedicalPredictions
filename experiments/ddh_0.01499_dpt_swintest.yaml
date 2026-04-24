@@ -76,9 +76,9 @@ DATASET:
 
 OUTPUT_PATH: ./output_ddh_0420_dpt_0.1499
 TRAIN:
-  BATCH_SIZE: 8
+  BATCH_SIZE: 16
   LR: 0.0001
-  EPOCHS: 10
+  EPOCHS: 5
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
   L2_REG: False
   GAMMA: 0.0
