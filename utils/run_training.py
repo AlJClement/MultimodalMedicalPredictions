@@ -143,23 +143,48 @@ def main():
 
     num_workers = int(getattr(cfg.TRAIN, "NUM_WORKERS", 4))
     pin_memory = bool(getattr(cfg.TRAIN, "PIN_MEMORY", torch.cuda.is_available()))
-    persistent_workers = bool(getattr(cfg.TRAIN, "PERSISTENT_WORKERS", num_workers > 0))
     prefetch_factor = getattr(cfg.TRAIN, "PREFETCH_FACTOR", None)
-    dataloader_kwargs = {
+
+    train_num_workers = num_workers
+    if getattr(train_dataset, "lazy_load", True) is False and train_num_workers > 0:
+        logger.info(
+            "Training dataset is preloaded in memory; overriding TRAIN.NUM_WORKERS=%s to 0 to avoid duplicating dataset state across DataLoader workers.",
+            train_num_workers,
+        )
+        train_num_workers = 0
+
+    train_dataloader_kwargs = {
         "batch_size": cfg.TRAIN.BATCH_SIZE,
         "shuffle": False,
         "drop_last": False,
-        "num_workers": num_workers,
+        "num_workers": train_num_workers,
         "pin_memory": pin_memory,
     }
-    if num_workers > 0:
-        dataloader_kwargs["persistent_workers"] = persistent_workers
+    if train_num_workers > 0:
+        train_dataloader_kwargs["persistent_workers"] = bool(
+            getattr(cfg.TRAIN, "PERSISTENT_WORKERS", train_num_workers > 0)
+        )
         if prefetch_factor is not None:
-            dataloader_kwargs["prefetch_factor"] = int(prefetch_factor)
+            train_dataloader_kwargs["prefetch_factor"] = int(prefetch_factor)
+
+    val_num_workers = num_workers
+    val_dataloader_kwargs = {
+        "batch_size": cfg.TRAIN.BATCH_SIZE,
+        "shuffle": False,
+        "drop_last": False,
+        "num_workers": val_num_workers,
+        "pin_memory": pin_memory,
+    }
+    if val_num_workers > 0:
+        val_dataloader_kwargs["persistent_workers"] = bool(
+            getattr(cfg.TRAIN, "PERSISTENT_WORKERS", val_num_workers > 0)
+        )
+        if prefetch_factor is not None:
+            val_dataloader_kwargs["prefetch_factor"] = int(prefetch_factor)
 
     #load data into data loader (imports all data into a dataloader)
-    train_dataloader = DataLoader(train_dataset, **dataloader_kwargs)
-    val_dataloader = DataLoader(val_dataset, **dataloader_kwargs)
+    train_dataloader = DataLoader(train_dataset, **train_dataloader_kwargs)
+    val_dataloader = DataLoader(val_dataset, **val_dataloader_kwargs)
 
     losses = []
     val_mres = []

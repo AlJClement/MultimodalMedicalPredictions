@@ -22,7 +22,7 @@ INPUT_PATHS:
   # META_PATH: /experiments/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
 
   ID_COL: Accession Number
-  META_COLS: [Sex: hot] #, age(weeks): continous, Breech: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
+  META_COLS: [Sex: hot, age(weeks): continous, Laterality: hot] # FamilyHistory: hot, ClickyHip: hot, FirstBorn: hot,
   # META_COLS_CLASSES: ['Type', 'alpha (degrees)', 'FHC (%)'] ## must have these to be considered in calculations
 
 MODEL: 
