@@ -107,6 +107,32 @@ class MetadataImport():
         normalized = np.clip(normalized, 0.0, 1.0)
         return normalized
 
+    def summarize_metadata_value(self, col_name, col_encodetype, raw_value):
+        encoding = str(col_encodetype).strip().lower()
+
+        if encoding == 'continuous':
+            normalized = self._normalize_continuous_col([raw_value], col_name)
+            return float(normalized[0])
+
+        if encoding == 'hot':
+            value = str(raw_value).strip().lower()
+            if col_name.strip().lower() in {"sex", "gender"}:
+                if value in {"f", "female"}:
+                    return 0.25
+                if value in {"m", "male"}:
+                    return 0.75
+            if col_name.strip().lower() in {"laterality", "side"}:
+                if value in {"l", "left"}:
+                    return 0.25
+                if value in {"r", "right"}:
+                    return 0.75
+            return float("nan")
+
+        try:
+            return float(raw_value)
+        except Exception:
+            return float("nan")
+
     def _duplicate_col(self, meta_data_col, num_cols, col_name=None, normalize=False):
         values = meta_data_col
         if normalize and col_name is not None:

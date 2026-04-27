@@ -173,6 +173,29 @@ class training():
 
         return lines
 
+    def _get_metadata_scalar_inputs(self, pat_id):
+        values = []
+        if self.metadata_lookup is None or self.metadata_csv is None:
+            return values
+
+        try:
+            meta_row = self.metadata_lookup._get_array(self.metadata_csv, pat_id)
+            if meta_row.empty:
+                return values
+            row_dict = meta_row.iloc[0].to_dict()
+            for col_spec in self.meta_cols:
+                col_name, col_encoding = list(col_spec.items())[0]
+                scalar_value = self.metadata_lookup.summarize_metadata_value(
+                    col_name,
+                    col_encoding,
+                    row_dict.get(col_name, ""),
+                )
+                values.append(scalar_value)
+        except Exception:
+            return []
+
+        return values
+
     def _get_channel_metadata_labels(self):
         net_ref = getattr(self.net, "module", self.net)
         labels = getattr(net_ref, "meta_attention_labels", None)
@@ -236,12 +259,19 @@ class training():
             weight_summary = " | ".join(weight_lines)
         else:
             weight_summary = "weights unavailable"
-        if raw_input_values is not None:
+        scalar_inputs = self._get_metadata_scalar_inputs(sample_id)
+        if scalar_inputs:
+            raw_inputs = torch.as_tensor(scalar_inputs, dtype=pre_tensor.dtype).flatten()
+        elif raw_input_values is not None:
             raw_inputs = torch.as_tensor(raw_input_values, dtype=pre_tensor.dtype).flatten()
+        else:
+            raw_inputs = None
+
+        if raw_inputs is not None:
             raw_input_lines = []
             for idx in range(min(num_channels, raw_inputs.numel())):
                 label = channel_labels[idx] if idx < len(channel_labels) else f"ch{idx + 1}"
-                raw_input_lines.append(f"{label}={raw_inputs[idx].item():.3f}")
+                raw_input_lines.append(f"{label}={raw_inputs[idx].item():.5f}")
             raw_input_summary = " | ".join(raw_input_lines) if raw_input_lines else "raw inputs unavailable"
         else:
             raw_input_summary = "raw inputs unavailable"
