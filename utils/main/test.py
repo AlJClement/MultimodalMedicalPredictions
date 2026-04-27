@@ -1492,6 +1492,10 @@ class test():
                             if self.dataset_name == 'oai_nolandmarks':
                                 true_hkas.append(_target_points[0].detach().cpu().numpy())
                     else:
+                        if self.validation.channel_type == "multimodal":
+                            attention_values = self.validation._get_latest_attention_for_sample(i)
+                            self.validation._save_multimodal_channel_plot(id[i], data[i], attention_values, self.save_img_path)
+
                         if self.save_img_landmarks_predandtrue == True:
                             visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points)
 

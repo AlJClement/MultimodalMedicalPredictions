@@ -20,6 +20,10 @@ from .comparison_metrics import fhc
 import torch.nn.functional as F
 from preprocessing.augmentation import Augmentation
 from preprocessing.metadata_import import MetadataImport
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import numpy as np
 class validation():
     def __init__(self, cfg, logger, net, l2_reg=True, save_img=True):
         self.dcm_dir = cfg.INPUT_PATHS.DCMS
@@ -37,6 +41,7 @@ class validation():
         self.save_txt = cfg.TEST.SAVE_TXT
         self.save_heatmap = cfg.TEST.SAVE_HEATMAPS_ALONE
         self.save_heatmap_as_np = cfg.TEST.SAVE_HEATMAPS_NP
+        self.plot_multimodal_channels = bool(getattr(cfg.TEST, "PLOT_MULTIMODAL_CHANNELS", False))
         self.plot = cfg.TEST.PLOT
         self.needs_orig_img = any([
             save_img,
@@ -160,6 +165,57 @@ class validation():
         except Exception:
             return None
         return None
+
+    def _save_multimodal_channel_plot(self, sample_id, input_tensor, attention_values, output_dir):
+        if not self.plot_multimodal_channels or self.channel_type != "multimodal":
+            return
+        if input_tensor is None or attention_values is None:
+            return
+
+        channel_tensor = input_tensor.detach().cpu().float()
+        if channel_tensor.ndim == 4:
+            channel_tensor = channel_tensor.squeeze(0)
+        if channel_tensor.ndim != 3:
+            return
+
+        weights = torch.as_tensor(attention_values, dtype=channel_tensor.dtype).flatten()
+        if weights.numel() == 0:
+            return
+        if weights.numel() < channel_tensor.shape[0]:
+            pad = torch.ones(channel_tensor.shape[0] - weights.numel(), dtype=channel_tensor.dtype)
+            weights = torch.cat((weights, pad), dim=0)
+        elif weights.numel() > channel_tensor.shape[0]:
+            weights = weights[:channel_tensor.shape[0]]
+
+        weighted_channels = channel_tensor * weights.view(-1, 1, 1)
+        num_channels = weighted_channels.shape[0]
+        fig, axes = plt.subplots(1, num_channels, figsize=(4 * num_channels, 4))
+        if num_channels == 1:
+            axes = [axes]
+
+        for idx, ax in enumerate(axes):
+            channel_img = weighted_channels[idx].numpy()
+            finite_mask = np.isfinite(channel_img)
+            if np.any(finite_mask):
+                min_val = np.min(channel_img[finite_mask])
+                max_val = np.max(channel_img[finite_mask])
+                if max_val > min_val:
+                    channel_img = (channel_img - min_val) / (max_val - min_val)
+                else:
+                    channel_img = np.zeros_like(channel_img)
+            else:
+                channel_img = np.zeros_like(channel_img)
+
+            ax.imshow(channel_img, cmap="gray")
+            ax.set_title(f"ch{idx + 1} w={weights[idx].item():.3f}")
+            ax.axis("off")
+
+        fig.suptitle(f"{sample_id} multimodal channels")
+        fig.tight_layout()
+        save_dir = os.path.join(output_dir, "multimodal_channels")
+        os.makedirs(save_dir, exist_ok=True)
+        fig.savefig(os.path.join(save_dir, f"{sample_id}.png"), dpi=200, bbox_inches="tight")
+        plt.close(fig)
 
     
     def _get_optimizer(self,net):
@@ -412,11 +468,14 @@ class validation():
 
 
                             overlay_lines = None
+                            attention_values = None
                             if self.channel_type == "multimodal":
+                                attention_values = self._get_latest_attention_for_sample(i)
                                 overlay_lines = self._get_metadata_overlay_lines(
                                     id[i],
-                                    self._get_latest_attention_for_sample(i),
+                                    attention_values,
                                 )
+                                self._save_multimodal_channel_plot(id[i], data[i], attention_values, validation_dir)
 
                             visuals(validation_dir+'/'+id[i], self.pixel_size[0],self.cfg).heatmaps(
                                 _data,
