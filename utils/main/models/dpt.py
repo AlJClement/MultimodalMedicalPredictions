@@ -243,7 +243,7 @@ class dpt(nn.Module):
 
         meta_summary = meta_summary.to(device=im.device, dtype=im.dtype)
         attention_logits = (meta_summary * self.meta_channel_attention_scale) + self.meta_channel_attention_bias
-        attention = torch.sigmoid(attention_logits)
+        attention = torch.softmax(attention_logits, dim=-1)
         self.latest_channel_attention = attention.detach().cpu()
         attention = attention.unsqueeze(-1).unsqueeze(-1)
         scaled_im = im * attention

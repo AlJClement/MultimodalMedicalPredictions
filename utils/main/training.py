@@ -216,6 +216,14 @@ class training():
         metadata_lines = self._get_metadata_overlay_lines(sample_id)
         metadata_summary = " | ".join(metadata_lines) if metadata_lines else "metadata unavailable"
         channel_labels = self._get_channel_metadata_labels()
+        if weights is not None and weights.numel() > 0:
+            weight_lines = []
+            for idx in range(min(num_channels, weights.numel())):
+                label = channel_labels[idx] if idx < len(channel_labels) else f"ch{idx + 1}"
+                weight_lines.append(f"{label}={weights[idx].item():.3f}")
+            weight_summary = " | ".join(weight_lines)
+        else:
+            weight_summary = "weights unavailable"
         combined = torch.stack((pre_tensor[:num_channels], post_tensor[:num_channels]), dim=0).numpy()
         finite_mask = np.isfinite(combined)
         if np.any(finite_mask):
@@ -244,7 +252,8 @@ class training():
 
         fig.suptitle(
             f"{sample_id} multimodal channel scaling\n"
-            f"metadata: {metadata_summary}"
+            f"metadata: {metadata_summary}\n"
+            f"channel weights: {weight_summary}"
         )
         fig.tight_layout(rect=[0, 0, 1, 0.92])
         fig.savefig(os.path.join(self.multimodal_cache_dir, f"{sample_id}.png"), dpi=200, bbox_inches="tight")
