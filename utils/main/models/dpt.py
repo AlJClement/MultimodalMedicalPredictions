@@ -36,6 +36,8 @@ class dpt(nn.Module):
         self.latest_input_post_multimodal = None
 
         self.meta_channel_attention = None
+        self.meta_channel_attention_scale = None
+        self.meta_channel_attention_bias = None
         if self.channel_type == "multimodal":
             attention_dim = max(1, len(self.meta_attention_indices))
             if attention_dim != self.in_channels:
@@ -214,7 +216,7 @@ class dpt(nn.Module):
         return torch.cat(summaries, dim=-1)
 
     def _apply_multimodal_channel_attention(self, im, meta):
-        if self.meta_channel_attention is None:
+        if self.meta_channel_attention_scale is None or self.meta_channel_attention_bias is None:
             return im
 
         self.latest_input_pre_multimodal = im.detach().cpu()
