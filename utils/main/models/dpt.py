@@ -199,7 +199,7 @@ class dpt(nn.Module):
 
         summaries = []
         start = 0
-        for idx, _col_spec in enumerate(self.meta_cols):
+        for idx, col_spec in enumerate(self.meta_cols):
             if idx >= len(self.meta_feature_widths):
                 break
             width = int(self.meta_feature_widths[idx])
@@ -208,7 +208,22 @@ class dpt(nn.Module):
             end = min(start + width, meta.shape[-1])
             if end <= start:
                 break
-            summaries.append(meta[:, start:end].mean(dim=-1, keepdim=True))
+            col_name, col_encoding = list(col_spec.items())[0]
+            feature_slice = meta[:, start:end]
+
+            if str(col_encoding).strip().lower() == "hot" and feature_slice.shape[-1] >= 2:
+                # Binary hot features are stored as two duplicated halves.
+                # Using the mean over the whole slice collapses both categories to 0.5,
+                # so convert them to a single scalar instead:
+                # first category -> 0.25, second category -> 0.75.
+                half_width = feature_slice.shape[-1] // 2
+                if half_width > 0:
+                    second_half_mean = feature_slice[:, half_width:].mean(dim=-1, keepdim=True)
+                    summaries.append(0.25 + (0.5 * second_half_mean))
+                else:
+                    summaries.append(feature_slice.mean(dim=-1, keepdim=True))
+            else:
+                summaries.append(feature_slice.mean(dim=-1, keepdim=True))
             start = end
 
         if not summaries:

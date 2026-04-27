@@ -96,8 +96,14 @@ class MetadataImport():
     def _normalize_continuous_col(self, meta_data_col, col_name):
         min_val, max_val = self._get_continuous_minmax(col_name)
         values = pd.to_numeric(pd.Series(meta_data_col), errors='coerce').to_numpy(dtype=float)
-        values = np.where(np.isfinite(values), values, min_val)
-        normalized = (values - min_val) / (max_val - min_val)
+        zero_anchor = col_name.strip().lower() == "age_days"
+        fill_value = 0.0 if zero_anchor else min_val
+        values = np.where(np.isfinite(values), values, fill_value)
+        if zero_anchor:
+            scale_max = max(max_val, 1.0)
+            normalized = values / scale_max
+        else:
+            normalized = (values - min_val) / (max_val - min_val)
         normalized = np.clip(normalized, 0.0, 1.0)
         return normalized
 
