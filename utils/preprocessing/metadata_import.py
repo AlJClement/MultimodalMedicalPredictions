@@ -15,6 +15,7 @@ class MetadataImport():
 
         self.model_name = cfg.MODEL.NAME
         self.model_features = cfg.MODEL.META_FEATURES
+        self._continuous_stats = {}
      
         
     def load_csv(self):
@@ -73,8 +74,40 @@ class MetadataImport():
         return pat_meta_arr.values
     
         
-    def _duplicate_col(self, meta_data_col, num_cols):
-        new_cols = meta_data_col.astype(float)*np.ones((num_cols,1))
+    def _get_continuous_minmax(self, col_name):
+        if col_name in self._continuous_stats:
+            return self._continuous_stats[col_name]
+
+        meta_col = pd.read_csv(self.metapath, usecols=[col_name])[col_name]
+        meta_col = pd.to_numeric(meta_col, errors='coerce')
+        finite_values = meta_col[np.isfinite(meta_col)]
+
+        if finite_values.empty:
+            min_val, max_val = 0.0, 1.0
+        else:
+            min_val = float(finite_values.min())
+            max_val = float(finite_values.max())
+            if max_val <= min_val:
+                max_val = min_val + 1.0
+
+        self._continuous_stats[col_name] = (min_val, max_val)
+        return min_val, max_val
+
+    def _normalize_continuous_col(self, meta_data_col, col_name):
+        min_val, max_val = self._get_continuous_minmax(col_name)
+        values = pd.to_numeric(pd.Series(meta_data_col), errors='coerce').to_numpy(dtype=float)
+        values = np.where(np.isfinite(values), values, min_val)
+        normalized = (values - min_val) / (max_val - min_val)
+        normalized = np.clip(normalized, 0.0, 1.0)
+        return normalized
+
+    def _duplicate_col(self, meta_data_col, num_cols, col_name=None, normalize=False):
+        values = meta_data_col
+        if normalize and col_name is not None:
+            values = self._normalize_continuous_col(meta_data_col, col_name)
+        else:
+            values = np.asarray(meta_data_col).astype(float)
+        new_cols = values * np.ones((num_cols,1))
         return new_cols
     
     def _hot_encode(self, meta_data_col, num_cols, col_name):
@@ -113,7 +146,7 @@ class MetadataImport():
                 if col_encodetype == 'hot':
                     new_cols = self._hot_encode(meta_data_col, num, col_name)
                 elif col_encodetype == 'continuous':
-                    new_cols = self._duplicate_col(meta_data_col, num)
+                    new_cols = self._duplicate_col(meta_data_col, num, col_name=col_name, normalize=True)
                 elif col_encodetype == 'tokenize':
                     new_cols = self._tokenize(meta_data_col, num)
                 else:
