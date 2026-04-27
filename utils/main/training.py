@@ -185,7 +185,19 @@ class training():
             labels.append(str(col_name))
         return labels
 
-    def _save_multimodal_channel_plot(self, sample_id, pre_tensor, post_tensor, attention_values):
+    def _get_latest_raw_inputs_for_sample(self, sample_idx):
+        net_ref = getattr(self.net, "module", self.net)
+        latest_raw_inputs = getattr(net_ref, "latest_channel_raw_inputs", None)
+        if latest_raw_inputs is None:
+            return None
+        try:
+            if latest_raw_inputs.ndim == 2 and sample_idx < latest_raw_inputs.shape[0]:
+                return latest_raw_inputs[sample_idx].tolist()
+        except Exception:
+            return None
+        return None
+
+    def _save_multimodal_channel_plot(self, sample_id, pre_tensor, post_tensor, attention_values, raw_input_values=None):
         if not self.plot_multimodal_channels:
             return
         if sample_id in self._saved_multimodal_channel_ids:
@@ -224,6 +236,15 @@ class training():
             weight_summary = " | ".join(weight_lines)
         else:
             weight_summary = "weights unavailable"
+        if raw_input_values is not None:
+            raw_inputs = torch.as_tensor(raw_input_values, dtype=pre_tensor.dtype).flatten()
+            raw_input_lines = []
+            for idx in range(min(num_channels, raw_inputs.numel())):
+                label = channel_labels[idx] if idx < len(channel_labels) else f"ch{idx + 1}"
+                raw_input_lines.append(f"{label}={raw_inputs[idx].item():.3f}")
+            raw_input_summary = " | ".join(raw_input_lines) if raw_input_lines else "raw inputs unavailable"
+        else:
+            raw_input_summary = "raw inputs unavailable"
         combined = torch.stack((pre_tensor[:num_channels], post_tensor[:num_channels]), dim=0).numpy()
         finite_mask = np.isfinite(combined)
         if np.any(finite_mask):
@@ -253,6 +274,7 @@ class training():
         fig.suptitle(
             f"{sample_id} multimodal channel scaling\n"
             f"metadata: {metadata_summary}\n"
+            f"raw_input: {raw_input_summary}\n"
             f"channel weights: {weight_summary}"
         )
         fig.tight_layout(rect=[0, 0, 1, 0.92])
@@ -419,6 +441,7 @@ class training():
                     pre_batch = getattr(net_ref, "latest_input_pre_multimodal", None)
                     post_batch = getattr(net_ref, "latest_input_post_multimodal", None)
                     attention_batch = getattr(net_ref, "latest_channel_attention", None)
+                    raw_input_batch = getattr(net_ref, "latest_channel_raw_inputs", None)
                     if pre_batch is not None and post_batch is not None:
                         for sample_idx in range(data.shape[0]):
                             if len(self._saved_multimodal_channel_ids) >= self.plot_multimodal_channels_max_samples:
@@ -426,13 +449,17 @@ class training():
                             if sample_idx >= pre_batch.shape[0] or sample_idx >= post_batch.shape[0]:
                                 break
                             sample_attention = None
+                            sample_raw_inputs = None
                             if attention_batch is not None and attention_batch.ndim == 2 and sample_idx < attention_batch.shape[0]:
                                 sample_attention = attention_batch[sample_idx]
+                            if raw_input_batch is not None and raw_input_batch.ndim == 2 and sample_idx < raw_input_batch.shape[0]:
+                                sample_raw_inputs = raw_input_batch[sample_idx]
                             self._save_multimodal_channel_plot(
                                 id[sample_idx],
                                 pre_batch[sample_idx],
                                 post_batch[sample_idx],
                                 sample_attention,
+                                sample_raw_inputs,
                             )
 
                 # compute targets if needed

@@ -32,6 +32,7 @@ class dpt(nn.Module):
         self.dpt = smp.DPT(**dpt_kwargs)
         self._configure_dynamic_input_size()
         self.latest_channel_attention = None
+        self.latest_channel_raw_inputs = None
         self.latest_input_pre_multimodal = None
         self.latest_input_post_multimodal = None
 
@@ -159,7 +160,7 @@ class dpt(nn.Module):
                 matched_indices.append(idx)
                 used_indices.add(idx)
 
-        return matched_indices
+        return sorted(matched_indices)
 
     def _resolve_attention_labels(self):
         labels = []
@@ -242,6 +243,7 @@ class dpt(nn.Module):
             meta_summary = meta_summary[:, :expected_dim]
 
         meta_summary = meta_summary.to(device=im.device, dtype=im.dtype)
+        self.latest_channel_raw_inputs = meta_summary.detach().cpu()
         attention_logits = (meta_summary * self.meta_channel_attention_scale) + self.meta_channel_attention_bias
         attention = torch.softmax(attention_logits, dim=-1)
         self.latest_channel_attention = attention.detach().cpu()
@@ -259,6 +261,7 @@ class dpt(nn.Module):
 
     def forward(self, im, meta=None):
         self.latest_channel_attention = None
+        self.latest_channel_raw_inputs = None
         self.latest_input_pre_multimodal = None
         self.latest_input_post_multimodal = None
         if self.channel_type == "multimodal":
