@@ -104,6 +104,9 @@ class dataloader(Dataset):
             print(*args, **kwargs)
 
     def _should_return_orig_img(self):
+        if self.set == 'training':
+            return False
+
         if self.set == 'testing':
             return any([
                 bool(getattr(self.cfg.TEST, "SAVE_TXT", False)),
@@ -650,7 +653,7 @@ class dataloader(Dataset):
             id_rows.append(pat_id)
             meta_rows.append(_meta_arr)
             image_rows.append(_im_arr)
-            image_orig_rows.append(_im_orig)
+            image_orig_rows.append(_im_orig if self.return_orig_img else None)
             orig_shape_rows.append(orig_shape)
             annotation_rows.append(_annotation_arr)
             landmark_rows.append(annotation_points)
@@ -794,6 +797,9 @@ class dataloader(Dataset):
 
         if self.in_channels > 1 and x.shape[0] == 1:
             x = x.repeat(self.in_channels, 1, 1)
+
+        if orig_img is None:
+            orig_img = torch.empty(0, dtype=torch.uint8)
 
         return x, y, landmarks, meta, id, orig_size, orig_img
 
