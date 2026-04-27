@@ -31,6 +31,8 @@ class dpt(nn.Module):
         self.dpt = smp.DPT(**dpt_kwargs)
         self._configure_dynamic_input_size()
         self.latest_channel_attention = None
+        self.latest_input_pre_multimodal = None
+        self.latest_input_post_multimodal = None
 
         self.meta_channel_attention = None
         if self.channel_type == "multimodal":
@@ -202,8 +204,10 @@ class dpt(nn.Module):
         if self.meta_channel_attention is None:
             return im
 
+        self.latest_input_pre_multimodal = im.detach().cpu()
         meta_summary = self._summarize_meta_features(meta)
         if meta_summary is None or meta_summary.numel() == 0:
+            self.latest_input_post_multimodal = im.detach().cpu()
             return im
 
         if self.meta_attention_indices:
@@ -212,6 +216,7 @@ class dpt(nn.Module):
                 meta_summary = meta_summary[:, available_indices]
 
         if meta_summary.shape[-1] == 0:
+            self.latest_input_post_multimodal = im.detach().cpu()
             return im
 
         expected_dim = self.meta_channel_attention[0].in_features
@@ -224,7 +229,9 @@ class dpt(nn.Module):
         attention = self.meta_channel_attention(meta_summary.to(device=im.device, dtype=im.dtype))
         self.latest_channel_attention = attention.detach().cpu()
         attention = attention.unsqueeze(-1).unsqueeze(-1)
-        return im * attention
+        scaled_im = im * attention
+        self.latest_input_post_multimodal = scaled_im.detach().cpu()
+        return scaled_im
 
     def two_d_softmax(self, x):
         b, c, h, w = x.shape
@@ -235,6 +242,8 @@ class dpt(nn.Module):
 
     def forward(self, im, meta=None):
         self.latest_channel_attention = None
+        self.latest_input_pre_multimodal = None
+        self.latest_input_post_multimodal = None
         if self.channel_type == "multimodal":
             im = self._apply_multimodal_channel_attention(im, meta)
 

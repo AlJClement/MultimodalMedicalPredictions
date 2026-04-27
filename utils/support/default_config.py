@@ -83,6 +83,8 @@ C.TRAIN.DELAY_GUMBEL_LOSS = 100 ##number of iterations (each batch iter) of just
 C.TRAIN.TAU=1.0 ## each iter will decay tau by this amount 
 C.TRAIN.TAU_DECAY=0.01 ## each iter will decay tau by this amount 
 C.TRAIN.EARLY_STOPPING = True ## make none if you dont want it - defaults are in training
+C.TRAIN.PLOT_MULTIMODAL_CHANNELS = False
+C.TRAIN.PLOT_MULTIMODAL_CHANNELS_MAX_SAMPLES = 10
 
 
 C.TEST = CN()

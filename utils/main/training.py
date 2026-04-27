@@ -17,6 +17,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 matplotlib.use("Agg")
+import os
 
 class training():
     def __init__(self, cfg, logger, l2_reg=True):
@@ -126,6 +127,10 @@ class training():
         self._es_wait = 0
         self.last_mre = float("nan")
         self.last_mre_std = float("nan")
+        self.plot_multimodal_channels = bool(getattr(cfg.TRAIN, "PLOT_MULTIMODAL_CHANNELS", False))
+        self.plot_multimodal_channels_max_samples = int(getattr(cfg.TRAIN, "PLOT_MULTIMODAL_CHANNELS_MAX_SAMPLES", 10))
+        self.multimodal_cache_dir = os.path.join(self.cfg.OUTPUT_PATH, "cache", "multimodal_channels")
+        self._saved_multimodal_channel_ids = set()
 
         pass
 
@@ -143,6 +148,64 @@ class training():
         ## updated for frozen models
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=self.lr, betas=(self.momentum_0, self.momentum))
         return optimizer
+
+    def _save_multimodal_channel_plot(self, sample_id, pre_tensor, post_tensor, attention_values):
+        if not self.plot_multimodal_channels:
+            return
+        if sample_id in self._saved_multimodal_channel_ids:
+            return
+        if len(self._saved_multimodal_channel_ids) >= self.plot_multimodal_channels_max_samples:
+            return
+        if pre_tensor is None or post_tensor is None:
+            return
+
+        os.makedirs(self.multimodal_cache_dir, exist_ok=True)
+
+        pre_tensor = pre_tensor.detach().cpu().float()
+        post_tensor = post_tensor.detach().cpu().float()
+        if pre_tensor.ndim != 3 or post_tensor.ndim != 3:
+            return
+
+        num_channels = min(pre_tensor.shape[0], post_tensor.shape[0], 3)
+        if num_channels <= 0:
+            return
+
+        fig, axes = plt.subplots(2, num_channels, figsize=(4 * num_channels, 8))
+        if num_channels == 1:
+            axes = np.array(axes).reshape(2, 1)
+
+        weights = None
+        if attention_values is not None:
+            weights = torch.as_tensor(attention_values, dtype=pre_tensor.dtype).flatten()
+
+        for row_idx, tensor in enumerate((pre_tensor, post_tensor)):
+            for ch_idx in range(num_channels):
+                ax = axes[row_idx, ch_idx]
+                channel_img = tensor[ch_idx].numpy()
+                finite_mask = np.isfinite(channel_img)
+                if np.any(finite_mask):
+                    min_val = np.min(channel_img[finite_mask])
+                    max_val = np.max(channel_img[finite_mask])
+                    if max_val > min_val:
+                        channel_img = (channel_img - min_val) / (max_val - min_val)
+                    else:
+                        channel_img = np.zeros_like(channel_img)
+                else:
+                    channel_img = np.zeros_like(channel_img)
+
+                ax.imshow(channel_img, cmap="gray")
+                prefix = "pre" if row_idx == 0 else "post"
+                if weights is not None and ch_idx < weights.numel():
+                    ax.set_title(f"{prefix} ch{ch_idx + 1} w={weights[ch_idx].item():.3f}")
+                else:
+                    ax.set_title(f"{prefix} ch{ch_idx + 1}")
+                ax.axis("off")
+
+        fig.suptitle(f"{sample_id} multimodal channel scaling")
+        fig.tight_layout()
+        fig.savefig(os.path.join(self.multimodal_cache_dir, f"{sample_id}.png"), dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        self._saved_multimodal_channel_ids.add(sample_id)
     
     def _freeze_layers(self, net):
         for layer in list(net.encoder.children())[:self.freeze]:
@@ -297,6 +360,27 @@ class training():
                 if batch_idx % 10 == 0:
                     if isinstance(pred, torch.Tensor):
                         self._debug_print(f"pred.shape={pred.shape}, pred min={float(pred.detach().min()):.6e}, max={float(pred.detach().max()):.6e}, mean={float(pred.detach().mean()):.6e}")
+
+                if self.plot_multimodal_channels:
+                    net_ref = getattr(self.net, "module", self.net)
+                    pre_batch = getattr(net_ref, "latest_input_pre_multimodal", None)
+                    post_batch = getattr(net_ref, "latest_input_post_multimodal", None)
+                    attention_batch = getattr(net_ref, "latest_channel_attention", None)
+                    if pre_batch is not None and post_batch is not None:
+                        for sample_idx in range(data.shape[0]):
+                            if len(self._saved_multimodal_channel_ids) >= self.plot_multimodal_channels_max_samples:
+                                break
+                            if sample_idx >= pre_batch.shape[0] or sample_idx >= post_batch.shape[0]:
+                                break
+                            sample_attention = None
+                            if attention_batch is not None and attention_batch.ndim == 2 and sample_idx < attention_batch.shape[0]:
+                                sample_attention = attention_batch[sample_idx]
+                            self._save_multimodal_channel_plot(
+                                id[sample_idx],
+                                pre_batch[sample_idx],
+                                post_batch[sample_idx],
+                                sample_attention,
+                            )
 
                 # compute targets if needed
                 if self.add_class_loss or self.add_alpha_loss or self.add_alphafhc_loss:
