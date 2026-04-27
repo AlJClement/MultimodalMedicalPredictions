@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 matplotlib.use("Agg")
 import os
+from preprocessing.metadata_import import MetadataImport
 
 class training():
     def __init__(self, cfg, logger, l2_reg=True):
@@ -131,6 +132,12 @@ class training():
         self.plot_multimodal_channels_max_samples = int(getattr(cfg.TRAIN, "PLOT_MULTIMODAL_CHANNELS_MAX_SAMPLES", 10))
         self.multimodal_cache_dir = os.path.join(self.cfg.OUTPUT_PATH, "cache", "multimodal_channels")
         self._saved_multimodal_channel_ids = set()
+        self.meta_cols = list(getattr(cfg.INPUT_PATHS, "META_COLS", []))
+        self.metadata_lookup = None
+        self.metadata_csv = None
+        if cfg.INPUT_PATHS.META_PATH and self.meta_cols:
+            self.metadata_lookup = MetadataImport(cfg)
+            self.metadata_csv, _ = self.metadata_lookup.load_csv()
 
         pass
 
@@ -148,6 +155,23 @@ class training():
         ## updated for frozen models
         optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=self.lr, betas=(self.momentum_0, self.momentum))
         return optimizer
+
+    def _get_metadata_overlay_lines(self, pat_id):
+        lines = []
+        if self.metadata_lookup is None or self.metadata_csv is None:
+            return lines
+
+        try:
+            meta_row = self.metadata_lookup._get_array(self.metadata_csv, pat_id)
+            if not meta_row.empty:
+                row_dict = meta_row.iloc[0].to_dict()
+                for col_spec in self.meta_cols:
+                    col_name, _encoding = list(col_spec.items())[0]
+                    lines.append(f"{col_name}={row_dict.get(col_name, '')}")
+        except Exception as exc:
+            lines.append(f"meta lookup failed: {exc}")
+
+        return lines
 
     def _save_multimodal_channel_plot(self, sample_id, pre_tensor, post_tensor, attention_values):
         if not self.plot_multimodal_channels:
@@ -177,23 +201,26 @@ class training():
         weights = None
         if attention_values is not None:
             weights = torch.as_tensor(attention_values, dtype=pre_tensor.dtype).flatten()
+        metadata_lines = self._get_metadata_overlay_lines(sample_id)
+        metadata_summary = " | ".join(metadata_lines) if metadata_lines else "metadata unavailable"
+        combined = torch.stack((pre_tensor[:num_channels], post_tensor[:num_channels]), dim=0).numpy()
+        finite_mask = np.isfinite(combined)
+        if np.any(finite_mask):
+            shared_min = float(np.min(combined[finite_mask]))
+            shared_max = float(np.max(combined[finite_mask]))
+        else:
+            shared_min = 0.0
+            shared_max = 1.0
+        if shared_max <= shared_min:
+            shared_max = shared_min + 1e-6
 
         for row_idx, tensor in enumerate((pre_tensor, post_tensor)):
             for ch_idx in range(num_channels):
                 ax = axes[row_idx, ch_idx]
                 channel_img = tensor[ch_idx].numpy()
-                finite_mask = np.isfinite(channel_img)
-                if np.any(finite_mask):
-                    min_val = np.min(channel_img[finite_mask])
-                    max_val = np.max(channel_img[finite_mask])
-                    if max_val > min_val:
-                        channel_img = (channel_img - min_val) / (max_val - min_val)
-                    else:
-                        channel_img = np.zeros_like(channel_img)
-                else:
-                    channel_img = np.zeros_like(channel_img)
+                channel_img = np.where(np.isfinite(channel_img), channel_img, shared_min)
 
-                ax.imshow(channel_img, cmap="gray")
+                ax.imshow(channel_img, cmap="gray", vmin=shared_min, vmax=shared_max)
                 prefix = "pre" if row_idx == 0 else "post"
                 if weights is not None and ch_idx < weights.numel():
                     ax.set_title(f"{prefix} ch{ch_idx + 1} w={weights[ch_idx].item():.3f}")
@@ -201,8 +228,12 @@ class training():
                     ax.set_title(f"{prefix} ch{ch_idx + 1}")
                 ax.axis("off")
 
-        fig.suptitle(f"{sample_id} multimodal channel scaling")
-        fig.tight_layout()
+        fig.suptitle(
+            f"{sample_id} multimodal channel scaling\n"
+            f"metadata: {metadata_summary}\n"
+            "Note: channel weights are learned from all metadata fields together; channels are not one-to-one with metadata columns."
+        )
+        fig.tight_layout(rect=[0, 0, 1, 0.92])
         fig.savefig(os.path.join(self.multimodal_cache_dir, f"{sample_id}.png"), dpi=200, bbox_inches="tight")
         plt.close(fig)
         self._saved_multimodal_channel_ids.add(sample_id)
