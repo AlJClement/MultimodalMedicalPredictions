@@ -17,6 +17,7 @@ class dpt(nn.Module):
         self.meta_cols = list(getattr(cfg.INPUT_PATHS, "META_COLS", []))
         self.meta_feature_widths = list(getattr(cfg.MODEL, "META_FEATURES", []))
         self.meta_attention_indices = self._resolve_attention_feature_indices()
+        self.meta_attention_labels = self._resolve_attention_labels()
 
         dpt_kwargs = dict(
             encoder_name=cfg.MODEL.ENCODER_NAME,
@@ -37,10 +38,13 @@ class dpt(nn.Module):
         self.meta_channel_attention = None
         if self.channel_type == "multimodal":
             attention_dim = max(1, len(self.meta_attention_indices))
-            self.meta_channel_attention = nn.Sequential(
-                nn.Linear(attention_dim, self.in_channels),
-                nn.Sigmoid(),
-            )
+            if attention_dim != self.in_channels:
+                raise ValueError(
+                    f"multimodal channel gating expects one metadata summary per image channel, "
+                    f"but got attention_dim={attention_dim} and in_channels={self.in_channels}"
+                )
+            self.meta_channel_attention_scale = nn.Parameter(torch.ones(attention_dim))
+            self.meta_channel_attention_bias = nn.Parameter(torch.zeros(attention_dim))
 
     def _supports_dynamic_img_size(self):
         encoder_name = self.encoder_name.lower()
@@ -155,6 +159,15 @@ class dpt(nn.Module):
 
         return matched_indices
 
+    def _resolve_attention_labels(self):
+        labels = []
+        for idx in self.meta_attention_indices:
+            if idx >= len(self.meta_cols):
+                continue
+            col_name, _encoding = list(self.meta_cols[idx].items())[0]
+            labels.append(str(col_name))
+        return labels
+
     def _reshape_meta(self, meta):
         if meta is None:
             return None
@@ -219,14 +232,16 @@ class dpt(nn.Module):
             self.latest_input_post_multimodal = im.detach().cpu()
             return im
 
-        expected_dim = self.meta_channel_attention[0].in_features
+        expected_dim = self.meta_channel_attention_scale.numel()
         if meta_summary.shape[-1] < expected_dim:
             pad = meta_summary.new_zeros((meta_summary.shape[0], expected_dim - meta_summary.shape[-1]))
             meta_summary = torch.cat((meta_summary, pad), dim=-1)
         elif meta_summary.shape[-1] > expected_dim:
             meta_summary = meta_summary[:, :expected_dim]
 
-        attention = self.meta_channel_attention(meta_summary.to(device=im.device, dtype=im.dtype))
+        meta_summary = meta_summary.to(device=im.device, dtype=im.dtype)
+        attention_logits = (meta_summary * self.meta_channel_attention_scale) + self.meta_channel_attention_bias
+        attention = torch.sigmoid(attention_logits)
         self.latest_channel_attention = attention.detach().cpu()
         attention = attention.unsqueeze(-1).unsqueeze(-1)
         scaled_im = im * attention

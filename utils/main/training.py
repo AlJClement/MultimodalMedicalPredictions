@@ -173,6 +173,18 @@ class training():
 
         return lines
 
+    def _get_channel_metadata_labels(self):
+        net_ref = getattr(self.net, "module", self.net)
+        labels = getattr(net_ref, "meta_attention_labels", None)
+        if labels:
+            return list(labels)
+
+        labels = []
+        for col_spec in self.meta_cols:
+            col_name, _encoding = list(col_spec.items())[0]
+            labels.append(str(col_name))
+        return labels
+
     def _save_multimodal_channel_plot(self, sample_id, pre_tensor, post_tensor, attention_values):
         if not self.plot_multimodal_channels:
             return
@@ -203,6 +215,7 @@ class training():
             weights = torch.as_tensor(attention_values, dtype=pre_tensor.dtype).flatten()
         metadata_lines = self._get_metadata_overlay_lines(sample_id)
         metadata_summary = " | ".join(metadata_lines) if metadata_lines else "metadata unavailable"
+        channel_labels = self._get_channel_metadata_labels()
         combined = torch.stack((pre_tensor[:num_channels], post_tensor[:num_channels]), dim=0).numpy()
         finite_mask = np.isfinite(combined)
         if np.any(finite_mask):
@@ -222,16 +235,16 @@ class training():
 
                 ax.imshow(channel_img, cmap="gray", vmin=shared_min, vmax=shared_max)
                 prefix = "pre" if row_idx == 0 else "post"
+                channel_label = f" ({channel_labels[ch_idx]})" if ch_idx < len(channel_labels) else ""
                 if weights is not None and ch_idx < weights.numel():
-                    ax.set_title(f"{prefix} ch{ch_idx + 1} w={weights[ch_idx].item():.3f}")
+                    ax.set_title(f"{prefix} ch{ch_idx + 1}{channel_label} w={weights[ch_idx].item():.3f}")
                 else:
-                    ax.set_title(f"{prefix} ch{ch_idx + 1}")
+                    ax.set_title(f"{prefix} ch{ch_idx + 1}{channel_label}")
                 ax.axis("off")
 
         fig.suptitle(
             f"{sample_id} multimodal channel scaling\n"
-            f"metadata: {metadata_summary}\n"
-            "Note: channel weights are learned from all metadata fields together; channels are not one-to-one with metadata columns."
+            f"metadata: {metadata_summary}"
         )
         fig.tight_layout(rect=[0, 0, 1, 0.92])
         fig.savefig(os.path.join(self.multimodal_cache_dir, f"{sample_id}.png"), dpi=200, bbox_inches="tight")
