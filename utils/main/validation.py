@@ -137,14 +137,24 @@ class validation():
 
     def _get_metadata_overlay_lines(self, pat_id, attention_values=None):
         lines = []
+        weights = None
+        if attention_values is not None:
+            try:
+                weights = torch.as_tensor(attention_values, dtype=torch.float32).flatten()
+            except Exception:
+                weights = None
+
         if self.metadata_lookup is not None and self.metadata_csv is not None:
             try:
                 meta_row = self.metadata_lookup._get_array(self.metadata_csv, pat_id)
                 if not meta_row.empty:
                     row_dict = meta_row.iloc[0].to_dict()
-                    for col_spec in self.meta_cols:
+                    for idx, col_spec in enumerate(self.meta_cols):
                         col_name, _encoding = list(col_spec.items())[0]
-                        lines.append(f"{col_name}: {row_dict.get(col_name, '')}")
+                        value_text = f"{row_dict.get(col_name, '')}"
+                        if weights is not None and idx < weights.numel():
+                            value_text += f" (attn {weights[idx].item():.3f})"
+                        lines.append(f"{col_name}: {value_text}")
             except Exception as exc:
                 lines.append(f"meta lookup failed: {exc}")
 
