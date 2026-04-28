@@ -1468,6 +1468,7 @@ class test():
                 for i in range(batch_size):
                 ### resize back to original for
                     _data = orig_img[i].numpy() if self.needs_orig_img else None
+                    overlay_lines = None
 
                     if self.label_dir == '':
                         _pred, _target = self.resize_backto_original(pred[i], target[i], orig_size[i])
@@ -1494,10 +1495,20 @@ class test():
                     else:
                         if self.validation.channel_type == "multimodal":
                             attention_values = self.validation._get_latest_attention_for_sample(i)
+                            overlay_lines = self.validation._get_metadata_overlay_lines(
+                                id[i],
+                                attention_values,
+                            )
                             self.validation._save_multimodal_channel_plot(id[i], data[i], attention_values, self.save_img_path)
 
                         if self.save_img_landmarks_predandtrue == True:
-                            visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points)
+                            visuals(self.save_img_path+'/'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(
+                                _data,
+                                _pred,
+                                _target_points,
+                                _predicted_points,
+                                extra_text=overlay_lines,
+                            )
 
                         if self.save_asdcms == True:
                             out_dcm_dir = self.save_img_path+'/as_dcms' 
@@ -1513,13 +1524,30 @@ class test():
                                 visuals(out_dcm_dir+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points,w_landmarks=False,all_landmarks=self.save_all_landmarks, with_img = True, as_dcm=True, dcm_loc=dcm_loc)
                     
                     if self.save_heatmap_land_img == True:
-                        visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data, _pred, _target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks)
+                        visuals(self.save_img_path+'/heatmap_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(
+                            _data,
+                            _pred,
+                            _target_points,
+                            _predicted_points,
+                            w_landmarks=False,
+                            all_landmarks=self.save_all_landmarks,
+                            extra_text=overlay_lines,
+                        )
 
                     if self.save_txt == True:
                         visuals(self.output_path+'/txt/'+id[i],self.pixel_size, self.cfg, orig_size[i]).save_astxt(_data,_predicted_points,self.img_size,orig_size[i])
                     
                     if self.save_heatmap == True:
-                        visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(_data ,_pred,_target_points, _predicted_points, w_landmarks=False, all_landmarks=self.save_all_landmarks, with_img = False)
+                        visuals(self.save_img_path+'/heatmap_only_'+id[i], self.pixel_size[0], self.cfg, orig_size[i]).heatmaps(
+                            _data,
+                            _pred,
+                            _target_points,
+                            _predicted_points,
+                            w_landmarks=False,
+                            all_landmarks=self.save_all_landmarks,
+                            with_img=False,
+                            extra_text=overlay_lines,
+                        )
 
                     if self.save_heatmap_as_np == True:
                         np_output_dir = self.output_path+'/np_test-time-aug' if use_tta else self.output_path+'/np'
