@@ -32,10 +32,12 @@ class MetadataImport():
 
         try:
             meta = pd.read_csv(self.metapath,dtype=object, usecols=col_names)
+            meta = meta[[col for col in col_names if col in meta.columns]]
         except ValueError:
             # Some metadata files may not include an Instance column.
             fallback_cols = [col for col in col_names if col != self.instance_col_name]
             meta = pd.read_csv(self.metapath,dtype=object, usecols=fallback_cols)
+            meta = meta[[col for col in fallback_cols if col in meta.columns]]
         meta_class = None
         if self.class_ls:
             class_cols = list(self.class_ls)
@@ -43,9 +45,11 @@ class MetadataImport():
                 class_cols.append(self.instance_col_name)
             try:
                 meta_class = pd.read_csv(self.metapath,dtype=object, usecols=class_cols)
+                meta_class = meta_class[[col for col in class_cols if col in meta_class.columns]]
             except ValueError:
                 fallback_cols = [col for col in class_cols if col != self.instance_col_name]
                 meta_class = pd.read_csv(self.metapath,dtype=object, usecols=fallback_cols)
+                meta_class = meta_class[[col for col in fallback_cols if col in meta_class.columns]]
         return meta, meta_class
 
     def _extract_instance_from_patid(self, patid):
