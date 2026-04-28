@@ -72,6 +72,7 @@ class test():
 
         self.output_path = cfg.OUTPUT_PATH
         self.net = self.load_network(self.output_path+cfg.TEST.NETWORK)
+        self.validation.net = self.net
         self.base_test_output_dir_name = self._resolve_test_output_dir_name(cfg)
         self.test_output_dir_name = self.base_test_output_dir_name
         self.test_output_path = os.path.join(cfg.OUTPUT_PATH, self.test_output_dir_name)
