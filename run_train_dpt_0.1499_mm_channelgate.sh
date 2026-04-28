@@ -5,7 +5,7 @@
 #SBATCH --clusters=htc
 #SBATCH --partition=medium
 #SBATCH --mem-per-cpu=50G
-#SBATCH --gres=gpu:v100:1
+#SBATCH --gres=gpu:1
 
 module load Anaconda3/2022.05 
 source activate /data/coml-oxmedis/kebl7678/yenv
