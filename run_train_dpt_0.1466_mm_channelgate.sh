@@ -8,7 +8,8 @@
 #SBATCH --gres=gpu:v100:1
 
 module load Anaconda3/2022.05 
-source activate /data/coml-oxmedis/kebl7678/yenv
+source $(conda info --base)/etc/profile.d/conda.sh
+conda activate /data/coml-oxmedis/kebl7678/yenv
 
 #run python code
 python ./utils/run_training.py --cfg ddh_0.01466_dpt_mm_channels
