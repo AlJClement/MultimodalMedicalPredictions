@@ -1,11 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=20:00:00
 #SBATCH --clusters=htc
-#SBATCH --mem=50G
-#SBATCH --partition=gpu-v100
-#SBATCH --gres=gpu:1
+#SBATCH --mem-per-cpu=50G
+#SBATCH --gres=gpu:v100:1
 
 module load Anaconda3/2022.05 
 source activate /data/coml-oxmedis/kebl7678/yenv
