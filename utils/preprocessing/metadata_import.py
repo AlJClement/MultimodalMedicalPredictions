@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import re
 
 class MetadataImport():
     def __init__(self, cfg) -> None:
@@ -16,6 +17,7 @@ class MetadataImport():
         self.model_name = cfg.MODEL.NAME
         self.model_features = cfg.MODEL.META_FEATURES
         self._continuous_stats = {}
+        self.instance_col_name = "Instance"
      
         
     def load_csv(self):
@@ -25,13 +27,52 @@ class MetadataImport():
         for dic in self.cols_dict:
             col_name, value = list(dic.items())[0]
             col_names.append(col_name)
+        if self.instance_col_name not in col_names:
+            col_names.append(self.instance_col_name)
 
-        meta = pd.read_csv(self.metapath,dtype=object, usecols=col_names)
+        try:
+            meta = pd.read_csv(self.metapath,dtype=object, usecols=col_names)
+        except ValueError:
+            # Some metadata files may not include an Instance column.
+            fallback_cols = [col for col in col_names if col != self.instance_col_name]
+            meta = pd.read_csv(self.metapath,dtype=object, usecols=fallback_cols)
         meta_class = None
         if self.class_ls:
-            meta_class = pd.read_csv(self.metapath,dtype=object, usecols=self.class_ls)
+            class_cols = list(self.class_ls)
+            if self.instance_col_name not in class_cols:
+                class_cols.append(self.instance_col_name)
+            try:
+                meta_class = pd.read_csv(self.metapath,dtype=object, usecols=class_cols)
+            except ValueError:
+                fallback_cols = [col for col in class_cols if col != self.instance_col_name]
+                meta_class = pd.read_csv(self.metapath,dtype=object, usecols=fallback_cols)
         return meta, meta_class
-        
+
+    def _extract_instance_from_patid(self, patid):
+        parts = str(patid).split('_')
+        if len(parts) < 2:
+            return None
+
+        token = parts[1]
+        match = re.match(r"(\d+)", token)
+        if not match:
+            return None
+        return match.group(1)
+
+    def _filter_by_instance(self, meta_df, patid):
+        if meta_df.empty or self.instance_col_name not in meta_df.columns:
+            return meta_df
+
+        instance_value = self._extract_instance_from_patid(patid)
+        if instance_value is None:
+            return meta_df
+
+        instance_series = meta_df[self.instance_col_name].astype(str).str.extract(r"(\d+)")[0]
+        matched = meta_df.loc[instance_series == instance_value]
+        if not matched.empty:
+            return matched
+        return meta_df
+
     def _get_array(self, meta_df, patid):
         pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid.split('_')[0]]
         # print(self.dataset_name)
@@ -51,6 +92,7 @@ class MetadataImport():
                 pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
             if pat_meta_arr.empty:
                     raise ValueError('no meta data found for: ', patid)
+        pat_meta_arr = self._filter_by_instance(pat_meta_arr, patid)
         if pat_meta_arr.empty:
             placeholder_row = {col: "" for col in meta_df.columns}
             placeholder_row[self.pat_col_name] = patid.split('-')[0]
@@ -71,6 +113,7 @@ class MetadataImport():
             pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid]
         if pat_meta_arr.empty:
                 raise ValueError('no meta data found for: ', patid)
+        pat_meta_arr = self._filter_by_instance(pat_meta_arr, patid)
         return pat_meta_arr.values
     
         
