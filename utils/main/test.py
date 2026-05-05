@@ -27,6 +27,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import wandb
+import traceback
 from tqdm import tqdm
 
 
@@ -171,6 +172,21 @@ class test():
         model = model_init(self.cfg).get_net_from_conf(get_net_info=False)
         model.load_state_dict(torch.load(model_path, map_location=self.device))
         model = model.to(self.device)
+        if getattr(self.cfg.TRAIN, "COMPILE", False):
+            try:
+                if self.device.type == "cuda":
+                    cap = torch.cuda.get_device_capability()
+                    torch._dynamo.config.optimize_ddp = False
+                    if cap[0] >= 8:
+                        model = torch.compile(model, fullgraph=False)
+                        print("[Test] torch.compile: success")
+                    else:
+                        print(f"[Test] torch.compile: skipped (GPU cap {cap[0]}.{cap[1]} < 8.0)")
+                else:
+                    print("[Test] torch.compile: disabled on MPS/CPU")
+            except Exception:
+                print("[Test] torch.compile: FAILED")
+                print(traceback.format_exc())
         model.eval()
         return model
     

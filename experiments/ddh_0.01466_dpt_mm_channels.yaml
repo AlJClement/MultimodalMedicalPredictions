@@ -81,6 +81,7 @@ TRAIN:
   LR: 0.0001
   EPOCHS: 10
   LOSS: nll_across_batch #_cosinelandmarkvector #_walphafhc #_mse_walpha
+  COMPILE: True
   L2_REG: False
   GAMMA: 0.0
   USE_AMP: False
