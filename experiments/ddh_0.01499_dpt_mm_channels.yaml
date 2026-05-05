@@ -113,12 +113,12 @@ TEST:
     #   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt
     #   META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv
     #   DCMS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/dcms
-    - NAME: ddh_rnoh
-      DATASET_NAME: ddh
-      PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/partition_stanmore_test.json
-      IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
-      LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
-      META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
+    # - NAME: ddh_rnoh
+    #   DATASET_NAME: ddh
+    #   PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/partition_stanmore_test.json
+    #   IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/imgs
+    #   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/txt
+    #   META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_RNOH/CS_RNOH.csv
     - NAME: ddh_mkuh
       DATASET_NAME: ddh
       PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_MKUH/partition_0_0_1_1.00000.json
