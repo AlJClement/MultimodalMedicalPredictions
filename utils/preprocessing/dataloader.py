@@ -469,7 +469,10 @@ class dataloader(Dataset):
         except:
             ext = ann_path.split('/')[-2]+'.txt'
             ext = '.txt'
-            kps_np_array = np.loadtxt(ann_path[:-4]+'_g'+ext, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
+            fallback_base = ann_path[:-4]
+            if not fallback_base.endswith('_g'):
+                fallback_base = fallback_base + '_g'
+            kps_np_array = np.loadtxt(fallback_base + ext, usecols=(0, 1),delimiter=',', max_rows=self.num_landmarks)
         
         self._debug_print('truth:',kps_np_array)
         if self.flip_axis:
