@@ -105,7 +105,7 @@ TEST:
   PERSISTENT_WORKERS: True
   PREFETCH_FACTOR: 2
   TEST_TIME_AUG: True
-  TEST_TIME_AUG_MODE: "TRUE" #or "TRUE_ONLY" or "disabled"
+  TEST_TIME_AUG_MODE: "TRUE_ONLY" # "TRUE" runs standard + TTA, "TRUE_ONLY" runs only TTA, "disabled" runs only standard
   TEST_TIME_AUG_NUM: 10
   EVAL_DATASETS:
     - NAME: ddh_all
