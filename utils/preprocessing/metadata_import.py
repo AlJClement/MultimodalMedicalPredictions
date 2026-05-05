@@ -77,6 +77,12 @@ class MetadataImport():
             return matched
         return meta_df
 
+    def _extract_alt_patient_id(self, patid):
+        parts = str(patid).split('_')
+        if len(parts) < 2:
+            return None
+        return parts[1]
+
     def _get_array(self, meta_df, patid):
         pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid.split('_')[0]]
         # print(self.dataset_name)
@@ -88,8 +94,9 @@ class MetadataImport():
         else:
             
             if pat_meta_arr.empty:
-                pat_id_rnoh=patid.split('_')[1]
-                pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
+                pat_id_rnoh = self._extract_alt_patient_id(patid)
+                if pat_id_rnoh is not None:
+                    pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
 
             if pat_meta_arr.empty:
                 #retuve
@@ -107,8 +114,9 @@ class MetadataImport():
     def _get_class_arr(self, meta_df, patid):
         pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == patid.split('_')[0]]
         if pat_meta_arr.empty:
-            pat_id_rnoh=patid.split('_')[1]
-            pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
+            pat_id_rnoh = self._extract_alt_patient_id(patid)
+            if pat_id_rnoh is not None:
+                pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_rnoh]
         if pat_meta_arr.empty:
             pat_id_oai = patid.split('-')[0]
             pat_meta_arr = meta_df.loc[meta_df[self.pat_col_name] == pat_id_oai]
