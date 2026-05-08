@@ -2,6 +2,7 @@ import os
 import time
 import logging
 import torch
+import re
 from .default_config import get_cfg_defaults
 from datetime import datetime
 
@@ -39,6 +40,42 @@ class helper():
         console = logging.StreamHandler()
         logging.getLogger('').addHandler(console)
         return logger
+
+    def _infer_split_suffix(self):
+        candidates = [
+            str(getattr(self.cfg.INPUT_PATHS, "PARTITION", "")),
+            str(getattr(self.cfg, "OUTPUT_PATH", "")),
+            str(self.cfg_name),
+        ]
+
+        for candidate in candidates:
+            match = re.search(r"0\.\d{5}", candidate)
+            if match:
+                return match.group(0)
+
+        return None
+
+    def resolve_reference_csv_path(self, metric_name):
+        metric_key = str(metric_name).strip().lower()
+        if metric_key == "alpha":
+            explicit_path = str(getattr(self.cfg.INPUT_PATHS, "ALPHA_CSV", "")).strip()
+            default_dir = "ALPHAS"
+            default_file = "alpha_range.csv"
+        elif metric_key == "fhc":
+            explicit_path = str(getattr(self.cfg.INPUT_PATHS, "FHC_CSV", "")).strip()
+            default_dir = "FHC"
+            default_file = "fhc_range.csv"
+        else:
+            raise ValueError(f"Unknown metric_name '{metric_name}'. Expected 'alpha' or 'fhc'.")
+
+        if explicit_path:
+            return explicit_path
+
+        split_suffix = self._infer_split_suffix()
+        if split_suffix:
+            return os.path.join(".", "output", f"{default_dir}_{split_suffix}", default_file)
+
+        return os.path.join(".", "output", default_dir, default_file)
     
     def save_model(self, logger, model_name, ensemble):
         model_run_path = os.path.join(self.output_path, "run:{}_models".format(model_name))
