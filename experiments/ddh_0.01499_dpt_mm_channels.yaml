@@ -5,8 +5,6 @@ INPUT_PATHS:
   DCMS:  /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/dcms #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/imgs
   LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/txt
   META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv 
-  ALPHA_CSV: ./output/ALPHAS_0.01499/alpha_range.csv
-  FHC_CSV: ./output/FHC_0.01499/fhc_range.csv
 
   # PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/partition_0_0_1.json  #/data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh/partition_0.7_0.15_0.15_0.04153.json
   # IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_retuve/imgs 
