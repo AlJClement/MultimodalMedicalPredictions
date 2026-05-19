@@ -1,17 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
+REPO_ROOT="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 
 if [[ -n "${CONDA_ENV_PATH:-}" ]]; then
-  source "$(conda info --base)/etc/profile.d/conda.sh"
-  conda activate "${CONDA_ENV_PATH}"
+  if command -v conda >/dev/null 2>&1; then
+    source "$(conda info --base)/etc/profile.d/conda.sh"
+    conda activate "${CONDA_ENV_PATH}"
+  else
+    echo "CONDA_ENV_PATH is set, but 'conda' is not available in this shell." >&2
+    exit 1
+  fi
 elif [[ -n "${CONDA_ENV_NAME:-}" ]]; then
-  source "$(conda info --base)/etc/profile.d/conda.sh"
-  conda activate "${CONDA_ENV_NAME}"
+  if command -v conda >/dev/null 2>&1; then
+    source "$(conda info --base)/etc/profile.d/conda.sh"
+    conda activate "${CONDA_ENV_NAME}"
+  else
+    echo "CONDA_ENV_NAME is set, but 'conda' is not available in this shell." >&2
+    exit 1
+  fi
 fi
 
 cd "${REPO_ROOT}"
+
+if ! python -c "import torch" >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+Python in the current shell does not have PyTorch installed.
+
+Activate the project environment first, or set one of:
+  CONDA_ENV_PATH=/path/to/env
+  CONDA_ENV_NAME=env_name
+
+Example:
+  module load Anaconda3/2022.05
+  source activate /data/coml-oxmedis/kebl7678/yenv
+  ./run_report_model_complexity.sh --summary-style
+EOF
+  exit 1
+fi
 
 python utils/report_model_complexity.py \
   --cfgs \
