@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+die() {
+  echo "$*" >&2
+  return 1 2>/dev/null || exit 1
+}
+
 SCRIPT_PATH="${BASH_SOURCE[0]-$0}"
 REPO_ROOT="$(cd "$(dirname "${SCRIPT_PATH}")" && pwd)"
 
@@ -9,16 +14,14 @@ if [[ -n "${CONDA_ENV_PATH:-}" ]]; then
     source "$(conda info --base)/etc/profile.d/conda.sh"
     conda activate "${CONDA_ENV_PATH}"
   else
-    echo "CONDA_ENV_PATH is set, but 'conda' is not available in this shell." >&2
-    exit 1
+    die "CONDA_ENV_PATH is set, but 'conda' is not available in this shell."
   fi
 elif [[ -n "${CONDA_ENV_NAME:-}" ]]; then
   if command -v conda >/dev/null 2>&1; then
     source "$(conda info --base)/etc/profile.d/conda.sh"
     conda activate "${CONDA_ENV_NAME}"
   else
-    echo "CONDA_ENV_NAME is set, but 'conda' is not available in this shell." >&2
-    exit 1
+    die "CONDA_ENV_NAME is set, but 'conda' is not available in this shell."
   fi
 fi
 
@@ -37,7 +40,7 @@ Example:
   source activate /data/coml-oxmedis/kebl7678/yenv
   ./run_report_model_complexity.sh --summary-style
 EOF
-  exit 1
+  return 1 2>/dev/null || exit 1
 fi
 
 python utils/report_model_complexity.py \
