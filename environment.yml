@@ -260,6 +260,7 @@ dependencies:
       - nvidia-nvjitlink-cu12==12.3.52
       - nvidia-nvtx-cu12==12.1.105
       - opencv-python==4.10.0.84
+      - oxonfair==0.2.1.11
       - pip==25.0.1
       - pretrainedmodels==0.7.4
       - pydicom==2.4.4

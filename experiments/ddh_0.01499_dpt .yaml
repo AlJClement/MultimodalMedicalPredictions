@@ -107,4 +107,23 @@ TEST:
   SAVE_HEATMAPS_LANDMARKS_IMG: False
   SAVE_IMG_LANG_PREDANDTRUE: True
   SAVE_HEATMAPS_NP: False
+  FAIRNESS:
+    ENABLED: True
+    BACKEND: oxonfair
+    GROUP_COLUMNS:
+      - Sex
+    SAVE_CSV: True
+    TASKS:
+      - NAME: graf_i_vs_ii_iii_iv
+        PRED_COLUMN: class pred
+        TRUE_COLUMN: class true
+        POSITIVE_CLASSES: ['ii', 'iii/iv']
+      - NAME: graf_i_ii_vs_iii_iv
+        PRED_COLUMN: class pred
+        TRUE_COLUMN: class true
+        POSITIVE_CLASSES: ['iii/iv']
+      - NAME: fhc_abnormal_vs_normal
+        PRED_COLUMN: fhc class pred
+        TRUE_COLUMN: fhc class true
+        POSITIVE_CLASSES: ['a']
   

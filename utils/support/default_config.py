@@ -114,6 +114,13 @@ C.TEST.TTA_SELECTION_METRIC = "ERE"
 C.TEST.WANDB_NUM_FAILURE_EXAMPLES = 10
 C.TEST.EVAL_DATASETS = []
 
+C.TEST.FAIRNESS = CN()
+C.TEST.FAIRNESS.ENABLED = False
+C.TEST.FAIRNESS.BACKEND = "oxonfair"
+C.TEST.FAIRNESS.GROUP_COLUMNS = []
+C.TEST.FAIRNESS.SAVE_CSV = True
+C.TEST.FAIRNESS.TASKS = []
+
 def get_cfg_defaults():
     """Get a yacs CfgNode object with default values above."""
     return C.clone()

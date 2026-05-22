@@ -3,7 +3,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=5:00:00
 #SBATCH --clusters=htc
-#SBATCH --partition=short
+#SBATCH --partition=short, interactive
 #SBATCH --mem-per-cpu=50G
 #SBATCH --gres=gpu:1
 

@@ -29,6 +29,12 @@ import numpy as np
 import wandb
 import traceback
 from tqdm import tqdm
+from preprocessing.metadata_import import MetadataImport
+
+try:
+    from oxonfair.utils import group_metrics as oxonfair_group_metrics
+except ImportError:
+    oxonfair_group_metrics = None
 
 
 class test():
@@ -110,6 +116,15 @@ class test():
         self.augmenter = Augmentation(self.cfg)
         self.eval_helper = evaluation_helper.evaluation_helper()
         self.landmark_metric_helper = landmark_metrics()
+        self.metadata_helper = MetadataImport(cfg)
+        self.fairness_cfg = getattr(cfg.TEST, "FAIRNESS", None)
+        self.fairness_enabled = bool(getattr(self.fairness_cfg, "ENABLED", False))
+        self.fairness_backend = str(getattr(self.fairness_cfg, "BACKEND", "oxonfair")).strip().lower()
+        self.fairness_group_columns = [str(col) for col in getattr(self.fairness_cfg, "GROUP_COLUMNS", [])]
+        self.fairness_save_csv = bool(getattr(self.fairness_cfg, "SAVE_CSV", True))
+        self.fairness_tasks = self._normalize_fairness_tasks(getattr(self.fairness_cfg, "TASKS", []))
+        self.fairness_metadata_df = self._load_fairness_metadata() if self.fairness_enabled else None
+        self.fairness_group_cache = {}
         self._prepare_run_paths(self.base_test_output_dir_name)
 
     def _resolve_test_output_dir_name(self, cfg):
@@ -167,6 +182,241 @@ class test():
 
         self.save_testtimeaug = self.save_img_path + '-time-aug/test-time-aug'
         os.makedirs(self.save_testtimeaug, exist_ok=True)
+
+    def _normalize_fairness_tasks(self, raw_tasks):
+        tasks = []
+        for idx, raw_task in enumerate(raw_tasks):
+            task = dict(raw_task.items()) if hasattr(raw_task, "items") else dict(raw_task)
+            task_name = str(task.get("NAME", f"task_{idx+1}")).strip()
+            pred_column = str(task.get("PRED_COLUMN", "")).strip()
+            true_column = str(task.get("TRUE_COLUMN", "")).strip()
+            positive_classes = task.get("POSITIVE_CLASSES", [])
+            if isinstance(positive_classes, str):
+                positive_classes = [positive_classes]
+            positive_classes = [str(value).strip() for value in positive_classes if str(value).strip()]
+
+            if not task_name or not pred_column or not true_column or not positive_classes:
+                self.logger.warning("Skipping incomplete fairness task config: %s", task)
+                continue
+
+            tasks.append({
+                "name": task_name,
+                "pred_column": pred_column,
+                "true_column": true_column,
+                "positive_classes": positive_classes,
+            })
+        return tasks
+
+    def _load_fairness_metadata(self):
+        if not self.fairness_group_columns:
+            self.logger.warning("Fairness reporting is enabled but TEST.FAIRNESS.GROUP_COLUMNS is empty.")
+            return None
+        if not str(getattr(self.cfg.INPUT_PATHS, "META_PATH", "")).strip():
+            self.logger.warning("Fairness reporting is enabled but INPUT_PATHS.META_PATH is empty.")
+            return None
+
+        cols = [self.cfg.INPUT_PATHS.ID_COL]
+        cols.extend(self.fairness_group_columns)
+        if self.metadata_helper.instance_col_name not in cols:
+            cols.append(self.metadata_helper.instance_col_name)
+        cols = list(dict.fromkeys(cols))
+
+        try:
+            meta_df = pd.read_csv(self.cfg.INPUT_PATHS.META_PATH, dtype=object, usecols=cols)
+        except ValueError:
+            fallback_cols = [col for col in cols if col != self.metadata_helper.instance_col_name]
+            meta_df = pd.read_csv(self.cfg.INPUT_PATHS.META_PATH, dtype=object, usecols=fallback_cols)
+
+        return meta_df
+
+    def _lookup_fairness_group_values(self, sample_id):
+        sample_id = str(sample_id)
+        if sample_id in self.fairness_group_cache:
+            return self.fairness_group_cache[sample_id]
+
+        defaults = {column: None for column in self.fairness_group_columns}
+        if self.fairness_metadata_df is None or self.fairness_metadata_df.empty:
+            self.fairness_group_cache[sample_id] = defaults
+            return defaults
+
+        id_col = self.cfg.INPUT_PATHS.ID_COL
+        candidates = self.fairness_metadata_df.loc[self.fairness_metadata_df[id_col] == sample_id.split('_')[0]]
+        if 'oai' in self.dataset_name:
+            candidates = self.fairness_metadata_df.loc[self.fairness_metadata_df[id_col] == sample_id.split('-')[0]]
+        else:
+            if candidates.empty:
+                alt_id = self.metadata_helper._extract_alt_patient_id(sample_id)
+                if alt_id is not None:
+                    candidates = self.fairness_metadata_df.loc[self.fairness_metadata_df[id_col] == alt_id]
+            if candidates.empty:
+                candidates = self.fairness_metadata_df.loc[self.fairness_metadata_df[id_col] == sample_id]
+
+        candidates = self.metadata_helper._filter_by_instance(candidates, sample_id)
+        if candidates.empty:
+            self.fairness_group_cache[sample_id] = defaults
+            return defaults
+
+        row = candidates.iloc[0]
+        values = {}
+        for column in self.fairness_group_columns:
+            value = row.get(column)
+            if pd.isna(value):
+                value = None
+            elif value is not None:
+                value = str(value).strip()
+            values[column] = value
+
+        self.fairness_group_cache[sample_id] = values
+        return values
+
+    def _attach_fairness_groups(self, comparison_df):
+        if not self.fairness_enabled or comparison_df.empty or not self.fairness_group_columns:
+            return comparison_df
+
+        fairness_rows = [self._lookup_fairness_group_values(sample_id) for sample_id in comparison_df["ID"].astype(str)]
+        fairness_df = pd.DataFrame(fairness_rows)
+        return pd.concat([comparison_df.reset_index(drop=True), fairness_df.reset_index(drop=True)], axis=1)
+
+    def _binarize_fairness_series(self, series, positive_classes):
+        positive = {str(value).strip() for value in positive_classes}
+        normalized = series.astype(str).str.strip()
+        binary = normalized.isin(positive).astype(int)
+        valid_mask = (~series.isna()) & (~normalized.str.lower().isin({"", "nan", "none"}))
+        return binary, valid_mask
+
+    def _scalarize_metric(self, value):
+        arr = np.asarray(value)
+        if arr.size == 0:
+            return None
+        scalar = arr.reshape(-1)[0]
+        if pd.isna(scalar):
+            return None
+        return float(scalar)
+
+    def _compute_fairness_report(self, comparison_df, file_suffix):
+        if not self.fairness_enabled:
+            return {}, None, None
+        if self.fairness_backend != "oxonfair":
+            self.logger.warning(
+                "Unsupported fairness backend '%s'. Expected 'oxonfair'; skipping fairness reporting.",
+                self.fairness_backend,
+            )
+            return {}, None, None
+        if oxonfair_group_metrics is None:
+            self.logger.warning("OxonFair fairness reporting was requested but oxonfair is not installed.")
+            return {}, None, None
+        if comparison_df.empty:
+            return {}, None, None
+
+        summary_metrics = {}
+        group_rows = []
+        aggregate_rows = []
+
+        metric_specs = [
+            ("demographic_parity_difference", oxonfair_group_metrics.demographic_parity),
+            ("disparate_impact_ratio", oxonfair_group_metrics.disparate_impact),
+            ("equalized_odds_difference", oxonfair_group_metrics.equalized_odds),
+            ("equal_opportunity_difference", oxonfair_group_metrics.equal_opportunity),
+            ("predictive_parity_difference", oxonfair_group_metrics.predictive_parity),
+            ("accuracy_difference", oxonfair_group_metrics.accuracy.diff),
+        ]
+        per_group_specs = [
+            ("selection_rate", oxonfair_group_metrics.pos_pred_rate),
+            ("true_positive_rate", oxonfair_group_metrics.true_pos_rate),
+            ("false_positive_rate", oxonfair_group_metrics.false_pos_rate),
+            ("precision", oxonfair_group_metrics.precision),
+            ("accuracy", oxonfair_group_metrics.accuracy),
+        ]
+
+        for group_column in self.fairness_group_columns:
+            if group_column not in comparison_df.columns:
+                self.logger.warning("Fairness group column '%s' was not found in comparison dataframe.", group_column)
+                continue
+
+            for task in self.fairness_tasks:
+                pred_column = task["pred_column"]
+                true_column = task["true_column"]
+                if pred_column not in comparison_df.columns or true_column not in comparison_df.columns:
+                    self.logger.warning(
+                        "Skipping fairness task '%s' because columns '%s' or '%s' are missing.",
+                        task["name"], pred_column, true_column,
+                    )
+                    continue
+
+                task_df = comparison_df[[group_column, pred_column, true_column]].copy()
+                task_df = task_df.dropna(subset=[group_column, pred_column, true_column])
+                if task_df.empty:
+                    continue
+
+                groups = task_df[group_column].astype(str).str.strip().to_numpy()
+                if np.unique(groups).size < 2:
+                    self.logger.warning(
+                        "Skipping fairness task '%s' for group '%s' because fewer than two groups are present.",
+                        task["name"], group_column,
+                    )
+                    continue
+
+                y_pred, valid_pred = self._binarize_fairness_series(task_df[pred_column], task["positive_classes"])
+                y_true, valid_true = self._binarize_fairness_series(task_df[true_column], task["positive_classes"])
+                valid_mask = (valid_pred & valid_true).to_numpy(dtype=bool)
+                if valid_mask.sum() == 0:
+                    continue
+
+                groups = groups[valid_mask]
+                y_pred = y_pred.to_numpy(dtype=int)[valid_mask]
+                y_true = y_true.to_numpy(dtype=int)[valid_mask]
+                unique_groups = np.unique(groups)
+
+                aggregate_row = {
+                    "group_column": group_column,
+                    "task_name": task["name"],
+                    "backend": "oxonfair",
+                    "positive_classes": "|".join(task["positive_classes"]),
+                    "n_samples": int(valid_mask.sum()),
+                }
+
+                for metric_name, metric_fn in metric_specs:
+                    metric_value = self._scalarize_metric(metric_fn(y_true, y_pred, groups))
+                    aggregate_row[metric_name] = metric_value
+                    summary_metrics[f"fairness_{group_column}_{task['name']}_{metric_name}"] = metric_value
+
+                aggregate_rows.append(aggregate_row)
+                per_group_metric_values = {
+                    metric_name: metric_fn.per_group(y_true, y_pred, groups)
+                    for metric_name, metric_fn in per_group_specs
+                }
+
+                for group_idx, group_value in enumerate(unique_groups):
+                    mask = groups == group_value
+                    row = {
+                        "group_column": group_column,
+                        "group_value": group_value,
+                        "task_name": task["name"],
+                        "n_samples": int(mask.sum()),
+                        "n_positive_true": int(y_true[mask].sum()),
+                        "n_positive_pred": int(y_pred[mask].sum()),
+                    }
+                    for metric_name, _metric_fn in per_group_specs:
+                        metric_values = per_group_metric_values[metric_name]
+                        metric_value = self._scalarize_metric(metric_values[:, group_idx])
+                        row[metric_name] = metric_value
+                    group_rows.append(row)
+
+        if not aggregate_rows:
+            return summary_metrics, None, None
+
+        group_df = pd.DataFrame(group_rows)
+        aggregate_df = pd.DataFrame(aggregate_rows)
+
+        group_csv_path = None
+        summary_csv_path = None
+        if self.fairness_save_csv:
+            group_csv_path = os.path.join(self.test_output_path, f"fairness_by_group{file_suffix}.csv")
+            summary_csv_path = os.path.join(self.test_output_path, f"fairness_summary{file_suffix}.csv")
+            group_df.to_csv(group_csv_path, index=False)
+            aggregate_df.to_csv(summary_csv_path, index=False)
+
+        return summary_metrics, group_csv_path, summary_csv_path
 
     def load_network(self, model_path):
         model = model_init(self.cfg).get_net_from_conf(get_net_info=False)
@@ -1613,6 +1863,7 @@ class test():
                 progress.set_postfix(samples=len(comparison_rows), refresh=False)
 
         comparison_df = pd.DataFrame(comparison_rows)
+        comparison_df = self._attach_fairness_groups(comparison_df)
         failure_images = []
         if self.wandb_enabled and failure_candidates:
             for candidate in failure_candidates:
@@ -1780,6 +2031,16 @@ class test():
             
             comparison_df.to_csv(comparison_csv_path)
             self._debug_print(f'Saving Results to {os.path.basename(comparison_csv_path)}')
+
+        fairness_summary_metrics, fairness_group_csv_path, fairness_summary_csv_path = self._compute_fairness_report(
+            comparison_df,
+            file_suffix,
+        )
+        wandb_summary.update(fairness_summary_metrics)
+        if fairness_group_csv_path is not None:
+            wandb_plot_paths["fairness_by_group_csv"] = fairness_group_csv_path
+        if fairness_summary_csv_path is not None:
+            wandb_plot_paths["fairness_summary_csv"] = fairness_summary_csv_path
         
         
         sdr_summary = ""
