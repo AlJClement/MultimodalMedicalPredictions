@@ -129,6 +129,7 @@ class test():
 
     def _resolve_test_output_dir_name(self, cfg):
         candidate_text = " ".join([
+            str(getattr(cfg.INPUT_PATHS, "DATASET_NAME", "")),
             str(getattr(cfg.INPUT_PATHS, "PARTITION", "")),
             str(getattr(cfg.INPUT_PATHS, "IMAGES", "")),
             str(getattr(cfg.INPUT_PATHS, "LABELS", "")),
@@ -136,6 +137,8 @@ class test():
             str(getattr(cfg.INPUT_PATHS, "DCMS", "")),
         ]).lower()
 
+        if "ddh_all" in candidate_text or "main" in candidate_text:
+            return "test_main"
         if "mkuh" in candidate_text:
             return "test_mkuh"
         if "rnoh" in candidate_text:
