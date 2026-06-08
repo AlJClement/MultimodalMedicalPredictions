@@ -1,0 +1,5 @@
+split,comparison,n,r
+validation,landmark_ere_vs_mre,1162,0.35106479141075053
+validation,binned_ere_vs_true_radial_error,33,0.8931867994396077
+testing,landmark_ere_vs_mre,1162,0.4814999181740111
+testing,binned_ere_vs_true_radial_error,33,0.9906870257724769
