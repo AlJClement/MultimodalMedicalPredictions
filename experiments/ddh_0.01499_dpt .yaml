@@ -37,7 +37,7 @@ MODEL:
   #
   META_FEATURES: [100,100,100] 
   NAME: 'dpt'
-  ENCODER_NAME: 'tu-resnet34' ##'resnet34'
+  ENCODER_NAME: 'tu-swinv2_base_window12to24_192to384.ms_in22k_ft_in1k' ##'resnet34'
   ENCODER_WEIGHTS: 'imagenet'
   BATCH_NORM_DECODER: True
   DECODER_CHANNELS:
@@ -50,8 +50,6 @@ MODEL:
   ATTENTION: scse
 
   FREEZE_LAYERS: 0
-  DYNAMIC_IMG_SIZE: true
-
 DATASET:
   IMAGE_EXT: ".jpg"
   ANNOTATION_TYPE: "LANDMARKS" #SEGMENTATIONS
@@ -107,7 +105,7 @@ TEST:
   EVAL_DATASETS:
     - NAME: main
       DATASET_NAME: ddh
-      PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.15_0.15_0.7_0.01466_best.json
+      PARTITION: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/partition_0.7_0.15_0.15_0.01499_best.json
       IMAGES: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/imgs
       LABELS: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/txt
       META_PATH: /data/coml-oxmedis/datasets-in-use/multimodal_datasets/ddh_all/meta_allusable.csv
