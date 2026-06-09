@@ -366,7 +366,51 @@ def get_bin_sizes(default_bin_size: int):
     return sorted({size for size in candidate_sizes if size > 0})
 
 
-def _scatter_with_fit(ax, x_values, y_values, title: str, xlabel: str, ylabel: str):
+def _iqr_bounds(values: np.ndarray, multiplier: float = 1.5):
+    q1 = np.percentile(values, 25)
+    q3 = np.percentile(values, 75)
+    iqr = q3 - q1
+    if not np.isfinite(iqr):
+        return -np.inf, np.inf
+    if iqr == 0:
+        return q1, q3
+    return q1 - multiplier * iqr, q3 + multiplier * iqr
+
+
+def _filter_outliers_iqr(x_values, y_values, multiplier: float = 1.5):
+    x = np.asarray(x_values, dtype=float)
+    y = np.asarray(y_values, dtype=float)
+
+    finite_mask = np.isfinite(x) & np.isfinite(y)
+    x = x[finite_mask]
+    y = y[finite_mask]
+
+    if x.size == 0:
+        raise ValueError("No finite values available for plotting.")
+
+    x_lo, x_hi = _iqr_bounds(x, multiplier=multiplier)
+    y_lo, y_hi = _iqr_bounds(y, multiplier=multiplier)
+    keep_mask = (x >= x_lo) & (x <= x_hi) & (y >= y_lo) & (y <= y_hi)
+
+    filtered_x = x[keep_mask]
+    filtered_y = y[keep_mask]
+    removed = int(x.size - filtered_x.size)
+
+    if filtered_x.size == 0:
+        return x, y, 0
+    return filtered_x, filtered_y, removed
+
+
+def _scatter_with_fit(
+    ax,
+    x_values,
+    y_values,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    remove_outliers: bool = False,
+    outlier_iqr_multiplier: float = 1.5,
+):
     x = np.asarray(x_values, dtype=float)
     y = np.asarray(y_values, dtype=float)
 
@@ -376,6 +420,10 @@ def _scatter_with_fit(ax, x_values, y_values, title: str, xlabel: str, ylabel: s
 
     if x.size == 0:
         raise ValueError("No finite values available for plotting.")
+
+    removed = 0
+    if remove_outliers:
+        x, y, removed = _filter_outliers_iqr(x, y, multiplier=outlier_iqr_multiplier)
 
     ax.scatter(x, y, s=20, alpha=0.5)
 
@@ -387,7 +435,7 @@ def _scatter_with_fit(ax, x_values, y_values, title: str, xlabel: str, ylabel: s
         ax.text(
             0.03,
             0.97,
-            f"N={x.size}\nr={corr:.3f}",
+            f"N={x.size}\nr={corr:.3f}" + (f"\nremoved={removed}" if remove_outliers else ""),
             transform=ax.transAxes,
             va="top",
             ha="left",
@@ -402,30 +450,46 @@ def _scatter_with_fit(ax, x_values, y_values, title: str, xlabel: str, ylabel: s
         ax.legend(frameon=False)
 
 
-def plot_landmark_ere_vs_mre(rows, out_path: Path, title: str):
+def plot_landmark_ere_vs_mre(rows, out_path: Path, title: str, remove_outliers: bool = False):
     ere = [row["ere"] for row in rows]
     mre = [row["true_radial_error_px"] for row in rows]
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    _scatter_with_fit(ax, ere, mre, title, "ERE", "MRE (pixels)")
+    _scatter_with_fit(
+        ax,
+        ere,
+        mre,
+        title,
+        "ERE",
+        "MRE (pixels)",
+        remove_outliers=remove_outliers,
+    )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
-def plot_ere_vs_mre(rows, out_path: Path, title: str):
+def plot_ere_vs_mre(rows, out_path: Path, title: str, remove_outliers: bool = False):
     ere = [row["ere_mean"] for row in rows]
     mre = [row["mre_mean_px"] for row in rows]
     fig, ax = plt.subplots(figsize=(8, 6))
-    _scatter_with_fit(ax, ere, mre, title, "ERE", "Mean Radial Error (MRE, pixels)")
+    _scatter_with_fit(
+        ax,
+        ere,
+        mre,
+        title,
+        "ERE",
+        "Mean Radial Error (MRE, pixels)",
+        remove_outliers=remove_outliers,
+    )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
-def plot_binned_ere_vs_true_radial_error(rows, out_path: Path, title: str):
+def plot_binned_ere_vs_true_radial_error(rows, out_path: Path, title: str, remove_outliers: bool = False):
     ere = [row["ere_mean"] for row in rows]
     true_radial_error = [row["true_radial_error_mean"] for row in rows]
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -436,6 +500,7 @@ def plot_binned_ere_vs_true_radial_error(rows, out_path: Path, title: str):
         title,
         "Average ERE per bin",
         "Average True Radial Error per bin (pixels)",
+        remove_outliers=remove_outliers,
     )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -443,7 +508,7 @@ def plot_binned_ere_vs_true_radial_error(rows, out_path: Path, title: str):
     plt.close(fig)
 
 
-def plot_paired_landmark_ere_vs_mre(rows, out_path: Path, title: str):
+def plot_paired_landmark_ere_vs_mre(rows, out_path: Path, title: str, remove_outliers: bool = False):
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     _scatter_with_fit(
         axes[0],
@@ -452,6 +517,7 @@ def plot_paired_landmark_ere_vs_mre(rows, out_path: Path, title: str):
         f"{title} (pixels)",
         "ERE",
         "MRE (pixels)",
+        remove_outliers=remove_outliers,
     )
     _scatter_with_fit(
         axes[1],
@@ -460,6 +526,7 @@ def plot_paired_landmark_ere_vs_mre(rows, out_path: Path, title: str):
         f"{title} (mm)",
         "ERE (mm)",
         "MRE (mm)",
+        remove_outliers=remove_outliers,
     )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -467,7 +534,7 @@ def plot_paired_landmark_ere_vs_mre(rows, out_path: Path, title: str):
     plt.close(fig)
 
 
-def plot_paired_image_ere_vs_mre(rows, out_path: Path, title: str):
+def plot_paired_image_ere_vs_mre(rows, out_path: Path, title: str, remove_outliers: bool = False):
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     _scatter_with_fit(
         axes[0],
@@ -476,6 +543,7 @@ def plot_paired_image_ere_vs_mre(rows, out_path: Path, title: str):
         f"{title} (pixels)",
         "ERE",
         "Mean Radial Error (MRE, pixels)",
+        remove_outliers=remove_outliers,
     )
     _scatter_with_fit(
         axes[1],
@@ -484,6 +552,7 @@ def plot_paired_image_ere_vs_mre(rows, out_path: Path, title: str):
         f"{title} (mm)",
         "ERE (mm)",
         "Mean Radial Error (MRE, mm)",
+        remove_outliers=remove_outliers,
     )
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -491,7 +560,13 @@ def plot_paired_image_ere_vs_mre(rows, out_path: Path, title: str):
     plt.close(fig)
 
 
-def plot_multibin_paired_ere(rows, out_path: Path, title: str, bin_sizes: list[int]):
+def plot_multibin_paired_ere(
+    rows,
+    out_path: Path,
+    title: str,
+    bin_sizes: list[int],
+    remove_outliers: bool = False,
+):
     fig, axes = plt.subplots(len(bin_sizes), 2, figsize=(14, 5 * len(bin_sizes)))
     axes = np.atleast_2d(axes)
 
@@ -505,6 +580,7 @@ def plot_multibin_paired_ere(rows, out_path: Path, title: str, bin_sizes: list[i
             f"{title} (pixels, bin={bin_size})",
             "Average ERE per bin",
             "Average True Radial Error per bin (pixels)",
+            remove_outliers=remove_outliers,
         )
         _scatter_with_fit(
             axes[row_idx, 1],
@@ -513,6 +589,7 @@ def plot_multibin_paired_ere(rows, out_path: Path, title: str, bin_sizes: list[i
             f"{title} (mm, bin={bin_size})",
             "Average ERE per bin (mm)",
             "Average True Radial Error per bin (mm)",
+            remove_outliers=remove_outliers,
         )
 
     fig.tight_layout()
@@ -521,7 +598,7 @@ def plot_multibin_paired_ere(rows, out_path: Path, title: str, bin_sizes: list[i
     plt.close(fig)
 
 
-def plot_perlandmark_paired_ere(rows, out_path: Path, title: str):
+def plot_perlandmark_paired_ere(rows, out_path: Path, title: str, remove_outliers: bool = False):
     landmark_indices = sorted({int(row["landmark_index"]) for row in rows})
     if not landmark_indices:
         raise ValueError("No landmark rows available for per-landmark plotting.")
@@ -538,6 +615,7 @@ def plot_perlandmark_paired_ere(rows, out_path: Path, title: str):
             f"{title} Landmark {landmark_index} (pixels, bin=1)",
             "ERE",
             "True Radial Error (pixels)",
+            remove_outliers=remove_outliers,
         )
         _scatter_with_fit(
             axes[row_idx, 1],
@@ -546,6 +624,7 @@ def plot_perlandmark_paired_ere(rows, out_path: Path, title: str):
             f"{title} Landmark {landmark_index} (mm, bin=1)",
             "ERE (mm)",
             "True Radial Error (mm)",
+            remove_outliers=remove_outliers,
         )
 
     fig.tight_layout()
@@ -674,21 +753,57 @@ def main():
         "Validation: Landmark-level ERE vs MRE",
     )
     plot_landmark_ere_vs_mre(
+        val_landmark_rows,
+        save_dir / "validation_landmark_ere_vs_mre_no_outliers.png",
+        "Validation: Landmark-level ERE vs MRE",
+        remove_outliers=True,
+    )
+    plot_landmark_ere_vs_mre(
         test_landmark_rows,
         save_dir / "testing_landmark_ere_vs_mre.png",
         "Testing: Landmark-level ERE vs MRE",
     )
+    plot_landmark_ere_vs_mre(
+        test_landmark_rows,
+        save_dir / "testing_landmark_ere_vs_mre_no_outliers.png",
+        "Testing: Landmark-level ERE vs MRE",
+        remove_outliers=True,
+    )
     plot_ere_vs_mre(val_image_rows, save_dir / "validation_ere_vs_mre.png", "Validation: ERE vs MRE")
+    plot_ere_vs_mre(
+        val_image_rows,
+        save_dir / "validation_ere_vs_mre_no_outliers.png",
+        "Validation: ERE vs MRE",
+        remove_outliers=True,
+    )
     plot_ere_vs_mre(test_image_rows, save_dir / "testing_ere_vs_mre.png", "Testing: ERE vs MRE")
+    plot_ere_vs_mre(
+        test_image_rows,
+        save_dir / "testing_ere_vs_mre_no_outliers.png",
+        "Testing: ERE vs MRE",
+        remove_outliers=True,
+    )
     plot_paired_landmark_ere_vs_mre(
         val_landmark_rows,
         save_dir / "validation_landmark_ere_vs_mre_px_mm.png",
         "Validation: Landmark-level ERE vs MRE",
     )
     plot_paired_landmark_ere_vs_mre(
+        val_landmark_rows,
+        save_dir / "validation_landmark_ere_vs_mre_px_mm_no_outliers.png",
+        "Validation: Landmark-level ERE vs MRE",
+        remove_outliers=True,
+    )
+    plot_paired_landmark_ere_vs_mre(
         test_landmark_rows,
         save_dir / "testing_landmark_ere_vs_mre_px_mm.png",
         "Testing: Landmark-level ERE vs MRE",
+    )
+    plot_paired_landmark_ere_vs_mre(
+        test_landmark_rows,
+        save_dir / "testing_landmark_ere_vs_mre_px_mm_no_outliers.png",
+        "Testing: Landmark-level ERE vs MRE",
+        remove_outliers=True,
     )
     plot_paired_image_ere_vs_mre(
         val_image_rows,
@@ -696,9 +811,21 @@ def main():
         "Validation: Image-level ERE vs MRE",
     )
     plot_paired_image_ere_vs_mre(
+        val_image_rows,
+        save_dir / "validation_image_ere_vs_mre_px_mm_no_outliers.png",
+        "Validation: Image-level ERE vs MRE",
+        remove_outliers=True,
+    )
+    plot_paired_image_ere_vs_mre(
         test_image_rows,
         save_dir / "testing_image_ere_vs_mre_px_mm.png",
         "Testing: Image-level ERE vs MRE",
+    )
+    plot_paired_image_ere_vs_mre(
+        test_image_rows,
+        save_dir / "testing_image_ere_vs_mre_px_mm_no_outliers.png",
+        "Testing: Image-level ERE vs MRE",
+        remove_outliers=True,
     )
     plot_binned_ere_vs_true_radial_error(
         val_binned_rows,
@@ -706,9 +833,21 @@ def main():
         f"Validation: Binned ERE vs True Radial Error (bin={args.bin_size})",
     )
     plot_binned_ere_vs_true_radial_error(
+        val_binned_rows,
+        save_dir / "validation_binned_ere_vs_true_radial_error_no_outliers.png",
+        f"Validation: Binned ERE vs True Radial Error (bin={args.bin_size})",
+        remove_outliers=True,
+    )
+    plot_binned_ere_vs_true_radial_error(
         test_binned_rows,
         save_dir / "testing_binned_ere_vs_true_radial_error.png",
         f"Testing: Binned ERE vs True Radial Error (bin={args.bin_size})",
+    )
+    plot_binned_ere_vs_true_radial_error(
+        test_binned_rows,
+        save_dir / "testing_binned_ere_vs_true_radial_error_no_outliers.png",
+        f"Testing: Binned ERE vs True Radial Error (bin={args.bin_size})",
+        remove_outliers=True,
     )
     plot_multibin_paired_ere(
         val_landmark_rows,
@@ -717,10 +856,24 @@ def main():
         bin_sizes,
     )
     plot_multibin_paired_ere(
+        val_landmark_rows,
+        save_dir / "validation_binned_ere_vs_true_radial_error_px_mm_multibin_no_outliers.png",
+        "Validation: Binned ERE vs True Radial Error",
+        bin_sizes,
+        remove_outliers=True,
+    )
+    plot_multibin_paired_ere(
         test_landmark_rows,
         save_dir / "testing_binned_ere_vs_true_radial_error_px_mm_multibin.png",
         "Testing: Binned ERE vs True Radial Error",
         bin_sizes,
+    )
+    plot_multibin_paired_ere(
+        test_landmark_rows,
+        save_dir / "testing_binned_ere_vs_true_radial_error_px_mm_multibin_no_outliers.png",
+        "Testing: Binned ERE vs True Radial Error",
+        bin_sizes,
+        remove_outliers=True,
     )
     plot_perlandmark_paired_ere(
         val_landmark_rows,
@@ -728,9 +881,21 @@ def main():
         "Validation: Per-landmark ERE vs True Radial Error",
     )
     plot_perlandmark_paired_ere(
+        val_landmark_rows,
+        save_dir / "validation_binned_ere_vs_true_radial_error_px_mm_perlandmark_no_outliers.png",
+        "Validation: Per-landmark ERE vs True Radial Error",
+        remove_outliers=True,
+    )
+    plot_perlandmark_paired_ere(
         test_landmark_rows,
         save_dir / "testing_binned_ere_vs_true_radial_error_px_mm_perlandmark.png",
         "Testing: Per-landmark ERE vs True Radial Error",
+    )
+    plot_perlandmark_paired_ere(
+        test_landmark_rows,
+        save_dir / "testing_binned_ere_vs_true_radial_error_px_mm_perlandmark_no_outliers.png",
+        "Testing: Per-landmark ERE vs True Radial Error",
+        remove_outliers=True,
     )
 
     logger.info(

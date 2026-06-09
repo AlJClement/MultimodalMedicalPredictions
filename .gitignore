@@ -16,3 +16,4 @@ output_denoise/
 output*
 wandb/
 ere_truerad/
+ere_truerad_mmlin/
