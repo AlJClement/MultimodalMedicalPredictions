@@ -84,6 +84,9 @@ TRAIN:
   L2_REG: False
   GAMMA: 0.0
   USE_AMP: False
+  TEMPERATURE_SCALING_EPOCHS: 30
+  TEMPERATURE_SCALING_LR: 0.001
+  TEMPERATURE_SCALING_N_BINS: 10
   COMBINE_GRAF_FHC: True #this will just combine the results of the output 
   # GRAD_ACCUMULATION_STEPS: 1
   # GRAD_ACCUMULATION_STEPS_REDUCE: 50 ## unused when accumulation is disabled

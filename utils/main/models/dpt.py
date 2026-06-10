@@ -35,6 +35,7 @@ class dpt(nn.Module):
         self.latest_channel_raw_inputs = None
         self.latest_input_pre_multimodal = None
         self.latest_input_post_multimodal = None
+        self.temperatures = nn.Parameter(torch.ones(self.out_channels))
 
         self.meta_channel_attention = None
         self.meta_channel_attention_scale = None
@@ -274,7 +275,7 @@ class dpt(nn.Module):
         x = torch.softmax(x, dim=-1)
         return x.reshape(b, c, h, w)
 
-    def forward(self, im, meta=None):
+    def _forward_impl(self, im, meta=None):
         self.latest_channel_attention = None
         self.latest_channel_raw_inputs = None
         self.latest_input_pre_multimodal = None
@@ -303,4 +304,20 @@ class dpt(nn.Module):
         if x.shape[-2:] != im.shape[-2:]:
             x = F.interpolate(x, size=im.shape[-2:], mode="bilinear", align_corners=False)
 
-        return self.two_d_softmax(x)
+        return x
+
+    def forward_logits(self, im, meta=None):
+        return self._forward_impl(im, meta)
+
+    def scale(self, logits):
+        temperature = F.softplus(self.temperatures).view(1, -1, 1, 1) + 1e-6
+        return logits / temperature
+
+    def forward(self, im, meta=None):
+        logits = self.forward_logits(im, meta)
+        return self.two_d_softmax(logits)
+
+    def forward_temperature_scaled(self, im, meta=None):
+        logits = self.forward_logits(im, meta)
+        scaled_logits = self.scale(logits)
+        return self.two_d_softmax(scaled_logits)

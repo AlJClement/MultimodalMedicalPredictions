@@ -134,7 +134,16 @@ def main():
         sd = ckpt.get("state_dict", ckpt.get("model_state_dict"))
     else:
         sd = ckpt
-    net.load_state_dict(sd)
+    incompatible = net.load_state_dict(sd, strict=False)
+    missing_keys = list(getattr(incompatible, "missing_keys", []))
+    unexpected_keys = list(getattr(incompatible, "unexpected_keys", []))
+    if "temperatures" in missing_keys:
+        logger.info("Checkpoint has no saved temperature parameter; initializing a fresh one for calibration.")
+        missing_keys = [key for key in missing_keys if key != "temperatures"]
+    if missing_keys:
+        logger.warning("Missing checkpoint keys: %s", missing_keys)
+    if unexpected_keys:
+        logger.warning("Unexpected checkpoint keys: %s", unexpected_keys)
     net.to(device)
     net.eval()
     logger.info("Model loaded successfully.")

@@ -59,6 +59,25 @@ class TemperatureScaling(nn.Module):
         # History stored after fit or fit_with_evaluation
         self.history: Dict[str, list] = {"train_nll": [], "val_nll": [], "temperature": [], "ece": []}
 
+    def _forward_logits(self, inputs: torch.Tensor, meta: Optional[torch.Tensor] = None) -> torch.Tensor:
+        if hasattr(self.model, "forward_logits") and callable(getattr(self.model, "forward_logits")):
+            return self.model.forward_logits(inputs, meta)
+        if meta is not None:
+            return self.model(inputs, meta)
+        return self.model(inputs)
+
+    @staticmethod
+    def _extract_batch_tensors(batch, device: torch.device):
+        if not isinstance(batch, (list, tuple)) or len(batch) < 2:
+            raise RuntimeError("Expected loader batch shaped like (input, target, ...).")
+
+        inputs = batch[0].to(device)
+        targets = batch[1].to(device)
+        meta = None
+        if len(batch) >= 4 and torch.is_tensor(batch[3]):
+            meta = batch[3].to(device)
+        return inputs, targets, meta
+
     # ----------------------
     # Low-level helpers
     # ----------------------
@@ -235,24 +254,10 @@ class TemperatureScaling(nn.Module):
             total_loss = 0.0
             count = 0
             for batch in fine_tune_loader:
-                # robustly pull inputs and targets (assume second element is channels/targets)
-                if isinstance(batch, (list, tuple)) and len(batch) >= 2:
-                    inputs = batch[0].to(device)
-                    targets = batch[1].to(device)
-                else:
-                    raise RuntimeError("fine_tune_loader batch format not recognized; expected (input, target, ...).")
+                inputs, targets, meta = self._extract_batch_tensors(batch, device)
 
                 with torch.no_grad():
-                    # flexible forward signature handling
-                    try:
-                        out = self.model(inputs)
-                    except TypeError:
-                        # maybe model expects (inputs, meta)
-                        if len(batch) >= 3:
-                            meta = batch[2]
-                            out = self.model(inputs, meta)
-                        else:
-                            raise
+                    out = self._forward_logits(inputs, meta)
 
                 scaled = self.scale_logits(out)
                 loss = self.heatmap_nll(scaled, targets)
@@ -539,18 +544,10 @@ class TemperatureScaling(nn.Module):
             # --- train temperature on train_loader ---
             train_losses = []
             for batch in train_loader:
-                if isinstance(batch, (list, tuple)) and len(batch) >= 2:
-                    inputs = batch[0].to(device)
-                    targets = batch[1].to(device)
-                else:
-                    raise RuntimeError("train_loader batch format not recognized; expected (input, target, ...).")
+                inputs, targets, meta = self._extract_batch_tensors(batch, device)
 
                 with torch.no_grad():
-                    try:
-                        out = self.model(inputs)
-                    except TypeError:
-                        meta = batch[2] if len(batch) >= 3 else None
-                        out = self.model(inputs, meta) if meta is not None else self.model(inputs)
+                    out = self._forward_logits(inputs, meta)
 
                 # apply temperature (model.scale preferred)
                 if hasattr(self.model, "scale") and callable(getattr(self.model, "scale")):
@@ -589,19 +586,10 @@ class TemperatureScaling(nn.Module):
                 for batch_idx, batch in enumerate(val_loader):
                     #print(f"Validation batch: {batch_idx}")
 
-                    if isinstance(batch, (list, tuple)) and len(batch) >= 2:
-                        inputs = batch[0].to(device, non_blocking=True)
-                        targets = batch[1].to(device, non_blocking=True)  # assume heatmaps
-                        # if you have metadata with coords, use it instead of argmax on targets
-                        meta = batch[3] if len(batch) > 3 else None
-                    else:
-                        raise RuntimeError("val_loader batch format not recognized; expected (input, target, ...).")
+                    inputs, targets, meta = self._extract_batch_tensors(batch, device)
 
                     # forward
-                    try:
-                        out = self.model(inputs) if meta is None else self.model(inputs, meta)
-                    except TypeError:
-                        out = self.model(inputs)
+                    out = self._forward_logits(inputs, meta)
 
                     # apply temperature (reuse same code)
                     if hasattr(self.model, "scale") and callable(getattr(self.model, "scale")):

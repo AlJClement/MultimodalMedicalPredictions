@@ -29,6 +29,7 @@ from preprocessing.dataloader import dataloader
 from main.training import training
 from main.evaluation_helper import evaluation_helper
 from main.comparison_metrics.landmark_metrics import landmark_metrics
+from main.temperature_scaling import TemperatureScaling as TemperatureScaler
 
 
 def parse_args():
@@ -56,6 +57,25 @@ def parse_args():
         type=int,
         default=36,
         help="Number of landmarks per ERE bin when building the binned correlation plot.",
+    )
+    parser.add_argument(
+        "--fit_temperature",
+        action="store_true",
+        help="Fit temperature scaling on the validation split before computing ERE metrics.",
+    )
+    parser.add_argument(
+        "--temperature_epochs",
+        required=False,
+        type=int,
+        default=30,
+        help="Number of epochs for temperature scaling when --fit_temperature is enabled.",
+    )
+    parser.add_argument(
+        "--temperature_lr",
+        required=False,
+        type=float,
+        default=1e-3,
+        help="Learning rate for temperature scaling when --fit_temperature is enabled.",
     )
     return parser.parse_args()
 
@@ -95,6 +115,27 @@ def load_checkpoint_path(cfg, explicit_model_path: str | None) -> str:
             "No checkpoint found. Provide --model_path or ensure a .pth/.pt exists in the output folder."
         )
     return checkpoint_path
+
+
+def load_model_state(model, checkpoint_path: str, device, logger) -> None:
+    ckpt = torch.load(checkpoint_path, map_location=device)
+    if isinstance(ckpt, dict) and ("state_dict" in ckpt or "model_state_dict" in ckpt):
+        state_dict = ckpt.get("state_dict", ckpt.get("model_state_dict"))
+    else:
+        state_dict = ckpt
+
+    incompatible = model.load_state_dict(state_dict, strict=False)
+    missing_keys = list(getattr(incompatible, "missing_keys", []))
+    unexpected_keys = list(getattr(incompatible, "unexpected_keys", []))
+    ignored_missing = [key for key in missing_keys if key == "temperatures"]
+    remaining_missing = [key for key in missing_keys if key != "temperatures"]
+
+    if ignored_missing:
+        logger.info("Checkpoint has no saved temperature parameter; using default/unfitted temperatures.")
+    if remaining_missing:
+        logger.warning("Missing checkpoint keys: %s", remaining_missing)
+    if unexpected_keys:
+        logger.warning("Unexpected checkpoint keys: %s", unexpected_keys)
 
 
 def resize_backto_original(cfg, pred_map, target_map, orig_size):
@@ -179,7 +220,10 @@ def collect_split_metrics(cfg, model, loader, device, logger, split_name: str):
         target = target.to(device)
         meta = meta.to(device)
 
-        pred = model(data, meta)
+        if hasattr(model, "temperatures") and hasattr(model, "forward_temperature_scaled"):
+            pred = model.forward_temperature_scaled(data, meta)
+        else:
+            pred = model(data, meta)
         batch_size = data.shape[0]
 
         for sample_idx in range(batch_size):
@@ -667,15 +711,34 @@ def main():
 
     checkpoint_path = load_checkpoint_path(cfg, args.model_path)
     logger.info("Loading model from: %s", checkpoint_path)
-    ckpt = torch.load(checkpoint_path, map_location=device)
-    if isinstance(ckpt, dict) and ("state_dict" in ckpt or "model_state_dict" in ckpt):
-        state_dict = ckpt.get("state_dict", ckpt.get("model_state_dict"))
-    else:
-        state_dict = ckpt
-    model.load_state_dict(state_dict)
+    load_model_state(model, checkpoint_path, device, logger)
     model.to(device)
     model.eval()
     logger.info("Model loaded successfully.")
+
+    if args.fit_temperature:
+        temp_save_dir = Path(cfg.OUTPUT_PATH) / "temperature_scaled"
+        temp_save_dir.mkdir(parents=True, exist_ok=True)
+        scaler = TemperatureScaler(cfg, model, device=device)
+        logger.info(
+            "Fitting temperature scaling on validation split for %d epochs (lr=%s).",
+            args.temperature_epochs,
+            args.temperature_lr,
+        )
+        result = scaler.fit_with_evaluation(
+            train_loader=val_loader,
+            val_loader=val_loader,
+            save_dir=str(temp_save_dir),
+            n_epochs=args.temperature_epochs,
+            lr=args.temperature_lr,
+            weight_decay=0.01,
+            tol_px=1.5,
+            n_bins=int(getattr(cfg.TRAIN, "TEMPERATURE_SCALING_N_BINS", 10)),
+            device=device,
+            logger=logger,
+            csv_name="temperature_scaling_history.csv",
+        )
+        logger.info("Temperature scaling finished. Final temperature: %s", result.get("final_temp"))
 
     save_dir = Path(cfg.OUTPUT_PATH) / "ere_truerad"
     save_dir.mkdir(parents=True, exist_ok=True)
