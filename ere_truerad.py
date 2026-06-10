@@ -340,6 +340,52 @@ def save_landmark_csv(rows, out_path: Path):
         writer.writerows(rows)
 
 
+def build_landmark_gap_rows(rows):
+    gap_rows = []
+    for row in rows:
+        gap_px = float(row["true_radial_error_px"]) - float(row["ere"])
+        gap_mm = float(row["true_radial_error_mm"]) - float(row["ere_mm"])
+        ratio_px = float("inf") if float(row["ere"]) == 0.0 else float(row["true_radial_error_px"]) / float(row["ere"])
+        ratio_mm = float("inf") if float(row["ere_mm"]) == 0.0 else float(row["true_radial_error_mm"]) / float(row["ere_mm"])
+        gap_rows.append(
+            {
+                "split": row["split"],
+                "id": row["id"],
+                "landmark_index": row["landmark_index"],
+                "ere": float(row["ere"]),
+                "ere_mm": float(row["ere_mm"]),
+                "true_radial_error_px": float(row["true_radial_error_px"]),
+                "true_radial_error_mm": float(row["true_radial_error_mm"]),
+                "gap_px": gap_px,
+                "gap_mm": gap_mm,
+                "ratio_px": ratio_px,
+                "ratio_mm": ratio_mm,
+            }
+        )
+    return gap_rows
+
+
+def save_landmark_gap_csv(rows, out_path: Path):
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = [
+        "split",
+        "id",
+        "landmark_index",
+        "ere",
+        "ere_mm",
+        "true_radial_error_px",
+        "true_radial_error_mm",
+        "gap_px",
+        "gap_mm",
+        "ratio_px",
+        "ratio_mm",
+    ]
+    with out_path.open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def build_binned_landmark_rows(rows, bin_size: int, radial_error_key: str, ere_key: str = "ere"):
     if bin_size <= 0:
         raise ValueError("bin_size must be a positive integer.")
@@ -780,6 +826,17 @@ def main():
         save_dir / "all_landmark_ere_true_radial_error.csv",
     )
 
+    val_gap_rows = sorted(build_landmark_gap_rows(val_landmark_rows), key=lambda row: row["gap_px"], reverse=True)
+    test_gap_rows = sorted(build_landmark_gap_rows(test_landmark_rows), key=lambda row: row["gap_px"], reverse=True)
+    all_gap_rows = sorted(build_landmark_gap_rows(val_landmark_rows + test_landmark_rows), key=lambda row: row["gap_px"], reverse=True)
+
+    save_landmark_gap_csv(val_gap_rows, save_dir / "validation_landmark_gap_sorted.csv")
+    save_landmark_gap_csv(test_gap_rows, save_dir / "testing_landmark_gap_sorted.csv")
+    save_landmark_gap_csv(all_gap_rows, save_dir / "all_landmark_gap_sorted.csv")
+    save_landmark_gap_csv(val_gap_rows[:20], save_dir / "validation_landmark_gap_top20.csv")
+    save_landmark_gap_csv(test_gap_rows[:20], save_dir / "testing_landmark_gap_top20.csv")
+    save_landmark_gap_csv(all_gap_rows[:20], save_dir / "all_landmark_gap_top20.csv")
+
     bin_sizes = get_bin_sizes(args.bin_size)
     val_binned_rows = build_binned_landmark_rows(val_landmark_rows, args.bin_size, "true_radial_error_px")
     test_binned_rows = build_binned_landmark_rows(test_landmark_rows, args.bin_size, "true_radial_error_px")
@@ -999,6 +1056,15 @@ def main():
         val_landmark_corr["r"],
         val_landmark_corr["n"],
     )
+    if val_gap_rows:
+        logger.info(
+            "Largest validation gap: id=%s landmark=%s gap_px=%.4f true_radial_error_px=%.4f ere=%.4f",
+            val_gap_rows[0]["id"],
+            val_gap_rows[0]["landmark_index"],
+            val_gap_rows[0]["gap_px"],
+            val_gap_rows[0]["true_radial_error_px"],
+            val_gap_rows[0]["ere"],
+        )
     logger.info(
         "Validation binned correlation built from %d landmarks into %d bins of up to %d landmarks.",
         len(val_landmark_rows),
@@ -1017,6 +1083,15 @@ def main():
         test_landmark_corr["r"],
         test_landmark_corr["n"],
     )
+    if test_gap_rows:
+        logger.info(
+            "Largest testing gap: id=%s landmark=%s gap_px=%.4f true_radial_error_px=%.4f ere=%.4f",
+            test_gap_rows[0]["id"],
+            test_gap_rows[0]["landmark_index"],
+            test_gap_rows[0]["gap_px"],
+            test_gap_rows[0]["true_radial_error_px"],
+            test_gap_rows[0]["ere"],
+        )
     logger.info(
         "Testing binned correlation built from %d landmarks into %d bins of up to %d landmarks.",
         len(test_landmark_rows),
