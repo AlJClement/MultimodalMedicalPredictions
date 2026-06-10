@@ -77,6 +77,14 @@ def parse_args():
         default=1e-3,
         help="Learning rate for temperature scaling when --fit_temperature is enabled.",
     )
+    parser.add_argument(
+        "--ece_curve_mode",
+        required=False,
+        type=str,
+        default="confidence_accuracy",
+        choices=("confidence_accuracy", "ere_radial_error"),
+        help="Calibration curve used during temperature scaling.",
+    )
     return parser.parse_args()
 
 
@@ -737,6 +745,7 @@ def main():
             device=device,
             logger=logger,
             csv_name="temperature_scaling_history.csv",
+            curve_mode=args.ece_curve_mode,
         )
         logger.info("Temperature scaling finished. Final temperature: %s", result.get("final_temp"))
 

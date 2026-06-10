@@ -38,6 +38,13 @@ def parse_args():
                         type=float,
                         default=None)
 
+    parser.add_argument('--ece_curve_mode',
+                        help='Calibration curve used during temperature scaling.',
+                        required=False,
+                        type=str,
+                        choices=('confidence_accuracy', 'ere_radial_error'),
+                        default='confidence_accuracy')
+
     args = parser.parse_args()
     return args
 
@@ -168,7 +175,8 @@ def main():
             n_bins=int(getattr(cfg.TRAIN, "TEMPERATURE_SCALING_N_BINS", 10)),
             device=device,
             logger=logger,
-            csv_name="temperature_scaling_history.csv"
+            csv_name="temperature_scaling_history.csv",
+            curve_mode=args.ece_curve_mode,
         )
 
         final_T = result.get("final_temp", None)

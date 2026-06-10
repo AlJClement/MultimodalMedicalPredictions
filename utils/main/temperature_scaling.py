@@ -137,8 +137,30 @@ class TemperatureScaling(nn.Module):
         loss = nll.mean()
         return loss
     
+    @staticmethod
+    def _weighted_distance_between_curves(x_values, y_values, bins):
+        count_for_each_bin, _ = np.histogram(x_values, bins=bins)
+        sum_x, _, _ = stats.binned_statistic(x_values, x_values, statistic="sum", bins=bins)
+        sum_y, _, _ = stats.binned_statistic(x_values, y_values, statistic="sum", bins=bins)
+
+        avg_x = np.zeros(len(bins) - 1, dtype=float)
+        avg_y = np.zeros(len(bins) - 1, dtype=float)
+        mask = count_for_each_bin > 0
+        if np.any(mask):
+            avg_x[mask] = sum_x[mask] / count_for_each_bin[mask].astype(float)
+            avg_y[mask] = sum_y[mask] / count_for_each_bin[mask].astype(float)
+
+        n = float(np.sum(count_for_each_bin))
+        if n <= 0.0:
+            curve_error = float("nan")
+        else:
+            curve_error = float(np.sum((count_for_each_bin / n) * np.abs(avg_y - avg_x)))
+
+        return curve_error, avg_x, avg_y, count_for_each_bin
+
     def reliability_diagram(self, all_radial_errors, all_mode_probabilities, save_path, tol,
-                            n_of_bins=20, x_max=0.2, do_not_save=False):
+                            n_of_bins=20, x_max=0.2, do_not_save=False,
+                            curve_mode: str = "confidence_accuracy"):
         """
         - Accuracy: blue
         - Confidence bars: lime (alpha=0.5)
@@ -146,47 +168,59 @@ class TemperatureScaling(nn.Module):
         (ece, avg_conf_for_each_bin, avg_acc_for_each_bin, count_for_each_bin)
         """
         # ensure inputs are numpy arrays
-        all_mode_probabilities = np.asarray(all_mode_probabilities).ravel()
-        all_radial_errors = np.asarray(all_radial_errors).ravel()
-        x_min, x_max = min(all_mode_probabilities), max(all_mode_probabilities)
+        all_mode_probabilities = np.asarray(all_mode_probabilities, dtype=float).ravel()
+        all_radial_errors = np.asarray(all_radial_errors, dtype=float).ravel()
+        finite_mask = np.isfinite(all_mode_probabilities) & np.isfinite(all_radial_errors)
+        all_mode_probabilities = all_mode_probabilities[finite_mask]
+        all_radial_errors = all_radial_errors[finite_mask]
 
-        # bins fixed on [0,1] (confidence lies in [0,1]).
-        bins = np.linspace(0.0, x_max, n_of_bins + 1)
-        widths = bins[1:] - bins[:-1]
-        # tol=3
+        if all_mode_probabilities.size == 0:
+            raise ValueError("No finite values available for calibration plotting.")
 
-        # determine correctness per sample using area-based tolerance
-        radius = math.sqrt((tol**2) / math.pi)
-        correct_predictions = (all_radial_errors < radius)
+        x_min = float(np.min(all_mode_probabilities))
+        x_max = float(np.max(all_mode_probabilities))
+        if np.isclose(x_min, x_max):
+            x_max = x_min + 1e-6
 
-        # counts and sum of confidences per bin (safe even if some bins empty)
-        count_for_each_bin, _ = np.histogram(all_mode_probabilities, bins=bins)
-        total_confidence_for_each_bin, _, _ = stats.binned_statistic(
-            all_mode_probabilities, all_mode_probabilities, 'sum', bins=bins)
-
-        # compute number correct per bin using digitize (1..len(bins))
-        bin_indices = np.digitize(all_mode_probabilities, bins)
-        no_of_correct_preds = np.zeros(len(bins) - 1, dtype=float)
-        for idx, correct in zip(bin_indices, correct_predictions):
-            if 1 <= idx <= len(bins) - 1:
-                no_of_correct_preds[idx - 1] += float(correct)
-
-        # avoid division by zero: only divide where count > 0
-        avg_conf_for_each_bin = np.zeros(len(bins) - 1, dtype=float)
-        avg_acc_for_each_bin = np.zeros(len(bins) - 1, dtype=float)
-        mask = count_for_each_bin > 0
-        if np.any(mask):
-            avg_conf_for_each_bin[mask] = (total_confidence_for_each_bin[mask] /
-                                           count_for_each_bin[mask].astype(float))
-            avg_acc_for_each_bin[mask] = (no_of_correct_preds[mask] /
-                                          count_for_each_bin[mask].astype(float))
-
-        # compute ECE in percentage; if no samples, set nan
-        n = float(np.sum(count_for_each_bin))
-        if n <= 0.0:
-            ece = float("nan")
+        if curve_mode == "confidence_accuracy":
+            bins = np.linspace(0.0, x_max, n_of_bins + 1)
+            radius = math.sqrt((tol**2) / math.pi)
+            correct_predictions = (all_radial_errors < radius).astype(float)
+            ece, avg_conf_for_each_bin, avg_acc_for_each_bin, count_for_each_bin = (
+                self._weighted_distance_between_curves(
+                    all_mode_probabilities,
+                    correct_predictions,
+                    bins,
+                )
+            )
+            ece *= 100.0
+            x_label = "Confidence"
+            y_label = "Accuracy"
+            curve_a = avg_conf_for_each_bin
+            curve_b = avg_acc_for_each_bin
+            curve_a_label = "Confidence"
+            curve_b_label = "Accuracy"
+            score_label = "ECE"
+            y_max = max(curve_b) if curve_b.size else 1.0
         else:
-            ece = float(np.sum((count_for_each_bin / n) * np.abs(avg_acc_for_each_bin - avg_conf_for_each_bin)) * 100.0)
+            bins = np.linspace(x_min, x_max, n_of_bins + 1)
+            ece, avg_conf_for_each_bin, avg_acc_for_each_bin, count_for_each_bin = (
+                self._weighted_distance_between_curves(
+                    all_mode_probabilities,
+                    all_radial_errors,
+                    bins,
+                )
+            )
+            x_label = "ERE"
+            y_label = "True Radial Error"
+            curve_a = avg_conf_for_each_bin
+            curve_b = avg_acc_for_each_bin
+            curve_a_label = "Average ERE"
+            curve_b_label = "Average True Radial Error"
+            score_label = "Curve Error"
+            y_max = max(np.max(curve_a), np.max(curve_b)) if curve_a.size else 1.0
+
+        widths = bins[1:] - bins[:-1]
 
         # -------- plotting (preserve your original style/colors) --------
         plt.rcParams["figure.figsize"] = (6, 6)
@@ -194,26 +228,20 @@ class TemperatureScaling(nn.Module):
         ax.grid(zorder=0)
 
         plt.subplots_adjust(left=0.15)
-        plt.xlabel('Confidence', fontsize=14)
-        plt.ylabel('Accuracy', fontsize=14)
+        plt.xlabel(x_label, fontsize=14)
+        plt.ylabel(y_label, fontsize=14)
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
         plt.grid(zorder=0)
-        # plt.xlim(0.0, plot_xmax)
-        # plt.ylim(0.0, 1.0)  # accuracy/confidence are in [0,1]
         plt.xlim(x_min,x_max)
-        y_max = max(avg_acc_for_each_bin)
-        plt.ylim(0,y_max)
-        # Accuracy bars (blue)
-        ax.bar(bins[:-1], avg_acc_for_each_bin, align='edge', width=widths,
-               color='blue', edgecolor='black', label='Accuracy', zorder=3)
-
-        # Confidence bars (lime, semi-transparent)
-        ax.bar(bins[:-1], avg_conf_for_each_bin, align='edge', width=widths,
-               color='lime', edgecolor='black', alpha=0.5, label='Gap', zorder=3)
+        plt.ylim(0, y_max if np.isfinite(y_max) and y_max > 0 else 1.0)
+        ax.bar(bins[:-1], curve_b, align='edge', width=widths,
+               color='blue', edgecolor='black', label=curve_b_label, zorder=3)
+        ax.bar(bins[:-1], curve_a, align='edge', width=widths,
+               color='lime', edgecolor='black', alpha=0.5, label=curve_a_label, zorder=3)
 
         ax.legend(fontsize=12, loc="upper left", prop={'size': 12})
-        ax.text(0.71, 0.075, f'ECE={ece:.2f}', backgroundcolor='white',
+        ax.text(0.60, 0.075, f'{score_label}={ece:.2f}', backgroundcolor='white',
                 fontsize='large', transform=ax.transAxes)
 
         if not do_not_save:
@@ -488,7 +516,8 @@ class TemperatureScaling(nn.Module):
                             n_bins: int = 20,
                             device: Optional[torch.device] = None,
                             logger: Optional[Any] = None,
-                            csv_name: str = "temperature_scaling_history.csv") -> Dict[str, Any]:
+                            csv_name: str = "temperature_scaling_history.csv",
+                            curve_mode: str = "confidence_accuracy") -> Dict[str, Any]:
         """
         Fit temperature using train_loader; at each epoch evaluate on val_loader via evaluation_helper
         to compute radial errors & mode probabilities. 
@@ -573,6 +602,7 @@ class TemperatureScaling(nn.Module):
             val_losses = []
             radial_all = []
             mode_prob_all = []
+            ere_all = []
 
             with torch.no_grad():
                 # precompute things once
@@ -582,6 +612,7 @@ class TemperatureScaling(nn.Module):
                 val_losses = []
                 radial_all = []
                 mode_prob_all = []
+                ere_all = []
 
                 for batch_idx, batch in enumerate(val_loader):
                     #print(f"Validation batch: {batch_idx}")
@@ -659,9 +690,18 @@ class TemperatureScaling(nn.Module):
                     dists = torch.norm(diffs, dim=-1)        # (B, C) distances in pixel units (heatmap resolution)
                     # If your pixel scaling differs, multiply by pixel size here, e.g. dists *= pix_size[0]
 
+                    thresholded = evaluation_helper().get_thresholded_heatmap(probs_t, pred_coords)
+                    yy = torch.arange(H, device=device, dtype=torch.float32).view(1, 1, H, 1)
+                    xx = torch.arange(W, device=device, dtype=torch.float32).view(1, 1, 1, W)
+                    pred_x = pred_coords[..., 0].view(B, C, 1, 1)
+                    pred_y = pred_coords[..., 1].view(B, C, 1, 1)
+                    distances = torch.sqrt((xx - pred_x) ** 2 + (yy - pred_y) ** 2)
+                    ere_vals = torch.sum(thresholded * distances, dim=(2, 3))
+
                     # append results (move small tensors to CPU once)
                     radial_all.append(dists.cpu().numpy())     # keep per-batch arrays, small-ish
                     mode_prob_all.append(mode_vals.cpu().numpy())
+                    ere_all.append(ere_vals.cpu().numpy())
 
                 # after loop: concatenate
                 radial_all = np.concatenate(radial_all, axis=0)      # shape (N_samples, C)
@@ -680,8 +720,13 @@ class TemperatureScaling(nn.Module):
                 # rest of your code: convert to correctness, plotting, etc.
                 
                 plot_path = os.path.join(save_dir, f"reliability_epoch_{epoch+1}.png")
+                curve_inputs = mode_valid
+                if curve_mode == "ere_radial_error":
+                    ere_flat = np.concatenate(ere_all, axis=0).ravel()
+                    ere_valid = ere_flat[valid_mask]
+                    curve_inputs = ere_valid
                 ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram(
-                    radial_valid, mode_valid, plot_path, tol_px ,n_bins
+                    radial_valid, curve_inputs, plot_path, tol_px ,n_bins, curve_mode=curve_mode
                 )
 
             # --- After iterating all validation batches: flatten, sanitize, compute ECE once ---
@@ -690,13 +735,16 @@ class TemperatureScaling(nn.Module):
             if len(mode_prob_all) > 0:
                 mode_flat = np.concatenate([np.ravel(m) for m in mode_prob_all])
                 radial_flat = np.concatenate([np.ravel(r) for r in radial_all])
+                ere_flat = np.concatenate([np.ravel(e) for e in ere_all]) if len(ere_all) > 0 else np.array([])
             else:
                 mode_flat = np.array([])
                 radial_flat = np.array([])
+                ere_flat = np.array([])
 
             # sanitize: remove NaN/inf and ensure same length
-            mask = np.isfinite(mode_flat) & np.isfinite(radial_flat)
-            mode_flat = mode_flat[mask]
+            curve_flat = ere_flat if curve_mode == "ere_radial_error" else mode_flat
+            mask = np.isfinite(curve_flat) & np.isfinite(radial_flat)
+            curve_flat = curve_flat[mask]
             radial_flat = radial_flat[mask]
 
             # quick shape/coverage diagnostics
@@ -705,7 +753,7 @@ class TemperatureScaling(nn.Module):
             # fallback: if no valid pairs, skip ECE
             if N_pairs == 0:
                 ece = float("nan")
-                if logger: logger.warning("No valid (confidence,radial) pairs this epoch; skipping ECE.")
+                if logger: logger.warning("No valid calibration pairs this epoch; skipping ECE.")
             else:
                 # auto-suggest n_bins (reduce if too few samples)
                 def suggest_bins(N_pairs, requested= n_bins, target_per_bin=30, min_per_bin=5):
@@ -722,10 +770,11 @@ class TemperatureScaling(nn.Module):
 
                 # compute ECE + plot once
                 plot_path = os.path.join(save_dir, f"reliability_epoch_{epoch+1}.png")
-                ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram(radial_flat, mode_flat,
+                ece, bin_conf, bin_acc, bin_counts = self.reliability_diagram(radial_flat, curve_flat,
                                                                                plot_path, tol_px,
-                                                                               n_of_bins=chosen_bins, x_max=0.2, do_not_save=False)
-                if logger: logger.info("Saved reliability diagram to %s (ECE=%.4f)", plot_path, ece)
+                                                                               n_of_bins=chosen_bins, x_max=0.2, do_not_save=False,
+                                                                               curve_mode=curve_mode)
+                if logger: logger.info("Saved reliability diagram to %s (%s=%.4f)", plot_path, "ECE" if curve_mode == "confidence_accuracy" else "curve error", ece)
 
                 # Save model if ECE improved
                 if not math.isnan(ece) and ece < best_ece:
