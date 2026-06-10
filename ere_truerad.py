@@ -467,7 +467,7 @@ def save_correlation_summary(rows, out_path: Path):
 
 def get_bin_sizes(default_bin_size: int):
     smaller = max(1, default_bin_size // 2)
-    candidate_sizes = [1, 2, 9, smaller, default_bin_size, default_bin_size * 2]
+    candidate_sizes = [1, 2, 7, 9, smaller, default_bin_size, default_bin_size * 2]
     return sorted({size for size in candidate_sizes if size > 0})
 
 
