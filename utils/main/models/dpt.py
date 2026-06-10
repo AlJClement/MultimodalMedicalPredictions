@@ -31,6 +31,25 @@ class dpt(nn.Module):
 
         self.dpt = smp.DPT(**dpt_kwargs)
         self._configure_dynamic_input_size()
+
+        # Optional FiLM modulation using metadata: project metadata into
+        # per-output-channel scale (gamma) and shift (beta) parameters.
+        # This is a lightweight integration that modulates the final logits
+        # per-channel: x = gamma * x + beta
+        self.use_film = bool(getattr(cfg.MODEL, "USE_FILM", False))
+        if self.use_film:
+            # meta dimensionality expected as sum(cfg.MODEL.META_FEATURES)
+            meta_features = getattr(cfg.MODEL, "META_FEATURES", None)
+            if meta_features is None:
+                raise ValueError("MODEL.USE_FILM=True but MODEL.META_FEATURES not set in config")
+            meta_dim = int(sum(meta_features))
+            film_hidden = int(getattr(cfg.MODEL, "FILM_HIDDEN", 128))
+            # produces 2 * out_channels values (gamma and beta)
+            self.film_mlp = nn.Sequential(
+                nn.Linear(meta_dim, film_hidden),
+                nn.ReLU(inplace=True),
+                nn.Linear(film_hidden, self.out_channels * 2),
+            )
         self.latest_channel_attention = None
         self.latest_channel_raw_inputs = None
         self.latest_input_pre_multimodal = None
@@ -299,6 +318,28 @@ class dpt(nn.Module):
             resized_im = F.interpolate(im, size=target_size, mode="bilinear", align_corners=False)
             self._sync_encoder_device(resized_im.device)
             x = self.dpt(resized_im)
+
+        # Optionally apply FiLM modulation from meta to the logits
+        if getattr(self, "use_film", False) and meta is not None:
+            # reshape / normalize meta to a 2D tensor [B, meta_dim]
+            meta_tensor = self._reshape_meta(meta)
+            if meta_tensor is not None:
+                if meta_tensor.ndim > 2:
+                    meta_tensor = meta_tensor.reshape(meta_tensor.shape[0], -1)
+
+                expected_dim = int(sum(self.meta_feature_widths)) if self.meta_feature_widths else meta_tensor.shape[-1]
+                if meta_tensor.shape[-1] < expected_dim:
+                    pad = meta_tensor.new_zeros((meta_tensor.shape[0], expected_dim - meta_tensor.shape[-1]))
+                    meta_tensor = torch.cat((meta_tensor, pad), dim=-1)
+                elif meta_tensor.shape[-1] > expected_dim:
+                    meta_tensor = meta_tensor[:, :expected_dim]
+
+                gb = self.film_mlp(meta_tensor.float().to(x.device))
+                b, c, h, w = x.shape
+                gb = gb.view(b, 2, c)
+                gamma = gb[:, 0].view(b, c, 1, 1)
+                beta = gb[:, 1].view(b, c, 1, 1)
+                x = gamma * x + beta
 
         # Make sure output matches input spatial size
         if x.shape[-2:] != im.shape[-2:]:
