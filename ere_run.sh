@@ -17,3 +17,18 @@ python ./ere_truerad.py \
   --fit_temperature \
   --temperature_epochs 30 \
   --temperature_lr 0.001
+
+python ./ere_truerad.py \
+  --cfg 'ddh_0.01499_dpt ' \
+  --model_path /data/coml-oxmedis/allie/repos/MultimodalMedicalPredictions/output_ddh_0420_dpt_0.1499/model:1/_model_run:1_idx.pth \
+  --fit_temperature \
+  --temperature_epochs 30 \
+  --temperature_lr 0.001
+
+python ./ere_truerad.py \
+  --cfg 'ddh_0.01499_dpt ' \
+  --model_path /data/coml-oxmedis/allie/repos/MultimodalMedicalPredictions/output_ddh_0420_dpt_0.1499/model:1/_model_run:1_idx.pth \
+  --fit_temperature \
+  --temperature_epochs 30 \
+  --temperature_lr 0.001 \
+  --ece_curve_mode ere_radial_error

@@ -704,6 +704,12 @@ def main():
     logger.info(cfg)
     logger.info("")
 
+    if args.ece_curve_mode != "confidence_accuracy" and not args.fit_temperature:
+        logger.warning(
+            "--ece_curve_mode=%s has no effect unless --fit_temperature is also enabled.",
+            args.ece_curve_mode,
+        )
+
     batch_size = args.batch_size or cfg.TRAIN.BATCH_SIZE
 
     val_dataset, val_loader = build_loader(cfg, "validation", batch_size)
@@ -729,9 +735,10 @@ def main():
         temp_save_dir.mkdir(parents=True, exist_ok=True)
         scaler = TemperatureScaler(cfg, model, device=device)
         logger.info(
-            "Fitting temperature scaling on validation split for %d epochs (lr=%s).",
+            "Fitting temperature scaling on validation split for %d epochs (lr=%s, curve_mode=%s).",
             args.temperature_epochs,
             args.temperature_lr,
+            args.ece_curve_mode,
         )
         result = scaler.fit_with_evaluation(
             train_loader=val_loader,

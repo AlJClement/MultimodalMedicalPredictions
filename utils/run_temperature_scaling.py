@@ -85,6 +85,7 @@ def main():
     logger.info("-----------Configuration-----------")
     logger.info(cfg)
     logger.info("")
+    logger.info("Temperature scaling curve mode: %s", args.ece_curve_mode)
 
     # Build validation dataset (we'll split this into calibration train/val halves)
     full_val_dataset = dataloader(cfg, 'validation')
