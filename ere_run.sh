@@ -31,4 +31,5 @@ python ./ere_truerad.py \
   --fit_temperature \
   --temperature_epochs 30 \
   --temperature_lr 0.001 \
+  --temperature_bins 3 \
   --ece_curve_mode ere_radial_error

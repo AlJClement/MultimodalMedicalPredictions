@@ -196,6 +196,7 @@ class TemperatureScaling(nn.Module):
             ece *= 100.0
             x_label = "Confidence"
             y_label = "Accuracy"
+            title = "Calibration: Confidence vs Accuracy"
             curve_a = avg_conf_for_each_bin
             curve_b = avg_acc_for_each_bin
             curve_a_label = "Confidence"
@@ -211,12 +212,13 @@ class TemperatureScaling(nn.Module):
                     bins,
                 )
             )
-            x_label = "ERE"
-            y_label = "True Radial Error"
+            x_label = "ERE (pixels)"
+            y_label = "True Radial Error (pixels)"
+            title = "Calibration: ERE vs True Radial Error"
             curve_a = avg_conf_for_each_bin
             curve_b = avg_acc_for_each_bin
-            curve_a_label = "Average ERE"
-            curve_b_label = "Average True Radial Error"
+            curve_a_label = "Average ERE (pixels)"
+            curve_b_label = "Average True Radial Error (pixels)"
             score_label = "Curve Error"
             y_max = max(np.max(curve_a), np.max(curve_b)) if curve_a.size else 1.0
 
@@ -235,10 +237,26 @@ class TemperatureScaling(nn.Module):
         plt.grid(zorder=0)
         plt.xlim(x_min,x_max)
         plt.ylim(0, y_max if np.isfinite(y_max) and y_max > 0 else 1.0)
+        plt.title(title, fontsize=14)
         ax.bar(bins[:-1], curve_b, align='edge', width=widths,
                color='blue', edgecolor='black', label=curve_b_label, zorder=3)
         ax.bar(bins[:-1], curve_a, align='edge', width=widths,
                color='lime', edgecolor='black', alpha=0.5, label=curve_a_label, zorder=3)
+
+        for left, width, count, y_a, y_b in zip(bins[:-1], widths, count_for_each_bin, curve_a, curve_b):
+            if count <= 0:
+                continue
+            y_text = max(y_a, y_b)
+            ax.text(
+                left + (width / 2.0),
+                y_text,
+                f"n={int(count)}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                rotation=90,
+                color="black",
+            )
 
         ax.legend(fontsize=12, loc="upper left", prop={'size': 12})
         ax.text(0.60, 0.075, f'{score_label}={ece:.2f}', backgroundcolor='white',

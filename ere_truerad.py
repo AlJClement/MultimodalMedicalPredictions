@@ -85,6 +85,13 @@ def parse_args():
         choices=("confidence_accuracy", "ere_radial_error"),
         help="Calibration curve used during temperature scaling.",
     )
+    parser.add_argument(
+        "--temperature_bins",
+        required=False,
+        type=int,
+        default=None,
+        help="Optional override for the number of bins used in temperature-scaling calibration plots.",
+    )
     return parser.parse_args()
 
 
@@ -748,7 +755,7 @@ def main():
             lr=args.temperature_lr,
             weight_decay=0.01,
             tol_px=1.5,
-            n_bins=int(getattr(cfg.TRAIN, "TEMPERATURE_SCALING_N_BINS", 10)),
+            n_bins=args.temperature_bins or int(getattr(cfg.TRAIN, "TEMPERATURE_SCALING_N_BINS", 10)),
             device=device,
             logger=logger,
             csv_name="temperature_scaling_history.csv",
