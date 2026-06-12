@@ -219,7 +219,7 @@ def _compute_ere_values_mm(eh, pred_map, predicted_points, point_scale):
 
 
 @torch.no_grad()
-def collect_split_metrics(cfg, model, loader, device, logger, split_name: str):
+def collect_split_metrics(cfg, model, loader, device, logger, split_name: str, use_temperature: bool = False):
     eh = evaluation_helper()
     lm = landmark_metrics()
     pixel_size_cpu = torch.tensor(cfg.DATASET.PIXEL_SIZE).to("cpu")
@@ -235,7 +235,7 @@ def collect_split_metrics(cfg, model, loader, device, logger, split_name: str):
         target = target.to(device)
         meta = meta.to(device)
 
-        if hasattr(model, "temperatures") and hasattr(model, "forward_temperature_scaled"):
+        if use_temperature and hasattr(model, "temperatures") and hasattr(model, "forward_temperature_scaled"):
             pred = model.forward_temperature_scaled(data, meta)
         else:
             pred = model(data, meta)
@@ -613,6 +613,48 @@ def plot_binned_ere_vs_true_radial_error(rows, out_path: Path, title: str, remov
     plt.close(fig)
 
 
+def plot_binned_before_after_temperature_pixels(before_rows, after_rows, out_path: Path, title: str):
+    if not before_rows or not after_rows:
+        raise ValueError("Both before_rows and after_rows are required for temperature comparison plotting.")
+
+    before_x = [row["bin_index"] for row in before_rows]
+    after_x = [row["bin_index"] for row in after_rows]
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6), sharey=True)
+
+    axes[0].plot(before_x, [row["ere_mean"] for row in before_rows], marker="o", linewidth=2, label="ERE before")
+    axes[0].plot(
+        before_x,
+        [row["true_radial_error_mean"] for row in before_rows],
+        marker="o",
+        linewidth=2,
+        label="True radial error before",
+    )
+    axes[0].set_title(f"{title}: Before Temperature Scaling")
+    axes[0].set_xlabel("Bin index")
+    axes[0].set_ylabel("Pixels")
+    axes[0].grid(True, linestyle="--", alpha=0.3)
+    axes[0].legend(frameon=False)
+
+    axes[1].plot(after_x, [row["ere_mean"] for row in after_rows], marker="o", linewidth=2, label="ERE after")
+    axes[1].plot(
+        after_x,
+        [row["true_radial_error_mean"] for row in after_rows],
+        marker="o",
+        linewidth=2,
+        label="True radial error after",
+    )
+    axes[1].set_title(f"{title}: After Temperature Scaling")
+    axes[1].set_xlabel("Bin index")
+    axes[1].grid(True, linestyle="--", alpha=0.3)
+    axes[1].legend(frameon=False)
+
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
 def plot_paired_landmark_ere_vs_mre(rows, out_path: Path, title: str, remove_outliers: bool = False):
     fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     _scatter_with_fit(
@@ -783,7 +825,30 @@ def main():
     model.eval()
     logger.info("Model loaded successfully.")
 
+    val_image_rows_before = None
+    val_landmark_rows_before = None
+    test_image_rows_before = None
+    test_landmark_rows_before = None
     if args.fit_temperature:
+        logger.info("Collecting baseline metrics before temperature scaling.")
+        val_image_rows_before, val_landmark_rows_before = collect_split_metrics(
+            cfg,
+            model,
+            val_loader,
+            device,
+            logger,
+            "validation_before_temperature",
+            use_temperature=False,
+        )
+        test_image_rows_before, test_landmark_rows_before = collect_split_metrics(
+            cfg,
+            model,
+            test_loader,
+            device,
+            logger,
+            "testing_before_temperature",
+            use_temperature=False,
+        )
         temp_save_dir = Path(cfg.OUTPUT_PATH) / "temperature_scaled"
         temp_save_dir.mkdir(parents=True, exist_ok=True)
         scaler = TemperatureScaler(cfg, model, device=device)
@@ -812,8 +877,24 @@ def main():
     save_dir = Path(cfg.OUTPUT_PATH) / "ere_truerad"
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    val_image_rows, val_landmark_rows = collect_split_metrics(cfg, model, val_loader, device, logger, "validation")
-    test_image_rows, test_landmark_rows = collect_split_metrics(cfg, model, test_loader, device, logger, "testing")
+    val_image_rows, val_landmark_rows = collect_split_metrics(
+        cfg,
+        model,
+        val_loader,
+        device,
+        logger,
+        "validation",
+        use_temperature=args.fit_temperature,
+    )
+    test_image_rows, test_landmark_rows = collect_split_metrics(
+        cfg,
+        model,
+        test_loader,
+        device,
+        logger,
+        "testing",
+        use_temperature=args.fit_temperature,
+    )
 
     save_metrics_csv(val_image_rows, save_dir / "validation_ere_mre.csv")
     save_metrics_csv(test_image_rows, save_dir / "testing_ere_mre.csv")
@@ -843,6 +924,38 @@ def main():
 
     save_binned_csv(val_binned_rows, save_dir / "validation_binned_ere_true_radial_error.csv")
     save_binned_csv(test_binned_rows, save_dir / "testing_binned_ere_true_radial_error.csv")
+
+    if args.fit_temperature and val_landmark_rows_before and test_landmark_rows_before:
+        val_binned_rows_before = build_binned_landmark_rows(
+            val_landmark_rows_before,
+            args.bin_size,
+            "true_radial_error_px",
+        )
+        test_binned_rows_before = build_binned_landmark_rows(
+            test_landmark_rows_before,
+            args.bin_size,
+            "true_radial_error_px",
+        )
+        save_binned_csv(
+            val_binned_rows_before,
+            save_dir / "validation_binned_ere_true_radial_error_before_temperature.csv",
+        )
+        save_binned_csv(
+            test_binned_rows_before,
+            save_dir / "testing_binned_ere_true_radial_error_before_temperature.csv",
+        )
+        plot_binned_before_after_temperature_pixels(
+            val_binned_rows_before,
+            val_binned_rows,
+            save_dir / "validation_binned_before_after_temperature_pixels.png",
+            f"Validation Binned Categories (bin={args.bin_size})",
+        )
+        plot_binned_before_after_temperature_pixels(
+            test_binned_rows_before,
+            test_binned_rows,
+            save_dir / "testing_binned_before_after_temperature_pixels.png",
+            f"Testing Binned Categories (bin={args.bin_size})",
+        )
 
     val_landmark_corr = compute_correlation_stats(
         [row["ere"] for row in val_landmark_rows],
