@@ -713,31 +713,35 @@ def plot_multibin_paired_ere(
     title: str,
     bin_sizes: list[int],
     remove_outliers: bool = False,
+    before_rows=None,
 ):
     fig, axes = plt.subplots(len(bin_sizes), 2, figsize=(14, 5 * len(bin_sizes)))
     axes = np.atleast_2d(axes)
 
     for row_idx, bin_size in enumerate(bin_sizes):
         px_rows = build_binned_landmark_rows(rows, bin_size, "true_radial_error_px")
-        mm_rows = build_binned_landmark_rows(rows, bin_size, "true_radial_error_mm", ere_key="ere_mm")
         _scatter_with_fit(
             axes[row_idx, 0],
             [row["ere_mean"] for row in px_rows],
             [row["true_radial_error_mean"] for row in px_rows],
-            f"{title} (pixels, bin={bin_size})",
+            f"{title} After Temperature Scaling (pixels, bin={bin_size})" if before_rows is not None else f"{title} (pixels, bin={bin_size})",
             "Average ERE per bin",
             "Average True Radial Error per bin (pixels)",
             remove_outliers=remove_outliers,
         )
-        _scatter_with_fit(
-            axes[row_idx, 1],
-            [row["ere_mean"] for row in mm_rows],
-            [row["true_radial_error_mean"] for row in mm_rows],
-            f"{title} (mm, bin={bin_size})",
-            "Average ERE per bin (mm)",
-            "Average True Radial Error per bin (mm)",
-            remove_outliers=remove_outliers,
-        )
+        if before_rows is not None:
+            before_px_rows = build_binned_landmark_rows(before_rows, bin_size, "true_radial_error_px")
+            _scatter_with_fit(
+                axes[row_idx, 1],
+                [row["ere_mean"] for row in before_px_rows],
+                [row["true_radial_error_mean"] for row in before_px_rows],
+                f"{title} Before Temperature Scaling (pixels, bin={bin_size})",
+                "Average ERE per bin",
+                "Average True Radial Error per bin (pixels)",
+                remove_outliers=remove_outliers,
+            )
+        else:
+            axes[row_idx, 1].axis("off")
 
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1110,6 +1114,7 @@ def main():
         save_dir / "validation_binned_ere_vs_true_radial_error_px_mm_multibin.png",
         "Validation: Binned ERE vs True Radial Error",
         bin_sizes,
+        before_rows=val_landmark_rows_before if args.fit_temperature else None,
     )
     plot_multibin_paired_ere(
         val_landmark_rows,
@@ -1117,12 +1122,14 @@ def main():
         "Validation: Binned ERE vs True Radial Error",
         bin_sizes,
         remove_outliers=True,
+        before_rows=val_landmark_rows_before if args.fit_temperature else None,
     )
     plot_multibin_paired_ere(
         test_landmark_rows,
         save_dir / "testing_binned_ere_vs_true_radial_error_px_mm_multibin.png",
         "Testing: Binned ERE vs True Radial Error",
         bin_sizes,
+        before_rows=test_landmark_rows_before if args.fit_temperature else None,
     )
     plot_multibin_paired_ere(
         test_landmark_rows,
@@ -1130,6 +1137,7 @@ def main():
         "Testing: Binned ERE vs True Radial Error",
         bin_sizes,
         remove_outliers=True,
+        before_rows=test_landmark_rows_before if args.fit_temperature else None,
     )
     plot_perlandmark_paired_ere(
         val_landmark_rows,
