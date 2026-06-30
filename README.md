@@ -125,3 +125,19 @@ NOTE: image size input must be 512 by 512
 - Most paths in the experiment YAML files are environment-specific and will need to be updated locally.
 - Several shell scripts in the repo are SLURM job submission wrappers that show the intended cluster usage.
 - [`experiments/README.md`](/home/allent/Desktop/repos/MultimodalMedicalPredictions/experiments/README.md) contains brief notes on individual experiment variants.
+
+
+## PUBLICATIONS
+''' publications which use this code '''
+[1] Confidence in Angle Predictions for Clinical Decision Support
+Allison Clement‚ James Willoughby and Irina Voiculescu
+In Medical Image Computing and Computer−Assisted Intervention (MICCAI). September, 2025.
+
+[2] Landmark−Based Screening: Femoral Head Coverage and Graf Classification in Infant Developmental Dysplasia of the Hip
+Allison Clement‚ Abhinav Singh and Irina Voiculescu
+In European Conference on Computer Vision (ECCV). Women in Computer Vision (WiCV) Workshop. Springer Cham. September, 2024.
+
+
+[3] Improving Automated Ultrasound Infant Hip Screening using an Integrated Clinical Classification Loss
+Allison Clement‚ Abhinav Singh‚ Daniel Perry and Irina Voiculescu
+In Annual Conference on Medical Image Understanding and Analysis. Springer. July, 2024.
