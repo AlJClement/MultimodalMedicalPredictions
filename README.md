@@ -128,7 +128,7 @@ NOTE: image size input must be 512 by 512
 
 
 ## PUBLICATIONS
-''' publications which use this code '''
+``` publications which use this code ```
 [1] Confidence in Angle Predictions for Clinical Decision Support
 Allison Clement‚ James Willoughby and Irina Voiculescu
 In Medical Image Computing and Computer−Assisted Intervention (MICCAI). September, 2025.
