@@ -101,6 +101,11 @@ class class_agreement_metrics():
                 pass
             else:
                 sensitivity = 100 * float(tp) / float(tp + fn)
+
+            if precision + recall == 0:
+                f1 = 0.0
+            else:
+                f1 = 2 * precision * recall / (precision + recall)
         else:
             #multi class so outputs will be an array for tn, fp, fn, tp    
             classes = set(gt_class_arr)
@@ -116,6 +121,7 @@ class class_agreement_metrics():
             accuracy = np.array([])
             precision = np.array([])
             recall =  np.array([])
+            f1 = np.array([])
             total = np.array([])
             sensitivity = np.array([])
             specificity = np.array([])
@@ -151,23 +157,30 @@ class class_agreement_metrics():
                     pass
                 else:
                     _sensitivity = 100 * float(_tp) / float(_tp + _fn)
+
+                if _precision + _recall == 0:
+                    _f1 = 0.0
+                else:
+                    _f1 = 2 * _precision * _recall / (_precision + _recall)
                     
                 precision = np.append(precision, _precision)
                 accuracy = np.append(accuracy, _accuracy)
                 recall = np.append(recall, _recall)
+                f1 = np.append(f1, _f1)
                 total =  np.append(total, _total)
                 specificity = np.append(specificity, _specificity)
                 sensitivity =  np.append(sensitivity, _sensitivity)
-                
-                tn, fp, fn, tp = np.append(tn,_tn),np.append(fp,_fp), np.append(fn,_fn),np.append(tn,_tp)
+
+                tn, fp, fn, tp = np.append(tn,_tn),np.append(fp,_fp), np.append(fn,_fn),np.append(tp,_tp)
 
 
         ls = [['TN:', tn],
               ['FP:', fp], 
               ['FN:', fn],
               ['TP:', tp],
-              ['percision: ',precision],
+              ['precision: ', precision],
               ['recall: ', recall],
+              ['f1:', f1],
               ['accuracy', accuracy],
               ['sensitivity', sensitivity],
               ['specificity', specificity]]
