@@ -7,8 +7,9 @@
 #SBATCH --mem-per-cpu=50G
 #SBATCH --gres=gpu:1
 
-module load Anaconda3/2022.05
+module load Anaconda3
+module load CUDA/11.8.0
+source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
 
-source activate /data/coml-oxmedis/kebl7678/yenv
-#run python code
+
 python ./utils/run_test.py --cfg ddh_arc_newsplits_0.01499_hrnet
