@@ -577,6 +577,25 @@ class validation():
             class_agreement = class_agreement_metrics(self.dataset_name, comparison_df, 'graf&fhc pred i&ii_iii&iv', 'graf&fhc true i&ii_iii&iv', self.outputpath,  loc='validation')._get_metrics(group=True,groups=[('i','ii'),('iii/iv')])
             self.logger.info("Class Agreement i/ii vs iii/iv GRAF&FHC: {}".format(class_agreement))
 
+            # Print FHC low-value breakdowns (<= 0.5% and <= 1.0%) with agree / not-agree counts
+            try:
+                if 'fhc true' in comparison_df.columns:
+                    for thresh_pct in [0.005, 0.01]:
+                        mask = comparison_df['fhc true'] <= thresh_pct
+                        total = int(mask.sum())
+                        if total == 0:
+                            self.logger.info(f"FHC <= {thresh_pct*100:.2f}%: 0 rows")
+                            continue
+                        true_agree = int(comparison_df.loc[mask, 'true agree'].sum()) if 'true agree' in comparison_df.columns else 0
+                        true_not_agree = total - true_agree
+                        pred_agree = int(comparison_df.loc[mask, 'pred agree'].sum()) if 'pred agree' in comparison_df.columns else 0
+                        pred_not_agree = total - pred_agree
+                        self.logger.info(f"FHC <= {thresh_pct*100:.2f}%: total={total}, true_agree={true_agree}, true_not_agree={true_not_agree}, pred_agree={pred_agree}, pred_not_agree={pred_not_agree}")
+                else:
+                    self.logger.info('FHC columns not present in comparison_df; skipping low-value FHC breakdown')
+            except Exception as exc:
+                self.logger.warning(f'Failed to compute low-value FHC breakdown: {exc}')
+
         sdr_summary = ""
         if self.dataset_type == 'LANDMARKS':
             #calculate SDR
