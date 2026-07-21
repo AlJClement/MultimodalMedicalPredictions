@@ -1,11 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=5:00:00
+#SBATCH --time=2:00:00
 #SBATCH --clusters=htc
-#SBATCH --partition=short,interactive
 #SBATCH --mem-per-cpu=50G
-#SBATCH --gres=gpu:1
+#SBATCH --partition=short
+#SBATCH --gres=gpu:v100:1
 
 export PATH=/data/coml-oxmedis/kebl7678/yenv/bin:$PATH
 module load Anaconda3
