@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --time=10:00:00
@@ -9,18 +9,14 @@
 module load Anaconda3
 module load CUDA/11.8.0
 
-# Initialize conda
-source $(conda info --base)/etc/profile.d/conda.sh
+cd /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions || exit 1
 
-# Activate environment
-conda activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
+PYTHON=/data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env/bin/python
 
-echo "Python: $(which python)"
-python --version
+echo "Python: $PYTHON"
+"$PYTHON" --version
+"$PYTHON" -c "import sys; print(sys.executable)"
+"$PYTHON" -c "import torch; print('Torch:', torch.__version__)"
 
-python -c "import sys; print(sys.executable)"
-python -c "import torch; print(torch.__version__)"
-
-python ./utils/run_test.py --cfg ddh_arc_newsplits_0.01499_hrnet
-#run python code
-
+"$PYTHON" ./utils/run_test.py \
+    --cfg ddh_arc_newsplits_0.01499_hrnet
