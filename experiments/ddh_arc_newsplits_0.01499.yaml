@@ -79,7 +79,7 @@ DATASET:
 
     SOME_OF: 3 #if this is definied as not None, it will choose some of the augmentation instead of doing all sequentially for each image
 
-OUTPUT_PATH: ./output_ddh_0316_newsplit_0.01499_hrnet
+OUTPUT_PATH: ./output_HRNET_sigma1_10epochLR005_7landmarks_freeze
 TRAIN:
   BATCH_SIZE: 8
   LR: 0.005
@@ -93,7 +93,7 @@ TRAIN:
 
 
 TEST:
-  NETWORK: /model:1/_model_run:1_idx.pth
+  NETWORK: /data/coml-oxmedis/kebl7678/MEDIABACKUP_FROM_IRINAS_MACHINE/MultimodalMedicalPredictions/experiment_outputs/journal_experiments/output_HRNET_sigma1_10epochLR005_7landmarks_freeze/model:1/_model_run:1_idx.pth
   COMPARISON_METRICS: 
     - graf_angle_calc().graf_class_comparison
     - landmark_metrics().get_eres
