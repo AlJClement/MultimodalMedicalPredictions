@@ -8,8 +8,19 @@
 
 module load Anaconda3
 module load CUDA/11.8.0
-source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
 
+# Initialize conda
+source $(conda info --base)/etc/profile.d/conda.sh
+
+# Activate environment
+conda activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
+
+echo "Python: $(which python)"
+python --version
+
+python -c "import sys; print(sys.executable)"
+python -c "import torch; print(torch.__version__)"
+
+python ./utils/run_test.py --cfg ddh_arc_newsplits_0.01499_hrnet
 #run python code
 
-python ./utils/run_test.py --cfg ddh_arc_newsplits_0.01466_gradacum
