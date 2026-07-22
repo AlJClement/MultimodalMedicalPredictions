@@ -7,10 +7,17 @@
 #SBATCH --partition=short,medium,long
 #SBATCH --mem-per-cpu=16G
 
-export PATH=/data/coml-oxmedis/kebl7678/yenv/bin:$PATH
 module load Anaconda3
 module load CUDA/11.8.0
-source activate /data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env
 
+cd /data/coml-oxmedis/kebl7678/repos/MultimodalMedicalPredictions || exit 1
 
-python ./utils/run_test.py --cfg ddh_arc_newsplits_0.01499_hrnet
+PYTHON=/data/coml-oxmedis/kebl7678/conda_envs/mm_env2/mm_env/bin/python
+
+echo "Python: $PYTHON"
+"$PYTHON" --version
+"$PYTHON" -c "import sys; print(sys.executable)"
+"$PYTHON" -c "import torch; print('Torch:', torch.__version__)"
+
+"$PYTHON" ./utils/run_test.py \
+    --cfg ddh_arc_newsplits_0.01499_hrnet
